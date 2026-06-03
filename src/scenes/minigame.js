@@ -1,60 +1,228 @@
-import { mailDeck, minigames } from "../data/minigames.js";
+import { emailDeck, minigames } from "../data/minigames.js";
 import { applyDelta, checkEnding } from "../state.js";
 import { el, renderBadges, renderHud } from "../ui.js";
 
 export function renderMiniGame(root, state, actions) {
-  if (state.minigameRound >= 5) {
+  if (state.minigameRound >= 5 && !state.flags.devMode) {
     actions.finishWith(state.stats.workload <= 0 ? "success" : "overtime");
     return;
   }
 
-  const game = minigames[state.minigameRound % minigames.length];
+  const game = state.flags.devMode ? minigames[0] : minigames[state.minigameRound % minigames.length];
   if (game.id === "email") renderEmailGame(root, state, actions, game);
   else renderPlaceholderMiniGame(root, state, actions, game);
 }
 
 function renderEmailGame(root, state, actions, game) {
-  let index = 0;
-  let score = 0;
+  const deck = buildEmailDeck(state);
+  const run = {
+    index: 0,
+    correct: 0,
+    wrong: 0,
+    missed: 0,
+    left: 60,
+    detailOpen: false,
+    done: false,
+  };
 
-  const content = el("section", { class: "game-board" }, [renderHud(state), el("div", { class: "desk" }), el("footer", { class: "item-row" })]);
-  root.append(content);
-  const desk = content.querySelector(".desk");
-  const footer = content.querySelector("footer");
-
-  function draw() {
-    desk.innerHTML = "";
-    footer.innerHTML = "";
-    if (index >= mailDeck.length) return finish();
-    const mail = mailDeck[index];
-    desk.append(
-      el("div", { class: "mini-layout" }, [
-        el("div", { class: "mini-header" }, [
-          el("h2", { text: `${state.minigameRound + 1}/5 ${game.title}` }),
-          el("strong", { text: `정답 ${score}/${mailDeck.length}` }),
+  const shell = el("section", { class: "email-mini-shell" }, [
+    renderHud(state),
+    el("section", { class: statusClass(state), id: "emailWorkspace" }, [
+      el("div", { class: "email-titlebar" }, [
+        el("div", { class: "lights" }, [
+          el("span", { class: "light red-light" }),
+          el("span", { class: "light yellow-light" }),
+          el("span", { class: "light green-light" }),
+          el("strong", { text: "📧 이메일 분류 시스템 - 받은편지함" }),
+        ]),
+        el("span", { text: "- □ ×" }),
+      ]),
+      el("div", { class: "email-workspace" }, [
+        el("div", { class: "email-hud" }, [
+          el("div", { class: "email-pill email-timer", id: "emailTimer", text: "⏱ 60.0 / 60s" }),
+          el("div", { class: "email-pill", id: "emailScore", text: `처리 0 / ${deck.length}` }),
         ]),
         renderBadges(state),
-        el("article", { class: "mail-card mini-card" }, [el("p", { text: mail.subject })]),
+        el("aside", { class: "email-rule-stack" }, [
+          el("div", { class: "email-rule red", text: "외부 링크 · 실행 파일 주의" }),
+          el("div", { class: "email-rule yellow", text: "A: 정상 / D: 스팸 / Space: 상세" }),
+        ]),
+        renderDropZone("good", "정상 메일", "사내 업무 · 공지 · 요청"),
+        renderDropZone("spam", "스팸", "피싱 · 사칭 · 위험 첨부"),
+        el("div", { class: "email-stream" }, [
+          el("div", { class: "ghost-mail" }),
+          el("div", { class: "ghost-mail" }),
+          el("article", { class: "email-card", id: "emailCard" }),
+        ]),
+        el("div", { class: "email-controls" }, [
+          el("button", { id: "goodButton", class: "email-key good", text: "A 정상" }),
+          el("button", { id: "detailButton", class: "email-key", text: "Space 상세" }),
+          el("button", { id: "spamButton", class: "email-key spam", text: "D 스팸" }),
+        ]),
+        el("div", { class: "email-feedback", id: "emailFeedback" }),
+        el("div", { class: "email-result", id: "emailResult", hidden: "true" }),
+        el("div", { class: "px-scanline" }),
+        el("div", { class: "px-glare" }),
       ]),
-    );
-    footer.append(
-      el("button", { text: "스팸", onClick: () => choose("spam") }),
-      el("button", { class: "primary", text: "중요", onClick: () => choose("important") }),
+    ]),
+  ]);
+
+  root.append(shell);
+
+  const workspace = shell.querySelector("#emailWorkspace");
+  const card = shell.querySelector("#emailCard");
+  const timer = shell.querySelector("#emailTimer");
+  const score = shell.querySelector("#emailScore");
+  const feedback = shell.querySelector("#emailFeedback");
+  const resultPanel = shell.querySelector("#emailResult");
+
+  const interval = setInterval(() => {
+    if (run.done) return;
+    run.left = Math.max(0, run.left - 0.1);
+    timer.textContent = `⏱ ${run.left.toFixed(1)} / 60s`;
+    timer.classList.toggle("danger", run.left <= 10);
+    if (run.left <= 0) finish();
+  }, 100);
+
+  function showMail() {
+    const mail = deck[run.index];
+    if (!mail) return finish();
+    card.className = `email-card ${run.detailOpen ? "detail" : ""}`;
+    card.innerHTML = "";
+    card.append(
+      el("div", { class: "mail-top" }, [
+        el("span", { text: mail.from }),
+        el("span", { class: "domain", text: mail.domain }),
+      ]),
+      el("h2", { class: "mail-title", text: renderStatusText(mail.subject, state) }),
+      el("p", { class: "mail-body", text: renderStatusText(mail.body, state) }),
+      renderClues(mail),
+      el("div", { class: "detail-grid" }, [
+        detail("첨부", mail.attachment),
+        detail("링크", mail.link),
+        detail("수신", mail.recipient),
+        detail("시간", mail.time),
+      ]),
     );
   }
 
-  function choose(type) {
-    if (mailDeck[index].type === type) score += 1;
-    index += 1;
-    draw();
+  function classify(target) {
+    if (run.done) return;
+    const mail = deck[run.index];
+    const ok = mail.type === target;
+    ok ? run.correct++ : run.wrong++;
+    feedback.textContent = ok ? "정확!" : "오분류!";
+    feedback.style.color = ok ? "var(--ok)" : "var(--danger)";
+    feedback.classList.add("show");
+    card.classList.add(target === "good" ? "throw-left" : "throw-right");
+    setTimeout(() => {
+      feedback.classList.remove("show");
+      run.index++;
+      run.detailOpen = false;
+      score.textContent = `처리 ${Math.min(run.index, deck.length)} / ${deck.length}`;
+      if (run.index >= deck.length) finish();
+      else showMail();
+    }, 220);
+  }
+
+  function toggleDetail() {
+    run.detailOpen = !run.detailOpen;
+    showMail();
   }
 
   function finish() {
-    const result = score >= 8 ? "success" : score >= 5 ? "partial" : "fail";
-    actions.mutateState((draft) => applyMiniResult(draft, result, `${game.title}: ${score}개 정확히 분류했습니다.`));
+    if (run.done) return;
+    run.done = true;
+    clearInterval(interval);
+    window.removeEventListener("keydown", onKey);
+    const processed = run.correct + run.wrong;
+    const result = run.correct >= 8 ? "success" : run.correct >= 5 ? "partial" : "fail";
+    resultPanel.hidden = false;
+    resultPanel.append(
+      el("h2", { text: result === "success" ? "분류 완료" : "분류 미흡" }),
+      el("p", { text: `정확 ${run.correct} · 오분류 ${run.wrong} · 처리 ${processed}/${deck.length}` }),
+      el("div", { class: "actions" }, [
+        el("button", { class: "primary", text: "결과 반영", onClick: () => applyResult(result) }),
+        el("button", { text: "다시 실행", onClick: () => actions.go("minigame") }),
+        state.flags.devMode ? el("button", { text: "시작화면", onClick: () => actions.mutateState((draft) => ({ ...draft, scene: "title", flags: { ...draft.flags, devMode: false } })) }) : el("span"),
+      ]),
+    );
   }
 
-  draw();
+  function applyResult(result) {
+    actions.mutateState((draft) => applyMiniResult(draft, result, `${game.title}: 정확 ${run.correct}/${deck.length}`));
+  }
+
+  function onKey(event) {
+    const key = event.key.toLowerCase();
+    if (key === "a" || key === "arrowleft") classify("good");
+    if (key === "d" || key === "arrowright") classify("spam");
+    if (key === " " || key === "spacebar") {
+      event.preventDefault();
+      toggleDetail();
+    }
+  }
+
+  shell.querySelector("#goodZone").addEventListener("click", () => classify("good"));
+  shell.querySelector("#spamZone").addEventListener("click", () => classify("spam"));
+  shell.querySelector("#goodButton").addEventListener("click", () => classify("good"));
+  shell.querySelector("#spamButton").addEventListener("click", () => classify("spam"));
+  shell.querySelector("#detailButton").addEventListener("click", toggleDetail);
+  card.addEventListener("click", toggleDetail);
+  window.addEventListener("keydown", onKey);
+  showMail();
+}
+
+function renderDropZone(type, title, hint) {
+  return el("button", { class: `email-dropzone ${type}`, id: `${type}Zone` }, [
+    el("strong", { text: title }),
+    el("span", { text: hint }),
+  ]);
+}
+
+function renderClues(mail) {
+  const clues = [];
+  if (mail.attachment && mail.attachment !== "없음") {
+    const ext = mail.attachment.split(".").pop().toLowerCase();
+    clues.push({ text: `첨부 ${ext}`, danger: ["zip", "exe", "xlsm"].includes(ext) });
+  }
+  if (mail.link && mail.link !== "없음") {
+    const internal = mail.link.includes("company.com") || mail.link.includes("intranet.company.com") || mail.link.includes("edu.company.com") || mail.link.includes("mail.company.com");
+    clues.push({ text: internal ? "사내 링크" : "외부 링크", danger: !internal });
+  }
+  if (/^0[0-6]:/.test(mail.time)) clues.push({ text: "새벽 발신", danger: true });
+  return el("div", { class: "mail-clues" }, clues.slice(0, 3).map((clue) => el("span", { class: clue.danger ? "danger-word" : "", text: clue.text })));
+}
+
+function detail(label, value) {
+  return el("p", {}, [el("strong", { text: label }), el("span", { text: value })]);
+}
+
+function renderStatusText(text, state) {
+  if (state.stats.stress >= 70) return corruptText(text, 0.14);
+  return text;
+}
+
+function corruptText(text, ratio) {
+  const noise = ["□", "▒", "?", "_", "…"];
+  return Array.from(text).map((ch, index) => {
+    if (ch === " " || /[.,:[\]()]/.test(ch)) return ch;
+    return (index * 17) % 100 < ratio * 100 ? noise[index % noise.length] : ch;
+  }).join("");
+}
+
+function buildEmailDeck(state) {
+  const stress = state.stats.stress;
+  const pool = stress >= 80 ? emailDeck : stress >= 50 ? emailDeck.filter((mail) => mail.difficulty !== "evil") : emailDeck.filter((mail) => ["easy", "normal"].includes(mail.difficulty));
+  return [...pool].sort(() => Math.random() - 0.5).slice(0, 10);
+}
+
+function statusClass(state) {
+  const classes = ["email-monitor"];
+  if (state.stats.stress >= 70) classes.push("fx-gray");
+  if (state.stats.health <= 30) classes.push("fx-shake");
+  if (state.counters.coffeeStreak >= 2) classes.push("fx-jitter");
+  return classes.join(" ");
 }
 
 function renderPlaceholderMiniGame(root, state, actions, game) {
@@ -70,7 +238,7 @@ function renderPlaceholderMiniGame(root, state, actions, game) {
           renderBadges(state),
           el("article", { class: "mini-card" }, [
             el("p", { text: game.description }),
-            el("p", { text: "지금은 뼈대 단계라 성공/부분성공/실패 버튼으로 결과 흐름을 검증합니다." }),
+            el("p", { text: "현재는 결과 버튼으로 전체 흐름을 검증합니다." }),
           ]),
         ]),
       ]),
@@ -90,6 +258,11 @@ function applyMiniResult(state, result, message) {
     fail: { workload: -3, stress: 18, health: -8, gameMinute: 60 },
   };
   let next = applyDelta(state, deltas[result], message);
+  if (next.flags.devMode) {
+    next.scene = "title";
+    next.flags.devMode = false;
+    return next;
+  }
   next.minigameRound += 1;
   next.counters.successStreak = result === "success" ? next.counters.successStreak + 1 : 0;
   next.counters.failures += result === "fail" ? 1 : 0;
