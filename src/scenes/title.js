@@ -44,15 +44,9 @@ export function renderTitle(root, state, actions) {
             el("summary", { text: "개발자 모드" }),
             el("div", { class: "dev-actions" }, [
               el("button", {
-                text: "이메일 분류 바로 실행",
+                text: "이메일 분류 원본 실행",
                 onClick: () => {
-                  actions.mutateState((draft) => {
-                    draft.scene = "minigame";
-                    draft.minigameRound = 0;
-                    draft.flags.devMode = true;
-                    draft.log = ["개발자 모드: 이메일 분류 미니게임을 바로 실행합니다.", ...draft.log].slice(0, 8);
-                    return draft;
-                  });
+                  window.location.href = "./assets/minigames/email-classification-prototype.html";
                 },
               }),
             ]),

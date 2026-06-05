@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>이메일 분류 시스템 - 받은편지함</title>
+  <style>
+    :root {
+      --ink: #1d1f2e;
+      --paper: #f5f3eb;
+      --cream: #ebe6d8;
+      --green: #43a36a;
+      --green-bg: #edf7ef;
+      --red: #ef4d42;
+      --red-bg: #fff0ee;
+      --yellow: #ffd456;
+      --muted: #8c8c8c;
+      --shadow: 5px 5px 0 var(--ink);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      background: #caa46a;
+      color: var(--ink);
+      font-family: "Galmuri11", "Malgun Gothic", "Apple SD Gothic Neo", monospace;
+      letter-spacing: 0;
+    }
+    button, input { font: inherit; color: inherit; }
+    [hidden] { display: none !important; }
+    .app {
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(#f3e2c0, #e9d3a8 0 76%, rgba(29,31,46,.35) 76%, rgba(29,31,46,.35) calc(76% + 5px), #b97a3e calc(76% + 5px));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 16px;
+    }
+    .monitor {
+      width: min(1100px, 97vw);
+      max-height: min(740px, 96vh);
+      background: linear-gradient(#efe7d2, #ddd2b6);
+      border: 4px solid var(--ink);
+      border-radius: 14px;
+      box-shadow: 7px 8px 0 rgba(29,31,46,.35);
+      padding: 16px 16px 28px;
+      display: flex;
+      flex-direction: column;
+    }
+    .screen {
+      background: var(--paper);
+      border: 4px solid var(--ink);
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 0;
+      position: relative;
+    }
+    .titlebar {
+      height: 38px;
+      background: #f0eee7;
+      border-bottom: 3px solid var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .lights { display: flex; align-items: center; gap: 7px; }
+    .light { width: 11px; height: 11px; border: 2px solid var(--ink); border-radius: 50%; }
+    .workspace {
+      height: min(626px, calc(96vh - 112px));
+      min-height: 560px;
+      position: relative;
+      overflow: hidden;
+      background: #fbfaf5;
+    }
+    .workspace.fx-gray { filter: grayscale(.68) brightness(.96); }
+    .workspace.fx-gray:after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(120,120,135,.12);
+      pointer-events: none;
+      z-index: 6;
+    }
+    .workspace.fx-shake .mail-card {
+      overflow: hidden;
+    }
+    .workspace.fx-shake .mail-card:before,
+    .workspace.fx-shake .mail-card:after,
+    .workspace.fx-shake .headache-smear {
+      content: "";
+      position: absolute;
+      z-index: 3;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(245,245,240,.28);
+      box-shadow: 0 0 18px rgba(210,210,205,.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      -webkit-mask-image: radial-gradient(ellipse at center, #000 0 42%, rgba(0,0,0,.55) 62%, transparent 100%);
+      mask-image: radial-gradient(ellipse at center, #000 0 42%, rgba(0,0,0,.55) 62%, transparent 100%);
+      pointer-events: none;
+      opacity: .9;
+    }
+    .workspace.fx-shake .mail-card:before {
+      width: 54%;
+      left: 24%;
+      top: 34%;
+      animation: headacheSmearA 3.2s ease-in-out infinite alternate;
+    }
+    .workspace.fx-shake .mail-card:after {
+      width: 44%;
+      left: 28%;
+      top: 60%;
+      height: 26px;
+      opacity: .9;
+      animation: headacheSmearB 3.9s ease-in-out infinite alternate;
+    }
+    .workspace.fx-shake .headache-smear {
+      width: 34%;
+      left: 49%;
+      top: 20%;
+      height: 24px;
+      opacity: .84;
+      animation: headacheSmearC 4.4s ease-in-out infinite alternate;
+    }
+    .headache-title-blur,
+    .headache-body-blur {
+      position: absolute;
+      z-index: 4;
+      display: none;
+      pointer-events: none;
+      color: rgba(35,35,35,.72);
+      filter: blur(3.8px);
+      text-shadow: 0 0 10px rgba(70,70,70,.42);
+      overflow: hidden;
+      white-space: nowrap;
+      opacity: .9;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 74%, transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 74%, transparent 100%);
+    }
+    .headache-title-blur {
+      left: 18px;
+      right: 18px;
+      top: 51px;
+      height: 30px;
+      font-size: 22px;
+      font-weight: 900;
+      animation: headacheTextDrift 3.4s ease-in-out infinite alternate;
+    }
+    .headache-body-blur {
+      left: 18px;
+      right: 18px;
+      top: 92px;
+      height: 42px;
+      font-size: 13px;
+      line-height: 1.35;
+      white-space: normal;
+      animation: headacheTextDrift 4s ease-in-out infinite alternate-reverse;
+    }
+    .workspace.fx-shake .headache-title-blur,
+    .workspace.fx-shake .headache-body-blur {
+      display: block;
+    }
+    .workspace.fx-jitter { animation: fxJitter .12s steps(2) infinite; }
+    .workspace.fx-jitter .mail-card {
+      animation: mailTremble .075s steps(2) infinite;
+    }
+    .hud {
+      height: 56px;
+      border-bottom: 2px dashed #b9b9b9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: rgba(255,255,255,.5);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 112px;
+      min-height: 30px;
+      padding: 4px 15px;
+      border: 3px solid var(--ink);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 2px 2px 0 rgba(29,31,46,.18);
+      font-weight: 800;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .timer { color: var(--red); border-color: var(--red); font-size: 20px; min-width: 150px; }
+    .timer.danger { animation: shake .35s steps(2) infinite, blink 1s steps(1) infinite; background: #fff2ef; }
+    .rule-stack {
+      position: absolute;
+      right: 20px;
+      top: 76px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      z-index: 8;
+    }
+    .rule {
+      border: 3px solid var(--ink);
+      border-radius: 5px;
+      box-shadow: 3px 3px 0 rgba(29,31,46,.25);
+      padding: 6px 14px;
+      font-weight: 800;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .rule.red { background: var(--red); color: #fff; }
+    .rule.yellow { background: var(--yellow); }
+    .rule.fade { animation: hintFade 1.5s ease-out forwards; }
+    .status-badge {
+      position: absolute;
+      top: 70px;
+      left: 18px;
+      z-index: 12;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--ink);
+      color: #fff;
+      padding: 6px 12px;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.28);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .status-caption {
+      position: absolute;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 12;
+      background: #fff;
+      border: 2px solid var(--red);
+      color: var(--red);
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .dropzone {
+      position: absolute;
+      top: 235px;
+      bottom: 38px;
+      width: 25%;
+      border: 3px dashed;
+      border-radius: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 12px 12px;
+      transition: transform .08s, background .08s;
+    }
+    .dropzone.active { transform: translateY(-3px); }
+    .dropzone.good {
+      left: 14px;
+      border-color: var(--green);
+      background: var(--green-bg);
+      color: var(--green);
+    }
+    .dropzone.spam {
+      right: 14px;
+      border-color: var(--red);
+      background: var(--red-bg);
+      color: var(--red);
+    }
+    .zone-icon { font-size: 34px; line-height: 1; }
+    .zone-title { font-size: 26px; font-weight: 900; margin-top: 12px; }
+    .zone-key { color: #777; font-size: 15px; font-weight: 800; margin-top: 8px; }
+    .zone-list {
+      width: 100%;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+      min-height: 104px;
+    }
+    .mini-mail {
+      height: 26px;
+      border: 2px solid #777;
+      border-radius: 5px;
+      background: #fff;
+      color: #555;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      padding: 0 9px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .zone-count {
+      width: 34px;
+      height: 34px;
+      margin-bottom: -31px;
+      border-radius: 50%;
+      border: 3px solid var(--paper);
+      background: currentColor;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 18px;
+    }
+    .center-line {
+      position: absolute;
+      top: 70px;
+      bottom: 196px;
+      left: 50%;
+      border-left: 3px dashed #c4c4c4;
+    }
+    .class-line {
+      position: absolute;
+      left: 28%;
+      right: 28%;
+      bottom: 176px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #888;
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .class-line:before, .class-line:after {
+      content: "";
+      flex: 1;
+      border-top: 3px dashed var(--yellow);
+    }
+    .mail-stream {
+      position: absolute;
+      left: 50%;
+      top: 70px;
+      bottom: 150px;
+      width: 420px;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .ghost-mail, .mail-card {
+      width: 270px;
+      min-height: 52px;
+      border: 2px solid #8a8a8a;
+      border-radius: 5px;
+      background: rgba(255,255,255,.78);
+      padding: 8px 13px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #777;
+    }
+    .ghost-mail:nth-child(1) { top: 12px; opacity: .38; }
+    .ghost-mail:nth-child(2) { top: 84px; opacity: .7; }
+    .sender { display: flex; justify-content: space-between; color: #aaa; font-size: 11px; margin-bottom: 8px; }
+    .subject { font-size: 17px; font-weight: 900; }
+    .mail-card {
+      width: 330px;
+      min-height: 122px;
+      top: var(--card-y);
+      border: 4px solid var(--ink);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+      background: #fff;
+      z-index: 4;
+      padding: 14px 16px;
+      pointer-events: auto;
+      transition: width .18s ease, min-height .18s ease, box-shadow .18s ease, left .1s, transform .1s, opacity .1s;
+    }
+    .mail-card.detail {
+      width: 430px;
+      min-height: 238px;
+      box-shadow: 8px 8px 0 var(--ink);
+    }
+    .mail-card.throw-left { animation: throwLeft .22s ease-in forwards; }
+    .mail-card.throw-right { animation: throwRight .22s ease-in forwards; }
+    .mail-card.missed { animation: missed .24s ease-in forwards; }
+    .mail-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; color: #8d8d8d; font-size: 15px; }
+    .domain { color: #9a9a9a; font-weight: 800; }
+    .mail-title { font-size: 22px; font-weight: 900; margin-bottom: 9px; }
+    .mail-body { color: #777; font-size: 13px; line-height: 1.35; margin-bottom: 12px; }
+    .mail-preview {
+      color: #666;
+      font-size: 13px;
+      line-height: 1.35;
+      margin-bottom: 9px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .basic-clues {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+    .detail-only {
+      display: none;
+      animation: detailIn .18s ease-out;
+    }
+    .mail-card.detail .detail-only { display: block; }
+    .detail-grid {
+      border-top: 1.5px dashed #d8d2c0;
+      margin-top: 11px;
+      padding-top: 10px;
+      display: grid;
+      gap: 7px;
+      color: #555;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .detail-row {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 8px;
+      align-items: start;
+    }
+    .detail-label {
+      color: #999;
+      font-weight: 900;
+    }
+    .detail-value {
+      color: #4f4f4f;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+    .detail-hint {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      color: #aaa;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .cost-pop {
+      position: absolute;
+      left: 50%;
+      top: -28px;
+      transform: translateX(-50%);
+      color: var(--red);
+      background: #fff7f5;
+      border: 2px solid var(--red);
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: 900;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .cost-pop.show { animation: costPop .75s ease-out; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      border: 2px solid currentColor;
+      border-radius: 5px;
+      padding: 3px 8px;
+      color: #777;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .tag.warn { color: #b8871e; background: #fff8df; }
+    .tag.danger-word { color: var(--red); background: #fff7f5; }
+    .feedback {
+      position: absolute;
+      left: 50%;
+      top: 204px;
+      transform: translateX(-50%);
+      font-weight: 900;
+      font-size: 18px;
+      opacity: 0;
+      z-index: 9;
+    }
+    .feedback.show { animation: pop .52s ease-out; }
+    .controls {
+      position: absolute;
+      left: 50%;
+      bottom: 35px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 52px;
+      font-weight: 900;
+    }
+    .key {
+      min-width: 146px;
+      height: 34px;
+      border: 3px solid var(--ink);
+      border-radius: 8px;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      box-shadow: 2px 2px 0 rgba(29,31,46,.18);
+      font-size: 16px;
+    }
+    .key.good { color: var(--green); }
+    .key.spam { color: var(--red); }
+    .key-note { color: #555; font-size: 14px; white-space: nowrap; }
+    .start-panel, .result-panel {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      background: rgba(20,24,40,.5);
+    }
+    .panel {
+      width: min(520px, 86vw);
+      background: #fffdf2;
+      border: 4px solid var(--ink);
+      box-shadow: 7px 7px 0 var(--ink);
+      padding: 24px 28px;
+      text-align: center;
+    }
+    .panel h1, .panel h2 { margin: 0 0 12px; font-size: 25px; }
+    .panel p { margin: 8px 0; color: #555; line-height: 1.55; font-size: 14px; }
+    .btn {
+      margin-top: 16px;
+      border: 3px solid var(--ink);
+      background: var(--yellow);
+      box-shadow: 4px 4px 0 var(--ink);
+      padding: 11px 24px;
+      font-weight: 900;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .debug-toggle {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 35;
+      width: 42px;
+      height: 42px;
+      border: 3px solid var(--ink);
+      background: #fff;
+      box-shadow: 3px 3px 0 rgba(29,31,46,.25);
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .debug-panel {
+      position: absolute;
+      right: 14px;
+      bottom: 64px;
+      z-index: 35;
+      width: 292px;
+      border: 3px solid var(--ink);
+      background: #fffdf2;
+      box-shadow: 5px 5px 0 var(--ink);
+      padding: 14px 16px;
+      font-size: 12px;
+    }
+    .debug-panel h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+    .debug-panel label {
+      display: block;
+      margin: 8px 0 5px;
+      font-weight: 900;
+    }
+    .debug-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 5px 0 9px; }
+    .debug-chip {
+      border: 2px solid var(--ink);
+      background: #fff;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .debug-chip.active { background: var(--yellow); box-shadow: 2px 2px 0 var(--ink); }
+    .debug-note { color: #888; line-height: 1.45; margin: 7px 0 0; }
+    .debug-help {
+      margin-top: 10px;
+      padding-top: 9px;
+      border-top: 2px dashed #d8d2c0;
+      color: #555;
+      line-height: 1.5;
+    }
+    .debug-help b { color: var(--ink); }
+    .debug-help div { margin-top: 4px; }
+    .debug-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .debug-actions button {
+      flex: 1;
+      border: 2px solid var(--ink);
+      background: #fff;
+      padding: 6px 8px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .boss-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 11;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .boss-overlay svg {
+      position: absolute;
+      top: -12%;
+      right: -4%;
+      height: 124%;
+      width: auto;
+      opacity: .26;
+    }
+    .boss-banner {
+      position: absolute;
+      top: 115px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 13;
+      width: min(430px, 74%);
+      border: 3px solid var(--red);
+      background: #fff;
+      box-shadow: 5px 5px 0 var(--ink);
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+    .stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+    .stat { border: 2px solid var(--ink); background: #fff; padding: 5px 12px; font-size: 13px; font-weight: 800; }
+    @keyframes shake { 0%,100%{ transform: translate(0,0);} 25%{ transform: translate(-2px,1px);} 50%{ transform: translate(2px,-1px);} 75%{ transform: translate(-1px,-1px);} }
+    @keyframes blink { 0%,49%{ opacity:1;} 50%,100%{ opacity:.55;} }
+    @keyframes hintFade { 0%,80%{ opacity:1; transform: translateY(0);} 100%{ opacity:0; transform: translateY(-4px);} }
+    @keyframes fxJitter { 0%,100%{ transform: translate(0,0);} 50%{ transform: translate(1px,-1px);} }
+    @keyframes headacheSmearA {
+      0% { transform: translate(-18px, -2px) scaleX(.95); opacity: .9; }
+      45% { transform: translate(10px, 4px) scaleX(1.08); opacity: 1; }
+      100% { transform: translate(24px, -1px) scaleX(1); opacity: .94; }
+    }
+    @keyframes headacheSmearB {
+      0% { transform: translate(16px, 5px) scaleX(1); opacity: .86; }
+      50% { transform: translate(-20px, -2px) scaleX(1.12); opacity: .98; }
+      100% { transform: translate(4px, 6px) scaleX(.96); opacity: .9; }
+    }
+    @keyframes headacheSmearC {
+      0% { transform: translate(12px, 0) scaleX(.9); opacity: .78; }
+      55% { transform: translate(-22px, 3px) scaleX(1.1); opacity: .95; }
+      100% { transform: translate(2px, -1px) scaleX(1); opacity: .82; }
+    }
+    @keyframes headacheTextDrift {
+      0% { transform: translateX(-10px); opacity: .55; }
+      45% { transform: translateX(6px); opacity: .9; }
+      100% { transform: translateX(14px); opacity: .62; }
+    }
+    @keyframes detailIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes costPop {
+      0% { opacity: 0; transform: translate(-50%, 6px); }
+      20%, 72% { opacity: 1; transform: translate(-50%, 0); }
+      100% { opacity: 0; transform: translate(-50%, -7px); }
+    }
+    @keyframes mailTremble {
+      0% { margin-left: -3px; margin-top: 1px; }
+      25% { margin-left: 2px; margin-top: -2px; }
+      50% { margin-left: -1px; margin-top: 2px; }
+      75% { margin-left: 3px; margin-top: -1px; }
+      100% { margin-left: -2px; margin-top: 1px; }
+    }
+    @keyframes throwLeft { to { transform: translateX(-1180px) rotate(-10deg); opacity: .15; } }
+    @keyframes throwRight { to { transform: translateX(850px) rotate(10deg); opacity: .15; } }
+    @keyframes missed { to { transform: translate(-50%, 230px) scale(.96); opacity: 0; } }
+    @keyframes pop { 0%{ opacity:0; transform:translate(-50%,8px) scale(.94);} 30%,75%{ opacity:1; transform:translate(-50%,0) scale(1);} 100%{ opacity:0; transform:translate(-50%,-8px) scale(1);} }
+    @media (max-width: 860px) {
+      .monitor { padding: 10px 10px 18px; }
+      .workspace { min-height: 620px; }
+      .dropzone { width: calc(50% - 28px); top: 354px; bottom: 74px; }
+      .mail-stream { top: 88px; bottom: 260px; }
+      .class-line { left: 12%; right: 12%; bottom: 266px; }
+      .controls { bottom: 20px; gap: 10px; }
+      .key { min-width: 110px; font-size: 13px; }
+      .key-note { display: none; }
+      .rule-stack { display: none; }
+      .mail-card { width: min(330px, 86vw); }
+      .timer { min-width: 122px; font-size: 16px; }
+      .pill { font-size: 15px; min-width: 96px; }
+      .titlebar { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="monitor">
+      <div class="screen">
+        <div class="titlebar">
+          <div class="lights">
+            <span class="light" style="background:#f15b4e"></span>
+            <span class="light" style="background:#ffd456"></span>
+            <span class="light" style="background:#58b575"></span>
+            <span style="margin-left:8px">📧 이메일 분류 시스템 - 받은편지함</span>
+          </div>
+          <span>- □ ×</span>
+        </div>
+        <div class="workspace" id="workspace">
+          <div class="hud">
+            <div class="pill timer" id="timer">⏱ 60.0 / 60s</div>
+            <div class="pill" id="score">처리 0 / 10</div>
+          </div>
+
+          <div class="status-badge" id="statusBadge" hidden></div>
+          <div class="status-caption" id="statusCaption" hidden></div>
+          <div class="boss-overlay" id="bossOverlay" hidden>
+            <svg viewBox="0 0 300 320" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+              <g fill="#161616">
+                <circle cx="150" cy="84" r="52"></circle>
+                <path d="M18 320 C26 205 80 142 150 140 C220 142 274 205 282 320 Z"></path>
+              </g>
+            </svg>
+          </div>
+          <div class="boss-banner" id="bossBanner" hidden>
+            ⚠ 상사가 내 자리 옆에 서 있다... 아무 말 없이 모니터만 보고 있다. 메일이 더 빨리 내려온다.
+          </div>
+
+          <div class="rule-stack">
+            <div class="rule red">함정 : 상사 사칭 · 스팸 섞임</div>
+            <div class="rule yellow" id="startHint">시작 직후 1.5초 표시 → 페이드아웃</div>
+          </div>
+
+          <div class="center-line"></div>
+          <div class="mail-stream" aria-hidden="true">
+            <div class="ghost-mail">
+              <div class="sender"><span>김부장</span><span>company.com</span></div>
+              <div class="subject">팀장님 피드백</div>
+            </div>
+            <div class="ghost-mail">
+              <div class="sender"><span>기획팀</span><span>company.com</span></div>
+              <div class="subject">회의 자료 공유</div>
+            </div>
+          </div>
+          <div class="feedback" id="feedback"></div>
+          <div class="class-line">- 분류 라인 -</div>
+
+          <section class="dropzone good" id="goodZone">
+            <div>
+              <div class="zone-icon">📥</div>
+              <div class="zone-title">중요</div>
+              <div class="zone-key">← / A</div>
+            </div>
+            <div class="zone-list" id="goodList"></div>
+            <div class="zone-count" id="goodCount">0</div>
+          </section>
+
+          <section class="dropzone spam" id="spamZone">
+            <div>
+              <div class="zone-icon">🗑️</div>
+              <div class="zone-title">스팸</div>
+              <div class="zone-key">D / →</div>
+            </div>
+            <div class="zone-list" id="spamList"></div>
+            <div class="zone-count" id="spamCount">0</div>
+          </section>
+
+          <article class="mail-card" id="mailCard" style="--card-y: 64%">
+            <span class="headache-smear" aria-hidden="true"></span>
+            <span class="cost-pop" id="costPop">상세 확인 -1.5초</span>
+            <div class="headache-title-blur" id="headacheTitleBlur" aria-hidden="true"></div>
+            <div class="headache-body-blur" id="headacheBodyBlur" aria-hidden="true"></div>
+            <div class="mail-top"><span id="from">event</span><span class="domain" id="domain">unknown-deal.net</span></div>
+            <div class="mail-title" id="subject">당신이 선택되었습니다 🎉</div>
+            <div class="mail-preview" id="preview">지금 클릭하면 100만원 상당의...</div>
+            <div class="basic-clues" id="basicClues"></div>
+            <div class="detail-only">
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">본문</span><span class="detail-value" id="body">없음</span></div>
+                <div class="detail-row"><span class="detail-label">첨부파일</span><span class="detail-value" id="attachment">없음</span></div>
+                <div class="detail-row"><span class="detail-label">링크</span><span class="detail-value" id="linkInfo">없음</span></div>
+                <div class="detail-row"><span class="detail-label">수신</span><span class="detail-value" id="recipient">없음</span></div>
+                <div class="detail-row"><span class="detail-label">발신시간</span><span class="detail-value" id="sentTime">없음</span></div>
+              </div>
+            </div>
+            <span class="detail-hint" id="detailHint">SPACE 상세 확인 (-1.5초)</span>
+          </article>
+
+          <div class="controls">
+            <span class="key good">← / A · 중요함</span>
+            <span class="key-note">SPACE로 상세 확인 · 다시 SPACE로 접기</span>
+            <span class="key spam">스팸 · D / →</span>
+          </div>
+
+          <div class="start-panel" id="startPanel">
+            <div class="panel">
+              <h1>이메일 분류 시스템</h1>
+              <p>메일 제목과 발신자를 보고 10개 중 최대한 많이 정확히 분류하세요.</p>
+              <p><b>A 또는 ←</b> 중요함 · <b>D 또는 →</b> 스팸</p>
+              <button class="btn" id="startBtn">시작</button>
+            </div>
+          </div>
+
+          <div class="result-panel" id="resultPanel" hidden>
+            <div class="panel">
+              <h2 id="resultTitle">처리 완료</h2>
+              <p id="resultText"></p>
+              <div class="stats" id="resultStats"></div>
+              <button class="btn" id="retryBtn">다시 하기</button>
+            </div>
+          </div>
+
+          <button class="debug-toggle" id="debugToggle" title="효과 미리보기">⚙</button>
+          <aside class="debug-panel" id="debugPanel" hidden>
+            <h3>⚙ 효과 미리보기</h3>
+            <label>스트레스 <span id="stressValue">20</span> <span style="color:#999;font-weight:400">(50↑ 속도 증가 · 80↑ 본문 축약)</span></label>
+            <input id="stressInput" type="range" min="0" max="100" value="20" style="width:100%" />
+            <div class="debug-row" style="justify-content:space-between;color:#aaa;font-family:monospace"><span>0</span><span>50</span><span>80</span><span>100</span></div>
+            <label>상태이상 효과</label>
+            <div class="debug-row" id="statusControls">
+              <button class="debug-chip active" data-fx="">없음</button>
+              <button class="debug-chip" data-fx="burnout">🥵 번아웃</button>
+              <button class="debug-chip" data-fx="headache">🤕 두통</button>
+              <button class="debug-chip" data-fx="coffee">☕ 손 떨림</button>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input id="bossInput" type="checkbox" /> 상사 등장 이벤트
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input id="pauseInput" type="checkbox" /> 타이머 일시정지
+            </label>
+            <div class="debug-actions">
+              <button id="restartBtn">재시작</button>
+              <button id="forceEndBtn">강제 종료</button>
+            </div>
+            <div class="debug-help">
+              <b>효과 설명</b>
+              <div>스트레스 50↑: 메일 낙하 속도 증가</div>
+              <div>스트레스 80↑: 본문 힌트 축약 + 낙하 속도 추가 증가</div>
+              <div>🥵 번아웃: 제목/본문 글자가 부분적으로 깨짐</div>
+              <div>🤕 두통: 글자는 그대로, 시야가 흐려져 번져 보임</div>
+              <div>☕ 손 떨림: 메일 카드가 빠르게 떨려 읽기 어려움</div>
+              <div>상사 등장: 경고 연출 + 메일 낙하 속도 증가</div>
+            </div>
+            <p class="debug-note">기획서의 난이도 상승, 상태이상, 미니게임 중 돌발 이벤트를 한 화면에서 확인하는 테스트 패널입니다.</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const mails = [
+      { from:"총무팀", domain:"company.com", subject:"사내 공지 확인 요청", body:"오늘 오후 공용 프린터 점검으로 3층 프린터 사용이 제한됩니다.", attachment:"공지사항.pdf", link:"intranet.company.com/notice", recipient:"전 직원", time:"09:03", difficulty:"easy", type:"good" },
+      { from:"인사팀", domain:"company.com", subject:"연차 사용 촉진 안내", body:"잔여 연차 확인 후 이번 주 금요일까지 사용 계획을 등록해주세요.", attachment:"연차사용계획서.xlsx", link:"intranet.company.com/hr/vacation", recipient:"전 직원", time:"09:18", difficulty:"easy", type:"good" },
+      { from:"보안교육", domain:"company.com", subject:"보안교육 이수 안내", body:"상반기 보안교육 미이수자는 금주 내 수강 완료 부탁드립니다.", attachment:"없음", link:"edu.company.com/security", recipient:"미이수자", time:"10:02", difficulty:"easy", type:"good" },
+      { from:"회의실 예약 시스템", domain:"company.com", subject:"회의실 예약 확정", body:"오늘 15:00 A회의실 예약이 확정되었습니다.", attachment:"없음", link:"intranet.company.com/meeting-room", recipient:"예약자", time:"10:15", difficulty:"easy", type:"good" },
+      { from:"복지팀", domain:"company.com", subject:"복지포인트 잔액 안내", body:"상반기 복지포인트 사용 기한이 다음 달 말까지입니다.", attachment:"복지포인트_사용처.pdf", link:"intranet.company.com/welfare", recipient:"전 직원", time:"11:20", difficulty:"easy", type:"good" },
+      { from:"경조사 알림", domain:"company.com", subject:"경조사 안내", body:"경조사 신청 절차 및 지원 기준이 일부 변경되었습니다.", attachment:"경조사_지원기준.pdf", link:"intranet.company.com/family-event", recipient:"전 직원", time:"14:05", difficulty:"easy", type:"good" },
+      { from:"인사팀", domain:"company.com", subject:"건강검진 예약 마감 안내", body:"미예약자는 자동 배정되며 이후 일정 변경이 어렵습니다.", attachment:"검진기관_목록.pdf", link:"intranet.company.com/health", recipient:"전 직원", time:"09:12", difficulty:"normal", type:"good" },
+      { from:"재무팀", domain:"company.com", subject:"법인카드 정산 누락 안내", body:"지난주 사용분 중 영수증 미제출 건이 있어 확인 부탁드립니다.", attachment:"정산대상자.xlsx", link:"intranet.company.com/expense", recipient:"정산 대상자", time:"10:28", difficulty:"normal", type:"good" },
+      { from:"총무팀", domain:"company.com", subject:"회의실 예약이 취소되었습니다", body:"시설 점검으로 B회의실 예약이 취소되어 대체 회의실을 배정했습니다.", attachment:"대체회의실_안내.pdf", link:"intranet.company.com/meeting-room", recipient:"예약자", time:"08:55", difficulty:"normal", type:"good" },
+      { from:"IT운영팀", domain:"company.com", subject:"VPN 인증 방식 변경 안내", body:"다음 주부터 VPN 접속 시 OTP 인증이 추가됩니다.", attachment:"VPN_인증가이드.pdf", link:"intranet.company.com/it/vpn", recipient:"VPN 사용자", time:"13:17", difficulty:"normal", type:"good" },
+      { from:"메일관리자", domain:"company.com", subject:"메일함 용량 초과 예정", body:"첨부파일 정리 대상 메일 목록을 확인 후 불필요한 메일을 삭제해주세요.", attachment:"대용량메일_목록.xlsx", link:"mail.company.com/storage", recipient:"용량 초과 예정자", time:"15:40", difficulty:"normal", type:"good" },
+      { from:"동료 민지", domain:"company.com", subject:"FW: 고객 요청사항 전달", body:"고객사에서 요청한 수정사항입니다. 3페이지 수치만 확인 부탁드립니다.", attachment:"고객요청사항.pdf", link:"없음", recipient:"프로젝트 담당자", time:"16:03", difficulty:"normal", type:"good" },
+      { from:"협력사 박대리", domain:"partner-office.kr", subject:"Re: 견적서 수정본 재송부드립니다", body:"지난 회의에서 요청하신 단가표 수정본 첨부드립니다.", attachment:"견적서_수정본.xlsx", link:"없음", recipient:"구매 담당자", time:"11:06", difficulty:"normal", type:"good" },
+      { from:"영업지원팀", domain:"company.com", subject:"긴급 수정 요청", body:"오늘 발송 예정인 제안서의 고객사명 표기만 수정 부탁드립니다.", attachment:"제안서_수정요청.pptx", link:"없음", recipient:"제안서 작성자", time:"17:22", difficulty:"normal", type:"good" },
+      { from:"인사평가 시스템", domain:"company.com", subject:"인사평가 의견 작성 요청", body:"상반기 동료평가 의견 작성 기간이 오늘 18시에 종료됩니다.", attachment:"없음", link:"intranet.company.com/review", recipient:"평가 대상자", time:"09:44", difficulty:"normal", type:"good" },
+      { from:"연말정산 담당자", domain:"company.com", subject:"연말정산 증빙자료 보완 요청", body:"의료비 항목 증빙이 누락되어 보완 제출 부탁드립니다.", attachment:"보완대상_안내.pdf", link:"intranet.company.com/tax", recipient:"개별 대상자", time:"10:51", difficulty:"normal", type:"good" },
+      { from:"재무팀", domain:"company.com", subject:"법인카드 정산 누락 안내", body:"정산 대상자 명단 확인 후 누락 영수증을 업로드해주세요.", attachment:"정산대상자.xlsx", link:"intranet.company.com/expense/upload", recipient:"개별 대상자", time:"09:37", difficulty:"hard", type:"good" },
+      { from:"IT지원팀", domain:"company.com", subject:"사내 계정 용량 초과 안내", body:"메일함 보관 정책에 따라 대용량 첨부 파일 정리가 필요합니다.", attachment:"정리대상메일.csv", link:"mail.company.com/archive", recipient:"용량 초과자", time:"13:49", difficulty:"hard", type:"good" },
+      { from:"보안팀", domain:"company.com", subject:"VPN 인증 재등록 요청", body:"기기 교체 대상자는 사내 포털에서 OTP를 재등록해주세요.", attachment:"OTP_재등록_가이드.pdf", link:"intranet.company.com/security/otp", recipient:"기기 교체 대상자", time:"14:12", difficulty:"hard", type:"good" },
+      { from:"인사팀", domain:"company.com", subject:"건강검진 예약 마감 안내", body:"미예약자는 자동 배정됩니다. 변경 요청은 사내 포털에서만 가능합니다.", attachment:"검진_일정표.pdf", link:"intranet.company.com/health/reservation", recipient:"미예약자", time:"08:31", difficulty:"hard", type:"good" },
+      { from:"구매팀", domain:"company.com", subject:"협력사 견적서 확인 요청", body:"협력사 견적서 2차 수정본입니다. 이전 버전과 금액 비교 부탁드립니다.", attachment:"견적비교표.xlsx", link:"없음", recipient:"구매 검토자", time:"15:08", difficulty:"hard", type:"good" },
+      { from:"김부장", domain:"company.com", subject:"급한 건입니다", body:"회의 중이라 전화가 어렵습니다. 자료 먼저 검토 부탁드립니다.", attachment:"회의자료.pptx", link:"없음", recipient:"기획팀", time:"11:42", difficulty:"hard", type:"good" },
+      { from:"법무팀", domain:"company.com", subject:"계약서 검토 요청", body:"고객사 표준계약서 검토 의견을 오늘 중 회신 부탁드립니다.", attachment:"고객사_계약서.docx", link:"없음", recipient:"프로젝트 담당자", time:"13:33", difficulty:"hard", type:"good" },
+      { from:"고객지원팀", domain:"company.com", subject:"고객 요청사항 전달", body:"고객사 문의 내역입니다. 담당 파트 확인 후 회신 부탁드립니다.", attachment:"고객문의_정리.xlsx", link:"crm.company.com/ticket/4821", recipient:"프로젝트 담당자", time:"16:46", difficulty:"hard", type:"good" },
+      { from:"시설관리팀", domain:"company.com", subject:"출입증 재발급 안내", body:"출입증 인식 오류 신고자 대상으로 재발급 신청을 받습니다.", attachment:"재발급신청서.docx", link:"intranet.company.com/facility", recipient:"신고자", time:"10:07", difficulty:"hard", type:"good" },
+      { from:"김부장", domain:"company.com", subject:"급한 건입니다", body:"회의 중이라 전화가 어렵습니다. 자료 먼저 검토 부탁드립니다.", attachment:"회의자료.pptx", link:"없음", recipient:"개발팀", time:"11:42", difficulty:"evil", type:"good" },
+      { from:"CFO", domain:"company.com", subject:"송금 건 확인", body:"오늘 결제 예정인 정식 발주 건입니다. ERP 결재번호 확인 후 진행해주세요.", attachment:"발주서_승인본.pdf", link:"erp.company.com/payment/approved", recipient:"재무팀", time:"16:10", difficulty:"evil", type:"good" },
+      { from:"보안팀", domain:"company.com", subject:"모의 피싱 훈련 결과 안내", body:"금일 실시한 보안 훈련 결과입니다. 개인별 교육 대상 여부를 확인해주세요.", attachment:"훈련결과_개인별.pdf", link:"intranet.company.com/security/training", recipient:"전 직원", time:"17:05", difficulty:"evil", type:"good" },
+      { from:"보안센터", domain:"secure-company-auth-login.net", subject:"계정 정지 예정", body:"계정 정지를 막으려면 즉시 인증을 완료하세요.", attachment:"없음", link:"secure-company-auth-login.net", recipient:"개별 발송", time:"02:14", difficulty:"easy", type:"spam" },
+      { from:"당첨 안내", domain:"free-money.biz", subject:"복지포인트 당첨 안내", body:"임직원 특별 추첨에 당첨되었습니다. 본인 확인 후 지급됩니다.", attachment:"없음", link:"free-money.biz/company-point", recipient:"개별 발송", time:"01:22", difficulty:"easy", type:"spam" },
+      { from:"택배알림", domain:"delivery-check.net", subject:"회사 주소 배송 실패", body:"수령지 확인을 위해 주소와 연락처를 다시 입력해주세요.", attachment:"없음", link:"delivery-check.net/address", recipient:"개별 발송", time:"03:08", difficulty:"easy", type:"spam" },
+      { from:"메일관리자", domain:"mail-storage-alert.com", subject:"메일함 용량 초과", body:"메일 수신이 중단됩니다. 저장 공간을 즉시 확장하세요.", attachment:"없음", link:"mail-storage-alert.com/upgrade", recipient:"개별 발송", time:"00:49", difficulty:"easy", type:"spam" },
+      { from:"복지몰", domain:"benefit-company.net", subject:"임직원 전용 상품권 지급 안내", body:"금일 18시까지 신청하지 않으면 자동 소멸됩니다.", attachment:"없음", link:"benefit-company.net/gift", recipient:"개별 발송", time:"06:11", difficulty:"easy", type:"spam" },
+      { from:"보안교육", domain:"security-edu-center.net", subject:"보안교육 미이수 경고", body:"교육 미이수 시 계정이 제한될 수 있습니다. 즉시 수강하세요.", attachment:"없음", link:"security-edu-center.net/login", recipient:"개별 발송", time:"04:30", difficulty:"easy", type:"spam" },
+      { from:"인사팀", domain:"company-health-check.net", subject:"건강검진 예약 마감 안내", body:"예약 현황 확인을 위해 로그인해주세요.", attachment:"없음", link:"company-health-check.net/login", recipient:"개별 발송", time:"02:51", difficulty:"normal", type:"spam" },
+      { from:"회의실 예약 시스템", domain:"meeting-room.co", subject:"회의실 예약이 취소되었습니다", body:"다시 예약하려면 아래 링크에서 회사 계정으로 로그인하세요.", attachment:"없음", link:"meeting-room.co/auth", recipient:"개별 발송", time:"05:12", difficulty:"normal", type:"spam" },
+      { from:"IT지원팀", domain:"company-helpdesk.com", subject:"VPN 인증 방식 변경 안내", body:"새 인증 모듈 설치가 필요합니다. 첨부 파일 실행 후 로그인하세요.", attachment:"VPN_Update.exe", link:"없음", recipient:"개별 발송", time:"03:35", difficulty:"normal", type:"spam" },
+      { from:"연말정산 담당자", domain:"tax-company.net", subject:"연말정산 증빙자료 보완 요청", body:"환급 처리를 위해 주민등록번호와 계좌 정보를 입력하세요.", attachment:"없음", link:"tax-company.net/refund", recipient:"개별 발송", time:"23:40", difficulty:"normal", type:"spam" },
+      { from:"협력사 박대리", domain:"partner-office.co", subject:"Re: 견적서 수정본 재송부드립니다", body:"수정 견적서입니다. 보안상 압축 파일로 전달드립니다.", attachment:"견적서_수정본.zip", link:"없음", recipient:"구매 담당자", time:"07:58", difficulty:"normal", type:"spam" },
+      { from:"복지포인트", domain:"company-welfare-point.com", subject:"복지포인트 잔액 안내", body:"잔액 소멸 전 본인 인증을 완료해주세요.", attachment:"없음", link:"company-welfare-point.com/auth", recipient:"개별 발송", time:"02:05", difficulty:"normal", type:"spam" },
+      { from:"경조사 알림", domain:"company-family-event.com", subject:"경조사 안내", body:"축의금 신청을 위해 계좌 인증이 필요합니다.", attachment:"없음", link:"company-family-event.com/pay", recipient:"개별 발송", time:"06:48", difficulty:"normal", type:"spam" },
+      { from:"고객지원팀", domain:"customer-company.net", subject:"고객 요청사항 전달", body:"고객 클레임 원문입니다. 첨부 문서 매크로를 허용해야 열립니다.", attachment:"고객요청사항.xlsm", link:"없음", recipient:"프로젝트 담당자", time:"05:22", difficulty:"normal", type:"spam" },
+      { from:"인사평가 시스템", domain:"company-review.net", subject:"인사평가 의견 작성 요청", body:"평가 기간이 종료됩니다. 링크에서 계정 확인 후 작성하세요.", attachment:"없음", link:"company-review.net/login", recipient:"개별 발송", time:"01:57", difficulty:"normal", type:"spam" },
+      { from:"긴급 수정 요청", domain:"client-file-share.net", subject:"긴급 수정 요청", body:"고객사 요청 파일입니다. 다운로드 후 즉시 확인 부탁드립니다.", attachment:"없음", link:"client-file-share.net/download", recipient:"개별 발송", time:"22:18", difficulty:"normal", type:"spam" },
+      { from:"재무팀", domain:"company-payments.com", subject:"법인카드 정산 누락 안내", body:"정산 누락자 명단입니다. 파일 열람 시 콘텐츠 사용을 눌러주세요.", attachment:"정산대상자.xlsm", link:"없음", recipient:"개별 발송", time:"06:35", difficulty:"hard", type:"spam" },
+      { from:"IT지원팀", domain:"cornpany-helpdesk.com", subject:"사내 계정 용량 초과 안내", body:"수신 중단을 막으려면 사내 계정으로 다시 로그인하세요.", attachment:"없음", link:"cornpany-helpdesk.com/storage", recipient:"개별 발송", time:"02:44", difficulty:"hard", type:"spam" },
+      { from:"보안팀", domain:"company-security.co", subject:"VPN 인증 재등록 요청", body:"인증서 만료로 VPN 접속이 제한됩니다. 링크에서 재등록하세요.", attachment:"없음", link:"company-security.co/vpn", recipient:"VPN 사용자", time:"04:19", difficulty:"hard", type:"spam" },
+      { from:"인사팀", domain:"company-health-check.net", subject:"건강검진 예약 마감 안내", body:"미예약자는 불이익이 있을 수 있습니다. 로그인 후 예약 현황을 확인하세요.", attachment:"없음", link:"company-health-check.net/login", recipient:"개별 발송", time:"02:51", difficulty:"hard", type:"spam" },
+      { from:"구매팀", domain:"company-buying.net", subject:"협력사 견적서 확인 요청", body:"견적 비교표입니다. 문서 보호 해제를 위해 암호를 입력하세요.", attachment:"견적비교표.xlsm", link:"없음", recipient:"구매 검토자", time:"06:07", difficulty:"hard", type:"spam" },
+      { from:"김부장", domain:"cornpany.com", subject:"급한 건입니다", body:"회의 중이라 전화가 어렵습니다. 송금 먼저 부탁드립니다.", attachment:"송금정보.zip", link:"없음", recipient:"개발팀", time:"11:42", difficulty:"hard", type:"spam" },
+      { from:"법무팀", domain:"company-legal.net", subject:"계약서 검토 요청", body:"계약서 최종본입니다. 외부 보안 문서함에서 확인해주세요.", attachment:"없음", link:"company-legal.net/document", recipient:"프로젝트 담당자", time:"05:50", difficulty:"hard", type:"spam" },
+      { from:"고객지원팀", domain:"crm-company.net", subject:"고객 요청사항 전달", body:"긴급 클레임입니다. 고객 정보 확인을 위해 로그인해주세요.", attachment:"없음", link:"crm-company.net/ticket", recipient:"프로젝트 담당자", time:"23:11", difficulty:"hard", type:"spam" },
+      { from:"시설관리팀", domain:"facility-company.net", subject:"출입증 재발급 안내", body:"출입 권한 유지를 위해 신분증 사본을 업로드하세요.", attachment:"없음", link:"facility-company.net/idcard", recipient:"개별 발송", time:"01:03", difficulty:"hard", type:"spam" },
+      { from:"김부장", domain:"cornpany.com", subject:"급한 건입니다", body:"회의 중이라 전화가 어렵습니다. 송금 먼저 부탁드립니다.", attachment:"송금정보.zip", link:"없음", recipient:"개발팀", time:"11:42", difficulty:"evil", type:"spam" },
+      { from:"CFO", domain:"company-finance.co", subject:"송금 건 확인", body:"오늘 중 처리해야 합니다. ERP 대신 첨부 파일 기준으로 진행해주세요.", attachment:"긴급송금요청.zip", link:"없음", recipient:"재무팀", time:"16:10", difficulty:"evil", type:"spam" },
+      { from:"보안팀", domain:"company-security-training.com", subject:"모의 피싱 훈련 결과 안내", body:"개인별 훈련 결과 확인을 위해 계정 정보를 입력하세요.", attachment:"없음", link:"company-security-training.com/result", recipient:"전 직원", time:"17:05", difficulty:"evil", type:"spam" },
+      { from:"교육운영팀", domain:"company.com", subject:"보안교육 재수강 대상 안내", body:"지난 교육 중간 저장 오류로 일부 대상자는 재수강이 필요합니다.", attachment:"재수강대상자.xlsx", link:"edu.company.com/security/retry", recipient:"재수강 대상자", time:"12:24", difficulty:"normal", type:"good" },
+      { from:"휴가관리 시스템", domain:"company.com", subject:"휴가 승인 결과 안내", body:"신청하신 휴가가 승인되었습니다. 팀 일정표에 자동 반영됩니다.", attachment:"없음", link:"intranet.company.com/vacation/result", recipient:"신청자", time:"18:02", difficulty:"normal", type:"good" },
+      { from:"교육운영팀", domain:"company-edu-center.net", subject:"보안교육 재수강 대상 안내", body:"교육 이력을 복구하려면 아래 링크에서 계정 인증을 완료하세요.", attachment:"없음", link:"company-edu-center.net/security/retry", recipient:"개별 발송", time:"02:24", difficulty:"normal", type:"spam" },
+      { from:"휴가관리 시스템", domain:"vacation-company.net", subject:"휴가 승인 결과 안내", body:"승인 내역 확인을 위해 사내 계정으로 다시 로그인해주세요.", attachment:"없음", link:"vacation-company.net/result", recipient:"개별 발송", time:"04:02", difficulty:"normal", type:"spam" }
+    ];
+
+    const STATUS = {
+      burnout: { icon: "🥵", label: "번아웃", cap: "스트레스 70↑ · 화면이 흐려지고 분류 판단이 둔해진 상태" },
+      headache: { icon: "🤕", label: "두통", cap: "체력 30↓ · 두통으로 메일 일부가 번져 보입니다" },
+      coffee: { icon: "☕", label: "손 떨림", cap: "커피 연속 2회 · 화면이 잘게 떨려 조작감이 불안정" }
+    };
+
+    const state = {
+      deck: [],
+      index: 0,
+      correct: 0,
+      wrong: 0,
+      missed: 0,
+      running: false,
+      startTime: 0,
+      duration: 60000,
+      cardY: 64,
+      raf: null,
+      locked: false,
+      sortedGood: [],
+      sortedSpam: [],
+      stress: 20,
+      statusFx: "",
+      boss: false,
+      paused: false,
+      lastTick: 0,
+      detailOpen: false
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const timer = $("timer");
+    const score = $("score");
+    const card = $("mailCard");
+    const feedback = $("feedback");
+    const resultPanel = $("resultPanel");
+    const startPanel = $("startPanel");
+
+    function shuffle(list) {
+      const copy = list.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function buildRoundDeck() {
+      const easy = pickByDifficulty("easy", 2);
+      const normal = pickByDifficulty("normal", 4);
+      const hard = pickByDifficulty("hard", 3);
+      const evil = pickByDifficulty("evil", 1);
+      let deck = shuffle([...easy, ...normal, ...hard, ...evil]);
+      const goodCount = deck.filter((m) => m.type === "good").length;
+      if (goodCount < 4 || goodCount > 6) {
+        const good = shuffle(mails.filter((m) => m.type === "good")).slice(0, 5);
+        const spam = shuffle(mails.filter((m) => m.type === "spam")).slice(0, 5);
+        deck = shuffle([...good, ...spam]);
+      }
+      return deck;
+    }
+
+    function pickByDifficulty(difficulty, count) {
+      return shuffle(mails.filter((m) => m.difficulty === difficulty)).slice(0, count);
+    }
+
+    function startGame() {
+      Object.assign(state, {
+        deck: buildRoundDeck(),
+        index: 0,
+        correct: 0,
+        wrong: 0,
+        missed: 0,
+        running: true,
+        startTime: performance.now(),
+        cardY: 64,
+        locked: false,
+        sortedGood: [],
+        sortedSpam: [],
+        lastTick: performance.now(),
+        detailOpen: false
+      });
+      $("goodList").innerHTML = "";
+      $("spamList").innerHTML = "";
+      $("goodCount").textContent = "0";
+      $("spamCount").textContent = "0";
+      startPanel.hidden = true;
+      resultPanel.hidden = true;
+      $("startHint").classList.remove("fade");
+      requestAnimationFrame(() => $("startHint").classList.add("fade"));
+      showMail();
+      tick();
+    }
+
+    function showMail() {
+      const mail = state.deck[state.index];
+      if (!mail) return finish();
+      state.cardY = 12;
+      card.className = "mail-card";
+      card.style.setProperty("--card-y", state.cardY + "%");
+      renderMailText(mail);
+    }
+
+    function renderMailText(mail) {
+      $("from").textContent = mail.from;
+      $("domain").textContent = mail.domain;
+      $("domain").className = "domain";
+      const bodyText = state.stress >= 80 ? mail.body.split(" ").slice(0, 3).join(" ") + "..." : mail.body;
+      const previewText = state.stress >= 80 ? makeBasicPreview(mail).split(" ").slice(0, 3).join(" ") + "..." : makeBasicPreview(mail);
+      $("subject").textContent = renderStatusText(mail.subject, "subject");
+      $("preview").textContent = renderStatusText(previewText, "body");
+      $("body").textContent = renderStatusText(bodyText, "body");
+      $("attachment").textContent = mail.attachment || "없음";
+      $("linkInfo").textContent = mail.link || "없음";
+      $("recipient").textContent = mail.recipient || "없음";
+      $("sentTime").textContent = mail.time || "없음";
+      $("detailHint").textContent = state.detailOpen ? "SPACE 접기" : "SPACE 상세 확인 (-1.5초)";
+      $("headacheTitleBlur").textContent = mail.subject;
+      $("headacheBodyBlur").textContent = previewText;
+      $("basicClues").innerHTML = buildBasicClues(mail).map((tag) => `<span class="tag${tag.cls}">${tag.text}</span>`).join("");
+      score.textContent = `처리 ${state.index} / ${state.deck.length}`;
+    }
+
+    function makeBasicPreview(mail) {
+      const s = mail.subject;
+      if (mail.type === "spam") {
+        if (mail.attachment && /\.(zip|exe|xlsm)$/i.test(mail.attachment)) return "첨부 파일 실행 또는 보안 확인이 필요합니다.";
+        if (mail.link && mail.link !== "없음") return "링크에서 로그인 또는 인증을 완료해주세요.";
+        if (s.includes("당첨") || s.includes("상품권") || s.includes("복지포인트")) return "오늘 안에 신청해야 지급됩니다.";
+        if (s.includes("송금")) return "우선 결제 처리가 필요합니다.";
+        if (s.includes("계정") || s.includes("용량")) return "즉시 확인하지 않으면 계정이 제한될 수 있습니다.";
+        return "즉시 확인하지 않으면 제한될 수 있습니다.";
+      }
+      if (s.includes("건강검진")) return "예약 현황 확인이 필요합니다.";
+      if (s.includes("법인카드")) return "정산 대상 여부를 확인해주세요.";
+      if (s.includes("회의실")) return "예약 상태가 변경되었습니다.";
+      if (s.includes("VPN")) return "인증 방식 확인이 필요합니다.";
+      if (s.includes("메일함")) return "용량 관련 조치가 필요합니다.";
+      if (s.includes("연말정산")) return "증빙자료 확인이 필요합니다.";
+      if (s.includes("견적서")) return "수정본 확인 부탁드립니다.";
+      if (s.includes("고객")) return "전달된 요청사항 확인 부탁드립니다.";
+      if (s.includes("보안교육")) return "교육 이수 상태를 확인해주세요.";
+      if (s.includes("복지")) return "지급 또는 잔액 확인이 필요합니다.";
+      if (s.includes("경조사")) return "신청 절차 확인 부탁드립니다.";
+      if (s.includes("휴가")) return "신청 결과를 확인해주세요.";
+      if (s.includes("인사평가")) return "평가 기간 확인 부탁드립니다.";
+      if (s.includes("급한 건")) return "우선 확인 부탁드립니다.";
+      if (s.includes("송금")) return "결제 건 확인 부탁드립니다.";
+      if (s.includes("계정")) return "계정 상태 확인이 필요합니다.";
+      if (s.includes("택배") || s.includes("배송")) return "배송 정보 확인이 필요합니다.";
+      if (s.includes("출입증")) return "신청 대상 여부를 확인해주세요.";
+      if (s.includes("계약서")) return "검토 요청 내용 확인 부탁드립니다.";
+      if (s.includes("긴급 수정")) return "수정 요청 내용 확인 부탁드립니다.";
+      return "관련 내용 확인 부탁드립니다.";
+    }
+
+    function buildBasicClues(mail) {
+      const clues = [];
+      if (mail.attachment && mail.attachment !== "없음") {
+        const ext = mail.attachment.split(".").pop().toLowerCase();
+        clues.push({ text: `첨부 ${ext}`, cls: ["zip", "exe", "xlsm"].includes(ext) ? " danger-word" : " warn" });
+      }
+      if (mail.link && mail.link !== "없음") {
+        const internal = mail.link.includes("company.com") || mail.link.includes("intranet.company.com") || mail.link.includes("edu.company.com") || mail.link.includes("mail.company.com") || mail.link.includes("erp.company.com") || mail.link.includes("crm.company.com");
+        clues.push({ text: internal ? "사내 링크" : "외부 링크", cls: internal ? "" : " danger-word" });
+      }
+      if (mail.recipient && mail.recipient.includes("개별")) clues.push({ text: "개별 발송", cls: " warn" });
+      if (mail.time && /^0[0-6]:/.test(mail.time)) clues.push({ text: "새벽 발신", cls: " warn" });
+      return clues.slice(0, 2);
+    }
+
+    function corruptText(text, ratio) {
+      const noise = ["□", "▒", "?", "_", "…"];
+      return Array.from(text).map((ch, i) => {
+        if (ch === " " || /[.,:[\]()]/.test(ch)) return ch;
+        const wave = Math.sin((i + state.index * 7) * 2.17) * 0.5 + 0.5;
+        return wave < ratio ? noise[(i + state.index) % noise.length] : ch;
+      }).join("");
+    }
+
+    function renderStatusText(text, part) {
+      if (state.statusFx === "burnout") {
+        return corruptText(text, part === "subject" ? 0.22 : 0.18);
+      }
+      return text;
+    }
+
+    function tick(now = performance.now()) {
+      if (!state.running) return;
+      if (state.paused) {
+        state.startTime += now - (state.lastTick || now);
+        state.lastTick = now;
+        state.raf = requestAnimationFrame(tick);
+        return;
+      }
+      state.lastTick = now;
+      const elapsed = now - state.startTime;
+      const left = Math.max(0, state.duration - elapsed);
+      timer.textContent = `⏱ ${(left / 1000).toFixed(1)} / 60s`;
+      timer.classList.toggle("danger", left <= 10000);
+      const stressBoost = state.stress >= 80 ? 0.09 : state.stress >= 50 ? 0.05 : 0;
+      const bossBoost = state.boss ? 0.045 : 0;
+      state.cardY += 0.24 + stressBoost + bossBoost;
+      card.style.setProperty("--card-y", state.cardY + "%");
+      if (state.cardY >= 84 && !state.locked) classify("missed");
+      if (left <= 0) return finish();
+      state.raf = requestAnimationFrame(tick);
+    }
+
+    function classify(target) {
+      if (!state.running || state.locked) return;
+      const mail = state.deck[state.index];
+      if (!mail) return;
+      state.locked = true;
+      state.detailOpen = false;
+      card.classList.remove("detail");
+      $("goodZone").classList.toggle("active", target === "good");
+      $("spamZone").classList.toggle("active", target === "spam");
+      if (target === "missed") {
+        state.missed++;
+        card.classList.add("missed");
+        showFeedback("시간 초과", "#777");
+      } else {
+        const ok = mail.type === target;
+        ok ? state.correct++ : state.wrong++;
+        card.classList.add(target === "good" ? "throw-left" : "throw-right");
+        pushMini(mail, target);
+        showFeedback(ok ? "정확!" : "오분류!", ok ? "var(--green)" : "var(--red)");
+      }
+      setTimeout(() => {
+        $("goodZone").classList.remove("active");
+        $("spamZone").classList.remove("active");
+        state.index++;
+        state.locked = false;
+        score.textContent = `처리 ${Math.min(state.index, state.deck.length)} / ${state.deck.length}`;
+        if (state.index >= state.deck.length) finish();
+        else showMail();
+      }, 240);
+    }
+
+    function pushMini(mail, target) {
+      const arr = target === "good" ? state.sortedGood : state.sortedSpam;
+      arr.push(mail);
+      const list = target === "good" ? $("goodList") : $("spamList");
+      const count = target === "good" ? $("goodCount") : $("spamCount");
+      const item = document.createElement("div");
+      item.className = "mini-mail";
+      item.textContent = mail.subject;
+      list.appendChild(item);
+      count.textContent = arr.length;
+      while (list.children.length > 4) list.removeChild(list.firstChild);
+    }
+
+    function showFeedback(text, color) {
+      feedback.textContent = text;
+      feedback.style.color = color;
+      feedback.classList.remove("show");
+      void feedback.offsetWidth;
+      feedback.classList.add("show");
+    }
+
+    function toggleDetail() {
+      if (!state.running || state.locked) return;
+      state.detailOpen = !state.detailOpen;
+      card.classList.toggle("detail", state.detailOpen);
+      $("detailHint").textContent = state.detailOpen ? "SPACE 접기" : "SPACE 상세 확인 (-1.5초)";
+      if (state.detailOpen) {
+        state.startTime -= 1500;
+        $("costPop").classList.remove("show");
+        void $("costPop").offsetWidth;
+        $("costPop").classList.add("show");
+      }
+    }
+
+    function finish() {
+      if (!state.running) return;
+      state.running = false;
+      cancelAnimationFrame(state.raf);
+      const processed = state.correct + state.wrong;
+      const title = state.correct >= 8 ? "이메일 처리 완료!" : state.correct >= 5 ? "아슬아슬하게 분류했다" : "받은편지함이 터졌다";
+      const effect = state.correct >= 8 ? "성공 · 업무량 -20" : state.correct >= 5 ? "부분성공 · 업무량 -10, 스트레스 +5" : "실패 · 업무량 -3, 스트레스 +15, 체력 -5";
+      $("resultTitle").textContent = title;
+      $("resultText").textContent = effect;
+      $("resultStats").innerHTML = [
+        `정확 ${state.correct}`,
+        `오분류 ${state.wrong}`,
+        `미처리 ${state.deck.length - processed}`,
+        `처리 ${processed}/${state.deck.length}`
+      ].map((x) => `<span class="stat">${x}</span>`).join("");
+      resultPanel.hidden = false;
+    }
+
+    function applyEffects() {
+      const workspace = $("workspace");
+      workspace.classList.toggle("fx-gray", state.statusFx === "burnout");
+      workspace.classList.toggle("fx-shake", state.statusFx === "headache");
+      workspace.classList.toggle("fx-jitter", state.statusFx === "coffee");
+      $("bossOverlay").hidden = !state.boss;
+      $("bossBanner").hidden = !state.boss;
+      const info = STATUS[state.statusFx];
+      $("statusBadge").hidden = !info;
+      $("statusCaption").hidden = !info;
+      if (info) {
+        $("statusBadge").textContent = `${info.icon} ${info.label}`;
+        $("statusCaption").textContent = info.cap;
+      }
+      if (state.running && state.deck[state.index]) renderMailText(state.deck[state.index]);
+      $("stressValue").textContent = state.stress;
+      $("pauseInput").checked = state.paused;
+      $("bossInput").checked = state.boss;
+      document.querySelectorAll("[data-fx]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.fx === state.statusFx);
+      });
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      if (key === "a" || key === "arrowleft") classify("good");
+      if (key === "d" || key === "arrowright") classify("spam");
+      if (key === " " || key === "spacebar" || key === "space") {
+        e.preventDefault();
+        toggleDetail();
+      }
+      if (key === "enter" && !state.running) startGame();
+    });
+    $("goodZone").addEventListener("click", () => classify("good"));
+    $("spamZone").addEventListener("click", () => classify("spam"));
+    $("startBtn").addEventListener("click", startGame);
+    $("retryBtn").addEventListener("click", startGame);
+    $("debugToggle").addEventListener("click", () => {
+      $("debugPanel").hidden = !$("debugPanel").hidden;
+    });
+    $("stressInput").addEventListener("input", (e) => {
+      state.stress = +e.target.value;
+      applyEffects();
+    });
+    $("statusControls").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-fx]");
+      if (!btn) return;
+      state.statusFx = btn.dataset.fx;
+      applyEffects();
+    });
+    $("bossInput").addEventListener("change", (e) => {
+      state.boss = e.target.checked;
+      applyEffects();
+    });
+    $("pauseInput").addEventListener("change", (e) => {
+      state.paused = e.target.checked;
+      applyEffects();
+    });
+    $("restartBtn").addEventListener("click", startGame);
+    $("forceEndBtn").addEventListener("click", finish);
+    applyEffects();
+  </script>
+</body>
+</html>
