@@ -44,7 +44,7 @@ function renderEmailGame(root, state, actions, game) {
         ]),
         renderBadges(state),
         el("aside", { class: "email-rule-stack" }, [
-          el("div", { class: "email-rule red", text: "외부 링크 · 실행 파일 주의" }),
+          el("div", { class: "email-rule red", text: "도메인 · 실행 파일 · 인증 요청 확인" }),
           el("div", { class: "email-rule yellow", text: "A: 정상 / D: 스팸 / Space: 상세" }),
         ]),
         renderDropZone("good", "정상 메일", "사내 업무 · 공지 · 요청"),
@@ -184,14 +184,18 @@ function renderClues(mail) {
   const clues = [];
   if (mail.attachment && mail.attachment !== "없음") {
     const ext = mail.attachment.split(".").pop().toLowerCase();
-    clues.push({ text: `첨부 ${ext}`, danger: ["zip", "exe", "xlsm"].includes(ext) });
+    clues.push({ text: `첨부 ${ext}`, tone: ["zip", "exe", "xlsm"].includes(ext) ? "danger" : "" });
   }
   if (mail.link && mail.link !== "없음") {
-    const internal = mail.link.includes("company.com") || mail.link.includes("intranet.company.com") || mail.link.includes("edu.company.com") || mail.link.includes("mail.company.com");
-    clues.push({ text: internal ? "사내 링크" : "외부 링크", danger: !internal });
+    const host = mail.link.split("/")[0];
+    const trustedHost = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "docs.google.com", "drive.partner-office.kr"].some((domain) => host === domain || host.endsWith(`.${domain}`));
+    const looksLikeCompany = /(^|[-.])(company|cornpany)([-.]|$)/i.test(host);
+    clues.push({ text: trustedHost ? "업무 링크" : "링크 포함", tone: "" });
+    if (looksLikeCompany && !trustedHost) clues.push({ text: "링크 경로", tone: "" });
   }
-  if (/^0[0-6]:/.test(mail.time)) clues.push({ text: "새벽 발신", danger: true });
-  return el("div", { class: "mail-clues" }, clues.slice(0, 3).map((clue) => el("span", { class: clue.danger ? "danger-word" : "", text: clue.text })));
+  if (/인증|로그인|주민등록번호|계좌|주소와 연락처|실행/.test(mail.body)) clues.push({ text: "민감 요청", tone: "danger" });
+  if (/^0[0-6]:/.test(mail.time)) clues.push({ text: "새벽 발신", tone: "warn" });
+  return el("div", { class: "mail-clues" }, clues.slice(0, 3).map((clue) => el("span", { class: clue.tone ? `${clue.tone}-word` : "", text: clue.text })));
 }
 
 function detail(label, value) {

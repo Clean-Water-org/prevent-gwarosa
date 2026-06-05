@@ -1301,6 +1301,12 @@ select {
   background: #fff0ee;
 }
 
+.mail-clues .warn-word {
+  color: #8b6815;
+  border-color: #d6a72e;
+  background: #fff7d8;
+}
+
 .detail-grid {
   display: none;
   grid-template-columns: 1fr 1fr;
