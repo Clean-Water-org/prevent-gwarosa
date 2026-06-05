@@ -44,6 +44,10 @@ export function renderTitle(root, state, actions) {
             el("summary", { text: "개발자 모드" }),
             el("div", { class: "dev-actions" }, [
               el("button", {
+                text: "09:00 시작화면 바로 보기",
+                onClick: () => actions.go("commute"),
+              }),
+              el("button", {
                 text: "이메일 분류 원본 실행",
                 onClick: () => {
                   window.location.href = "./assets/minigames/email-classification-prototype.html";

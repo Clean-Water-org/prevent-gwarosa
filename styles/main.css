@@ -681,6 +681,545 @@ select {
   font-size: 0.86rem;
 }
 
+.briefing-screen {
+  width: min(1120px, calc(100vw - 56px));
+  height: min(720px, calc(100vh - 48px));
+  min-height: 620px;
+  margin-left: calc(50% - 50vw);
+  place-self: center;
+  display: grid;
+  grid-template-rows: 152px minmax(0, 1fr) 96px;
+  gap: 10px;
+  padding: 16px 22px;
+  overflow: hidden;
+  border: 5px solid #1d1f2e;
+  border-radius: 14px;
+  color: #171717;
+  background: #e9e1cf;
+  box-shadow: 8px 10px 0 rgba(29, 31, 46, 0.28);
+  font-family:
+    "Segoe Print",
+    "Comic Sans MS",
+    Galmuri11,
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    sans-serif;
+}
+
+.app-shell:has(.briefing-screen) {
+  width: 100vw;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background:
+    linear-gradient(#ecd9a8 0 72%, #b8783a 72%),
+    #e7ddc7;
+}
+
+.briefing-hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.briefing-clock {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.briefing-clock strong {
+  font-family: Galmuri14, Galmuri11, monospace;
+  font-size: clamp(3.4rem, 6vw, 5.8rem);
+  line-height: 0.85;
+  letter-spacing: 0;
+}
+
+.briefing-clock span {
+  color: #858585;
+  font-size: clamp(0.9rem, 1.3vw, 1.08rem);
+  font-weight: 900;
+}
+
+.employee-badge {
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  width: 176px;
+  min-height: 196px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  transform: rotate(-1.5deg);
+  border: 3px solid #2c2c2c;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.badge-company {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  color: #8a8a8a;
+  font-family: Galmuri11, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.badge-photo,
+.orientation-portrait {
+  display: grid;
+  place-items: center;
+  border: 3px dashed #8f8f8f;
+  color: #8f8f8f;
+  background:
+    repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.04) 0 14px, transparent 14px 28px),
+    #f5f3ec;
+}
+
+.badge-photo {
+  position: relative;
+  width: 78px;
+  height: 86px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.badge-face {
+  position: absolute;
+  top: 15px;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #2c2c2c;
+  border-radius: 50%;
+  background: #ffd9bd;
+}
+
+.badge-face::before,
+.badge-face::after {
+  content: "";
+  position: absolute;
+  top: 15px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2c2c2c;
+}
+
+.badge-face::before {
+  left: 13px;
+}
+
+.badge-face::after {
+  right: 13px;
+}
+
+.badge-body {
+  position: absolute;
+  bottom: 8px;
+  width: 48px;
+  height: 28px;
+  border: 3px solid #2c2c2c;
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: #5f7fbd;
+}
+
+.employee-badge strong {
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.employee-badge > span {
+  color: #9a9a9a;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.briefing-layout {
+  display: grid;
+  grid-template-columns: minmax(520px, 1.14fr) minmax(340px, 0.86fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.orientation-panel,
+.briefing-card,
+.briefing-goals {
+  border: 3px solid #2c2c2c;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.orientation-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 128px 1fr;
+  gap: 14px;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.orientation-portrait {
+  position: relative;
+  overflow: hidden;
+  align-content: center;
+  gap: 8px;
+  min-height: 100%;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.orientation-portrait strong,
+.orientation-portrait > span {
+  position: relative;
+  z-index: 2;
+}
+
+.orientation-portrait > span {
+  color: #8a8a8a;
+  font-size: 0.72rem;
+}
+
+.hr-character {
+  position: relative;
+  width: 80px;
+  height: 106px;
+  margin-bottom: 4px;
+}
+
+.hr-head {
+  position: absolute;
+  z-index: 3;
+  left: 22px;
+  top: 16px;
+  width: 38px;
+  height: 42px;
+  border: 3px solid #2c2c2c;
+  border-radius: 45% 45% 48% 48%;
+  background: #ffd7b6;
+}
+
+.hr-head::before,
+.hr-head::after {
+  content: "";
+  position: absolute;
+  top: 20px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2c2c2c;
+}
+
+.hr-head::before {
+  left: 12px;
+}
+
+.hr-head::after {
+  right: 12px;
+}
+
+.hr-hair {
+  position: absolute;
+  z-index: 4;
+  left: 17px;
+  top: 10px;
+  width: 48px;
+  height: 25px;
+  border: 3px solid #2c2c2c;
+  border-bottom: 0;
+  border-radius: 34px 34px 0 0;
+  background: #2d2430;
+}
+
+.hr-body {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  top: 58px;
+  width: 58px;
+  height: 48px;
+  border: 3px solid #2c2c2c;
+  border-radius: 20px 20px 8px 8px;
+  background:
+    linear-gradient(90deg, transparent 46%, #2c2c2c 46% 53%, transparent 53%),
+    #ffe173;
+}
+
+.hr-arm {
+  position: absolute;
+  z-index: 1;
+  top: 64px;
+  width: 22px;
+  height: 42px;
+  border: 3px solid #2c2c2c;
+  border-radius: 999px;
+  background: #ffd7b6;
+}
+
+.hr-arm.left {
+  left: 0;
+  transform: rotate(15deg);
+}
+
+.hr-arm.right {
+  right: 0;
+  transform: rotate(-15deg);
+}
+
+.orientation-copy {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  font-size: clamp(0.82rem, 1vw, 0.98rem);
+  font-weight: 900;
+  line-height: 1.42;
+}
+
+.orientation-copy h1 {
+  margin: 0 0 4px;
+  border-radius: 4px;
+  padding: 7px 10px;
+  color: #fff;
+  background: #222;
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.orientation-copy p {
+  margin: 0;
+}
+
+.orientation-copy mark {
+  padding: 0 6px 2px;
+  color: inherit;
+  background: linear-gradient(transparent 44%, #ffe173 44%);
+}
+
+.orientation-copy em {
+  color: #ef4d42;
+  font-style: normal;
+}
+
+.briefing-icon {
+  display: inline-block;
+  width: 1.7em;
+}
+
+.boss-hint {
+  width: fit-content;
+  margin-top: 6px !important;
+  border: 2px dashed #b8b8b8;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #777;
+  font-size: 0.74rem;
+}
+
+.briefing-side {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.briefing-card {
+  padding: 12px 14px;
+  box-shadow: 0 5px 0 rgba(44, 44, 44, 0.08);
+}
+
+.briefing-card h2,
+.briefing-goals h2 {
+  margin: 0 0 9px;
+  font-size: 0.94rem;
+}
+
+.briefing-stat {
+  display: grid;
+  grid-template-columns: 72px 1fr 66px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 8px;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.briefing-stat-bar {
+  height: 14px;
+  overflow: hidden;
+  border: 2px solid #333;
+  border-radius: 999px;
+  background: #e7e7e7;
+}
+
+.briefing-stat-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.35), transparent 45%),
+    #ffd84f;
+}
+
+.briefing-stat-bar.stress i {
+  background: #ff9b40;
+}
+
+.briefing-stat-bar.health i {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.35), transparent 45%),
+    #51a66b;
+}
+
+.briefing-rules {
+  margin-top: 10px;
+  border-top: 2px dashed #d1d1d1;
+  padding-top: 8px;
+  color: #777;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.briefing-rules p {
+  margin: 6px 0 0;
+}
+
+.item-briefing-card {
+  min-height: 0;
+}
+
+.briefing-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.briefing-item {
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid #2c2c2c;
+  border-radius: 7px;
+  padding: 7px 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent 50%),
+    #fff;
+}
+
+.briefing-item.is-disabled {
+  opacity: 0.38;
+}
+
+.item-token {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #d3d3d3;
+  border-radius: 7px;
+  background: #f6f6f0;
+  font-size: 1.25rem;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.05);
+}
+
+.item-token b {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: #fff;
+  background: #222;
+  font-family: Galmuri11, monospace;
+  font-size: 0.62rem;
+}
+
+.briefing-item strong,
+.briefing-item span {
+  display: block;
+}
+
+.briefing-item strong {
+  margin-bottom: 2px;
+  font-size: 0.82rem;
+}
+
+.briefing-item span {
+  color: #8a8a8a;
+  font-size: 0.75rem;
+}
+
+.briefing-footer {
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 0.4fr);
+  gap: 12px;
+}
+
+.briefing-goals {
+  min-height: 0;
+  padding: 10px 14px;
+}
+
+.briefing-goal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.fake-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #333;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.briefing-start-button {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  align-items: center;
+  column-gap: 18px;
+  border: 4px solid #2c2c2c;
+  border-radius: 7px;
+  padding: 10px 18px;
+  background: #ffd84f;
+  box-shadow: 0 6px 0 rgba(44, 44, 44, 0.2);
+  text-align: left;
+}
+
+.briefing-start-button:hover {
+  transform: translateY(-2px);
+  background: #ffe173;
+}
+
+.briefing-chair {
+  grid-row: span 2;
+  font-size: 2rem;
+}
+
+.briefing-start-button strong {
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  line-height: 1;
+}
+
+.briefing-start-button small {
+  color: #8d815d;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
 @keyframes pop {
   from {
     opacity: 0;
@@ -700,6 +1239,48 @@ select {
   .screen,
   .game-board {
     min-height: auto;
+  }
+
+  .briefing-screen {
+    grid-template-rows: auto auto auto;
+    overflow: visible;
+    padding: 16px;
+  }
+
+  .briefing-hero {
+    min-height: auto;
+    justify-items: center;
+    gap: 18px;
+  }
+
+  .employee-badge {
+    position: static;
+    width: min(270px, 100%);
+    transform: rotate(-1deg);
+  }
+
+  .briefing-layout,
+  .orientation-panel,
+  .briefing-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .orientation-panel {
+    min-height: auto;
+  }
+
+  .orientation-portrait {
+    min-height: 220px;
+  }
+
+  .briefing-items {
+    grid-template-columns: 1fr;
+  }
+
+  .briefing-stat {
+    grid-template-columns: 82px 1fr 72px;
+    gap: 10px;
+    font-size: 0.95rem;
   }
 
   .start-office {
@@ -1748,5 +2329,921 @@ select {
 
   .title-buttons {
     margin-top: 28px;
+  }
+}
+
+/* Match the meeting-prep prototype font stack across the whole game. */
+:root {
+  --meeting-prototype-font: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body,
+button,
+input,
+select,
+textarea,
+.app-shell,
+.app-shell * {
+  font-family: var(--meeting-prototype-font) !important;
+}
+
+.app-shell:has(.survival-briefing) {
+  background:
+    linear-gradient(rgba(18, 20, 22, 0.16), rgba(18, 20, 22, 0.22)),
+    linear-gradient(#d9c79e 0 70%, #895a34 70%),
+    #d9c79e;
+}
+
+.survival-briefing {
+  width: min(1120px, calc(100vw - 56px));
+  height: min(720px, calc(100vh - 48px));
+  min-height: 620px;
+  grid-template-rows: 205px 1fr 124px;
+  gap: 10px;
+  padding: 18px 28px 16px;
+  position: relative;
+  isolation: isolate;
+  border-color: #1c1d21;
+  background:
+    linear-gradient(rgba(255, 250, 235, 0.76), rgba(255, 250, 235, 0.72)),
+    linear-gradient(90deg, rgba(30, 34, 36, 0.42), transparent 22%, transparent 78%, rgba(30, 34, 36, 0.35)),
+    linear-gradient(180deg, rgba(56, 60, 62, 0.28) 0 22%, transparent 22%),
+    #cfc6b0;
+  box-shadow: 8px 10px 0 rgba(17, 18, 21, 0.35);
+}
+
+.survival-briefing::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 20px 120px 150px 270px;
+  border: 10px solid rgba(45, 47, 48, 0.36);
+  border-bottom-width: 18px;
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(38, 41, 42, 0.28) 49% 51%, transparent 51%),
+    linear-gradient(rgba(255,255,255,.16), rgba(255,255,255,.04)),
+    #b9b9ae;
+  opacity: 0.78;
+}
+
+.survival-briefing::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 128px;
+  background:
+    linear-gradient(rgba(15, 16, 18, 0.36), rgba(15, 16, 18, 0.58)),
+    #4b3428;
+}
+
+.survival-hero {
+  min-height: 0;
+}
+
+.survival-clock {
+  margin-top: 0;
+  gap: 7px;
+}
+
+.survival-clock strong {
+  color: #202020;
+  font-size: clamp(4.7rem, 7.3vw, 7.1rem);
+  text-shadow: 0 2px 0 rgba(255,255,255,.22);
+}
+
+.survival-clock span {
+  color: #28292b;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.survival-clock p {
+  margin: 2px 0 0;
+  color: #34312d;
+  font-size: clamp(1.05rem, 1.65vw, 1.45rem);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.survival-badge {
+  left: 20px;
+  top: 18px;
+  width: 180px;
+  min-height: 250px;
+  gap: 7px;
+  transform: rotate(-3deg);
+  border-width: 3px;
+  background:
+    linear-gradient(rgba(255,255,255,.7), rgba(255,255,255,.35)),
+    #eee8d9;
+  box-shadow: 4px 7px 0 rgba(20, 20, 20, 0.28);
+}
+
+.badge-clip {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  width: 38px;
+  height: 48px;
+  transform: translateX(-50%);
+  border: 4px solid #1c1d21;
+  border-radius: 7px;
+  background: #454545;
+}
+
+.survival-badge .badge-photo {
+  width: 86px;
+  height: 92px;
+  background: #d7d1c5;
+}
+
+.survival-badge strong {
+  font-size: 0.96rem;
+}
+
+.survival-badge b {
+  font-size: 1.1rem;
+}
+
+.badge-barcode {
+  width: 150px;
+  height: 32px;
+  display: block;
+  margin-top: 5px;
+  background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 5px, #111 5px 7px, transparent 7px 11px);
+}
+
+.survival-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(440px, 1fr) 292px;
+  align-items: end;
+  gap: 18px;
+}
+
+.briefing-note {
+  min-height: 214px;
+  align-self: end;
+  transform: rotate(-4deg);
+  border: 2px solid rgba(30, 31, 32, 0.45);
+  padding: 22px 20px;
+  color: #282520;
+  background: #d7c898;
+  box-shadow: 0 5px 0 rgba(20, 20, 20, 0.2);
+}
+
+.briefing-note strong {
+  display: block;
+  margin-bottom: 18px;
+  font-size: 0.95rem;
+}
+
+.briefing-note p {
+  margin: 10px 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.briefing-note .note-warning {
+  margin-top: 18px;
+  border-bottom: 3px solid #a33c31;
+  padding-bottom: 4px;
+}
+
+.briefing-note .tip-text {
+  white-space: pre-line;
+}
+
+.briefing-note .tip-next-button {
+  align-self: flex-start;
+  border-width: 2px;
+  border-radius: 4px;
+  padding: 5px 8px;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.42);
+  font-size: 0.72rem;
+}
+
+.mission-card {
+  position: relative;
+  align-self: center;
+  min-height: 318px;
+  border: 2px solid rgba(22, 23, 24, 0.42);
+  padding: 26px 46px 26px;
+  color: #1e1e1e;
+  background:
+    linear-gradient(rgba(255,255,255,.68), rgba(255,255,255,.2)),
+    #eee7d7;
+  box-shadow: 0 7px 0 rgba(20, 20, 20, 0.18);
+  text-align: center;
+}
+
+.mission-pin {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%) rotate(20deg);
+  border: 3px solid #742a25;
+  border-radius: 50%;
+  background: #c43d35;
+  box-shadow: 0 3px 0 rgba(20,20,20,.22);
+}
+
+.mission-kicker {
+  margin: 0 0 14px;
+  color: #66615a;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.mission-card h1 {
+  width: fit-content;
+  margin: 0 auto;
+  color: #1d1e20;
+  background: none;
+  font-size: clamp(2rem, 3.2vw, 2.85rem);
+  font-weight: 950;
+  line-height: 1.18;
+}
+
+.mission-divider {
+  height: 2px;
+  margin: 22px 0 20px;
+  background: repeating-linear-gradient(90deg, rgba(40,40,40,.32) 0 12px, transparent 12px 20px);
+}
+
+.mission-card p {
+  margin: 10px 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.mission-card em {
+  color: #b03c32;
+  font-style: normal;
+  text-decoration: underline;
+}
+
+.mission-card .mood-line {
+  color: #34312d;
+  font-size: clamp(1.1rem, 1.7vw, 1.45rem) !important;
+  font-weight: 800;
+}
+
+.mission-closing {
+  margin-top: 18px;
+  display: grid;
+  gap: 5px;
+  border-radius: 4px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.mission-closing span {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.mission-closing small {
+  color: #666;
+  font-size: 0.72rem;
+}
+
+.survival-status-card {
+  align-self: center;
+  min-height: 392px;
+  border-color: #222;
+  padding: 0;
+  overflow: hidden;
+  background: #eee7d7;
+  box-shadow: 0 7px 0 rgba(20, 20, 20, 0.2);
+}
+
+.survival-status-card h2 {
+  margin: 0;
+  padding: 13px 20px;
+  color: #fff;
+  background: #242322;
+  font-size: 1.05rem;
+}
+
+.survival-stat {
+  display: block;
+  margin: 0;
+  border-bottom: 2px dashed rgba(70, 70, 70, 0.28);
+  padding: 22px 20px;
+}
+
+.survival-stat:last-child {
+  border-bottom: 0;
+}
+
+.stat-title {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stat-title strong {
+  font-size: 1.2rem;
+}
+
+.stat-title b {
+  font-size: 0.95rem;
+}
+
+.stat-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  border-radius: 4px;
+  background: #242322;
+}
+
+.stat-icon.stress {
+  border-radius: 50%;
+  background: #242322;
+}
+
+.stat-icon.health {
+  border: 3px solid #242322;
+  background: #58ad66;
+}
+
+.survival-stat p {
+  margin: 8px 0 0;
+  color: #777;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.survival-footer {
+  display: grid;
+  grid-template-columns: minmax(360px, 560px) minmax(220px, 292px);
+  justify-content: center;
+  align-items: end;
+  gap: 20px;
+}
+
+.survival-start-button {
+  min-height: 104px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 24px;
+  border-color: #1b1c1f;
+  padding: 16px 34px;
+  background:
+    linear-gradient(rgba(255,255,255,.24), transparent 45%),
+    #f1bf31;
+  box-shadow: 0 6px 0 rgba(10, 10, 10, 0.42);
+  text-align: center;
+}
+
+.survival-start-button strong {
+  font-size: clamp(2.2rem, 4.2vw, 3.3rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.survival-start-button > span {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.survival-start-button small {
+  color: #6a5623;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.survival-footer > p {
+  align-self: end;
+  margin: 0;
+  border: 2px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 18px 20px;
+  color: #c9c9c9;
+  background: rgba(15, 16, 18, 0.84);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 980px) {
+  .survival-briefing {
+    width: min(720px, calc(100vw - 28px));
+    height: auto;
+    min-height: 0;
+    grid-template-rows: auto auto auto;
+    overflow: visible;
+  }
+
+  .survival-layout,
+  .survival-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .survival-badge {
+    position: static;
+    justify-self: center;
+    width: 160px;
+    min-height: 222px;
+  }
+
+  .survival-status-card,
+  .mission-card,
+  .briefing-note {
+    align-self: auto;
+  }
+
+  .briefing-note {
+    transform: none;
+  }
+}
+
+/* Stable survival-briefing layout. Keep this after legacy briefing styles. */
+.survival-briefing {
+  width: min(1160px, calc(100vw - 48px)) !important;
+  height: min(720px, calc(100vh - 48px)) !important;
+  min-height: 620px !important;
+  margin-left: 0 !important;
+  display: grid !important;
+  grid-template-rows: 188px minmax(0, 1fr) 116px !important;
+  gap: 12px !important;
+  padding: 18px 28px 16px !important;
+  overflow: hidden !important;
+}
+
+.survival-hero {
+  min-height: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  position: relative !important;
+}
+
+.survival-layout {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 210px minmax(0, 1fr) 288px !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+}
+
+.survival-footer {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(420px, 560px) 288px !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  gap: 20px !important;
+}
+
+.survival-badge {
+  position: absolute !important;
+  left: 18px !important;
+  top: 18px !important;
+  width: 158px !important;
+  min-height: 216px !important;
+  padding: 10px 10px 12px !important;
+  z-index: 2;
+}
+
+.survival-badge .badge-photo {
+  width: 74px !important;
+  height: 76px !important;
+}
+
+.survival-clock {
+  width: min(520px, 100%);
+  text-align: center;
+}
+
+.survival-clock strong {
+  font-size: clamp(4.4rem, 6.6vw, 6.5rem) !important;
+}
+
+.survival-clock p {
+  margin: 2px 0 0 !important;
+}
+
+.briefing-note {
+  align-self: end !important;
+  min-height: 190px !important;
+  max-height: 220px !important;
+  padding: 18px 16px !important;
+}
+
+.mission-card {
+  align-self: center !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  padding: 24px 38px 22px !important;
+  overflow: hidden;
+}
+
+.mission-card h1 {
+  font-size: clamp(1.8rem, 2.7vw, 2.55rem) !important;
+}
+
+.mission-card p {
+  font-size: 0.94rem !important;
+}
+
+.survival-status-card {
+  align-self: stretch !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.survival-stat {
+  padding: 18px 18px !important;
+}
+
+.survival-start-button {
+  width: 100% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.survival-footer > p {
+  height: 100%;
+  align-self: stretch !important;
+  display: grid;
+  align-content: center;
+}
+
+@media (max-width: 980px) {
+  .survival-briefing {
+    width: min(720px, calc(100vw - 28px)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-rows: auto auto auto !important;
+    overflow: visible !important;
+  }
+
+  .survival-layout,
+  .survival-footer {
+    grid-template-columns: 1fr !important;
+  }
+
+  .survival-badge {
+    position: static !important;
+    justify-self: center;
+    transform: rotate(-2deg);
+  }
+}
+
+/* Layout stability pass: content-driven sizing, no overlapping panels. */
+.survival-briefing,
+.survival-briefing * {
+  min-width: 0 !important;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
+.survival-briefing {
+  width: min(1160px, calc(100vw - 48px)) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto !important;
+  gap: clamp(12px, 1.6vw, 18px) !important;
+  padding: clamp(16px, 2vw, 28px) !important;
+  overflow: visible !important;
+}
+
+.survival-hero {
+  display: grid !important;
+  grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) minmax(120px, 170px) !important;
+  align-items: start !important;
+  gap: clamp(12px, 2vw, 24px) !important;
+  min-height: 0 !important;
+  position: relative !important;
+}
+
+.survival-badge {
+  position: static !important;
+  grid-column: 1 !important;
+  justify-self: start !important;
+  width: min(100%, 160px) !important;
+  min-height: 0 !important;
+  transform: rotate(-3deg);
+}
+
+.survival-clock {
+  grid-column: 2 !important;
+  justify-self: center !important;
+  width: min(100%, 560px) !important;
+}
+
+.survival-clock strong {
+  display: block;
+  font-size: clamp(3.6rem, 7vw, 6.5rem) !important;
+  line-height: 0.9 !important;
+}
+
+.survival-clock span,
+.survival-clock p,
+.mission-card p,
+.briefing-note p,
+.survival-stat p,
+.survival-footer > p,
+.mission-closing span,
+.mission-closing small,
+.survival-start-button small {
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
+.survival-layout {
+  display: grid !important;
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) minmax(240px, 300px) !important;
+  align-items: start !important;
+  gap: clamp(12px, 1.7vw, 20px) !important;
+  min-height: 0 !important;
+}
+
+.briefing-note,
+.mission-card,
+.survival-status-card,
+.survival-footer > p {
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  align-self: start !important;
+  overflow: visible !important;
+}
+
+.briefing-note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(14px, 1.5vw, 20px) !important;
+}
+
+.briefing-note strong,
+.briefing-note p {
+  margin: 0 !important;
+}
+
+.mission-card {
+  display: grid !important;
+  grid-template-rows: auto auto auto auto auto !important;
+  gap: clamp(8px, 1.2vw, 14px) !important;
+  padding: clamp(20px, 2.6vw, 38px) !important;
+}
+
+.mission-card h1 {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  text-overflow: ellipsis;
+  font-size: clamp(1.55rem, 2.8vw, 2.65rem) !important;
+  line-height: 1.18 !important;
+}
+
+.mission-kicker {
+  margin: 0 !important;
+  font-size: clamp(1rem, 1.6vw, 1.25rem) !important;
+}
+
+.mission-divider {
+  margin: 0 !important;
+}
+
+.mission-card p {
+  margin: 0 !important;
+  font-size: clamp(0.84rem, 1.15vw, 1rem) !important;
+}
+
+.mission-closing {
+  margin-top: 0 !important;
+  min-width: 0;
+}
+
+.survival-status-card {
+  display: grid !important;
+  grid-template-rows: auto repeat(3, auto) !important;
+}
+
+.survival-stat {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  padding: clamp(14px, 1.8vw, 20px) !important;
+}
+
+.stat-title {
+  grid-template-columns: 24px minmax(0, 1fr) auto !important;
+}
+
+.stat-title strong,
+.stat-title b {
+  min-width: 0;
+}
+
+.survival-footer {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) !important;
+  align-items: stretch !important;
+  gap: clamp(12px, 1.7vw, 20px) !important;
+  min-height: 0 !important;
+}
+
+.survival-start-button {
+  position: static !important;
+  width: 100% !important;
+  min-height: clamp(86px, 10vw, 112px) !important;
+  height: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-rows: auto auto !important;
+  align-content: center !important;
+  justify-content: stretch !important;
+  overflow: hidden !important;
+}
+
+.survival-start-button strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  text-overflow: ellipsis;
+  font-size: clamp(1.8rem, 4vw, 3.2rem) !important;
+  line-height: 1.05 !important;
+}
+
+.survival-start-button > span {
+  min-width: 0;
+}
+
+.survival-footer > p {
+  display: grid !important;
+  align-content: center !important;
+  padding: clamp(14px, 1.5vw, 20px) !important;
+}
+
+.survival-badge {
+  overflow: hidden !important;
+}
+
+.badge-barcode {
+  width: 100% !important;
+}
+
+.stat-title strong,
+.stat-title b {
+  display: block;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
+@media (min-width: 981px) and (max-height: 980px) {
+  .survival-briefing {
+    gap: 10px !important;
+    padding: 14px 24px !important;
+  }
+
+  .survival-hero {
+    grid-template-columns: minmax(100px, 140px) minmax(0, 1fr) minmax(100px, 140px) !important;
+  }
+
+  .survival-badge {
+    width: 112px !important;
+    padding: 8px !important;
+    gap: 4px !important;
+    font-size: 0.82rem;
+  }
+
+  .survival-badge .badge-photo {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .survival-badge strong,
+  .survival-badge b,
+  .survival-badge > span {
+    font-size: 0.68rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .badge-clip {
+    display: none !important;
+  }
+
+  .badge-barcode {
+    height: 16px !important;
+  }
+
+  .survival-clock strong {
+    font-size: clamp(3rem, 5.4vw, 5rem) !important;
+  }
+
+  .survival-clock p {
+    font-size: clamp(0.9rem, 1.2vw, 1.08rem) !important;
+  }
+
+  .survival-layout {
+    grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) minmax(220px, 270px) !important;
+    gap: 14px !important;
+  }
+
+  .briefing-note {
+    padding: 14px !important;
+    font-size: 0.85rem;
+  }
+
+  .mission-card {
+    padding: 18px 28px !important;
+    gap: 8px !important;
+  }
+
+  .mission-card h1 {
+    font-size: clamp(1.35rem, 2.35vw, 2.15rem) !important;
+  }
+
+  .mission-card p {
+    font-size: 0.82rem !important;
+  }
+
+  .mission-closing {
+    padding: 9px 12px !important;
+  }
+
+  .survival-status-card h2 {
+    padding: 10px 16px !important;
+  }
+
+  .survival-stat {
+    padding: 12px 16px !important;
+    gap: 6px !important;
+  }
+
+  .survival-stat p {
+    margin-top: 4px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .survival-footer {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 270px) !important;
+    gap: 14px !important;
+  }
+
+  .survival-start-button {
+    min-height: 78px !important;
+    padding: 10px 24px !important;
+  }
+
+  .survival-start-button strong {
+    font-size: clamp(1.55rem, 3.3vw, 2.45rem) !important;
+  }
+
+  .survival-start-button > span {
+    font-size: 2.25rem !important;
+  }
+
+  .survival-footer > p {
+    padding: 12px 16px !important;
+    font-size: 0.68rem !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .survival-hero,
+  .survival-layout,
+  .survival-footer {
+    grid-template-columns: 1fr !important;
+  }
+
+  .survival-badge,
+  .survival-clock {
+    grid-column: auto !important;
+    justify-self: center !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .survival-briefing {
+    width: min(100vw - 24px, 640px) !important;
+    padding: 14px !important;
   }
 }
