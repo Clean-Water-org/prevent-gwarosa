@@ -31,6 +31,7 @@ export function createInitialState() {
       failures: 0,
     },
     flags: {
+      runId: createRunId(),
       forcedMeeting: false,
       nextBossOrderBoost: false,
     },
@@ -43,6 +44,10 @@ export function createInitialState() {
       },
     ],
   };
+}
+
+function createRunId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function clampStat(value) {

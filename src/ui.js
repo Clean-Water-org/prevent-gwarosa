@@ -68,6 +68,7 @@ export function renderNarrationPopup(lines, options = {}) {
   const promptKey = options.promptKey ?? "Enter";
   const promptText = options.promptText ?? "다음";
   const extraClass = options.className ? ` ${options.className}` : "";
+  const actions = Array.isArray(options.actions) ? options.actions : [];
   const timers = [];
   let stopped = false;
   let cursor = null;
@@ -82,6 +83,17 @@ export function renderNarrationPopup(lines, options = {}) {
     role: "status",
     "aria-live": "polite",
   }, [lineList, prompt]);
+
+  if (actions.length > 0) {
+    node.append(el("div", { class: "narration-popup-actions" }, actions.map((action) =>
+      el("button", {
+        class: `narration-popup-action${action.className ? ` ${action.className}` : ""}`,
+        type: "button",
+        text: action.text,
+        onClick: action.onClick,
+      }),
+    )));
+  }
 
   if (options.showPrompt === false) prompt.hidden = true;
 

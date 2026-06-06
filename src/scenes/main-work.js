@@ -2,15 +2,25 @@ import { el, renderNarrationPopup } from "../ui.js";
 import { formatTime, applyDelta, checkEnding, normalizeLogEntry } from "../state.js";
 import { chatPool } from "../data/events.js";
 import { items } from "../data/items.js";
+import { renderMiniGameBriefing } from "./minigame/briefing.js";
+import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
 
 let _notifPanel = null;
 let _spawnTimeout = null;
 let _localWorkload = 0;
 let _clockInterval = null;
+let _phaseTimeout = null;
+let _phoneTimeout = null;
+let _phoneOverlay = null;
 let _snoozedChats = [];
 
 const MAIN_CLOCK_TICK_MS = 1000;
 const CHAT_NOTIFICATION_SOUND_SRC = "assets/audio/messenger-notification.mp3";
+const MAIN_PHASE_DURATIONS_SEC = [35, 35, 40, 40];
+const PHONE_CHANCE_BY_PHASE = [0.75, 0.75, 0.75, 0.75];
+const PHONE_RING_SECONDS = 12;
+const mainPhaseStarts = new Map();
+const phonePlans = new Map();
 
 const handoverNotes = [
   "업무량은 100에서 시작합니다. 18시 전에 모두 처리하면 퇴근할 수 있습니다.",
@@ -31,6 +41,8 @@ export function renderMainWork(root, state, actions) {
   const startChats = () => {
     const monitorEl = screen.querySelector(".main-work-monitor-screen");
     startChatNotifications(state, actions, monitorEl ?? screen);
+    startMainPhaseTimer(state, actions);
+    startPhoneSystem(screen, state, actions);
   };
 
   const intranetPanel = renderIntranetWindow();
@@ -76,6 +88,23 @@ export function renderMainWork(root, state, actions) {
 
   root.append(screen);
 
+  if (state.flags?.pendingMinigameBriefing) {
+    const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
+    const game = getCurrentMiniGame(state);
+    renderMiniGameBriefing(monitorScreen, state, {
+      onStart: () => {
+        actions.mutateState((draft) => {
+          const nextGame = getCurrentMiniGame(draft);
+          draft.flags.pendingMinigameBriefing = false;
+          draft.flags.minigameBriefingKey = getMiniGameBriefingKey(draft, nextGame.id);
+          draft.scene = "minigame";
+          return draft;
+        });
+      },
+    }, game, "overlay");
+    return;
+  }
+
   const guideSeen = Boolean(state.flags?.handoverGuideSeen);
   if (!guideSeen) {
     requestAnimationFrame(() => {
@@ -97,12 +126,26 @@ function renderMainWorkHud(state, actions) {
     ]),
     el("div", { class: "main-work-hud-controls" }, [
       renderMainWorkItemHub(state, actions),
+      renderPhoneButton(),
       el("button", { class: "main-work-gear", type: "button", "aria-label": "설정", text: "⚙" }),
       el("div", { class: "main-work-hud-time" }, [
         el("strong", { class: "main-work-current-time", text: formatTime(state.gameMinute) }),
         el("span", { text: "2026.06.05 금요일" }),
       ]),
     ]),
+  ]);
+}
+
+function renderPhoneButton() {
+  return el("button", {
+    class: "main-work-phone-button",
+    type: "button",
+    title: "휴대폰",
+    "aria-label": "휴대폰",
+    "aria-live": "polite",
+    text: "☎",
+  }, [
+    el("span", { class: "main-work-phone-badge", text: "!" }),
   ]);
 }
 
@@ -174,6 +217,17 @@ function renderRecentLogPanel(state, actions) {
   const logs = (state.log ?? []).map((entry) => normalizeLogEntry(state, entry));
   const collapsed = Boolean(state.flags?.recentLogCollapsed);
   const title = `📋 업무 일지 (${logs.length})`;
+  const logList = collapsed
+    ? null
+    : el("div", { class: "main-work-recent-log-list" }, logs.length
+      ? logs.map(renderRecentLogEntry)
+      : [el("p", { class: "main-work-recent-log-empty", text: "아직 기록된 변화가 없습니다." })]);
+
+  if (logList) {
+    requestAnimationFrame(() => {
+      logList.scrollTop = logList.scrollHeight;
+    });
+  }
 
   return el("aside", {
     class: `main-work-recent-log${collapsed ? " is-collapsed" : ""}`,
@@ -193,9 +247,7 @@ function renderRecentLogPanel(state, actions) {
     ]),
     ...(collapsed
       ? []
-      : [el("div", { class: "main-work-recent-log-list" }, logs.length
-        ? logs.map(renderRecentLogEntry)
-        : [el("p", { class: "main-work-recent-log-empty", text: "아직 기록된 변화가 없습니다." })])]),
+      : [logList]),
   ]);
 }
 
@@ -270,15 +322,15 @@ function playHandoverGuide(screen, actions, onStartChats) {
     typingSpeed: 42,
     lineDelay: 180,
     showPrompt: false,
-  });
-  const guideLayer = el("div", { class: "main-work-guide-layer" }, [
-    narration.node,
-    el("button", {
-      class: "main-work-guide-skip",
-      type: "button",
+    actions: [{
+      className: "main-work-guide-skip",
       text: "Skip · 바로 게임 시작",
       onClick: () => startGameFromGuide(),
-    }),
+    }],
+  });
+  let cancelHandoverPopup = null;
+  const guideLayer = el("div", { class: "main-work-guide-layer" }, [
+    narration.node,
     el("div", { class: "main-work-fake-cursor", text: "🖱️" }),
   ]);
   const cursor = guideLayer.querySelector(".main-work-fake-cursor");
@@ -303,11 +355,15 @@ function playHandoverGuide(screen, actions, onStartChats) {
 
   timers.push(window.setTimeout(() => {
     cursor.classList.remove("clicking");
-    openHandoverPopup(screen, actions, clearGuideLayer, true, onStartChats);
+    cancelHandoverPopup = openHandoverPopup(screen, actions, clearGuideLayer, true, onStartChats, {
+      autoCloseMs: 5600,
+    });
   }, 2950));
 
   function clearGuideLayer() {
     for (const timer of timers) window.clearTimeout(timer);
+    cancelHandoverPopup?.();
+    cancelHandoverPopup = null;
     narration.stop();
     guideLayer.remove();
     if (stopHandoverGuide === clearGuideLayer) stopHandoverGuide = null;
@@ -325,11 +381,16 @@ function playHandoverGuide(screen, actions, onStartChats) {
   return clearGuideLayer;
 }
 
-function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartChats = null) {
+function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartChats = null, options = {}) {
   const existing = screen.querySelector(".main-work-handover-overlay");
   if (existing) { onClose?.(); return; }
+  let autoCloseTimer = null;
 
   const close = () => {
+    if (autoCloseTimer) {
+      window.clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
     overlay.remove();
     onClose?.();
     if (playIntro) {
@@ -339,7 +400,6 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
           draft.gameMinute = 9 * 60;
           return draft;
         });
-        onStartChats?.();
       });
     } else {
       actions.mutateState((draft) => {
@@ -365,6 +425,7 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
       el("p", { class: "main-work-handover-closing", text: "마지막으로. 아직 늦지 않았습니다." }),
       el("button", {
         class: "main-work-handover-close",
+        ...(playIntro ? { disabled: "" } : {}),
         text: "알겠습니다 (아마도)",
         onClick: close,
       }),
@@ -372,6 +433,15 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
   ]);
 
   screen.append(overlay);
+  if (options.autoCloseMs) {
+    autoCloseTimer = window.setTimeout(close, options.autoCloseMs);
+  }
+
+  return () => {
+    if (autoCloseTimer) window.clearTimeout(autoCloseTimer);
+    autoCloseTimer = null;
+    overlay.remove();
+  };
 }
 
 function playClockCutscene(screen, onDone) {
@@ -434,6 +504,8 @@ function renderTaskbar(onIntranetClick, registerIntranetBtn) {
 function cleanupMainWorkSystems() {
   cleanupChatSystem();
   cleanupMainClock();
+  cleanupMainPhaseTimer();
+  cleanupPhoneSystem();
 }
 
 function cleanupChatSystem() {
@@ -445,6 +517,189 @@ function cleanupMainClock() {
   if (_clockInterval) {
     clearInterval(_clockInterval);
     _clockInterval = null;
+  }
+}
+
+function cleanupMainPhaseTimer() {
+  if (_phaseTimeout) {
+    clearTimeout(_phaseTimeout);
+    _phaseTimeout = null;
+  }
+}
+
+function cleanupPhoneSystem() {
+  if (_phoneTimeout) {
+    clearTimeout(_phoneTimeout);
+    _phoneTimeout = null;
+  }
+  if (_phoneOverlay) {
+    _phoneOverlay.remove();
+    _phoneOverlay = null;
+  }
+}
+
+function startMainPhaseTimer(state, actions) {
+  cleanupMainPhaseTimer();
+  const phaseIndex = getMainPhaseIndex(state);
+  const durationSec = MAIN_PHASE_DURATIONS_SEC[phaseIndex];
+  if (!durationSec) return;
+
+  const phaseKey = getMainPhaseKey(state, phaseIndex);
+  const phaseStartedAt = mainPhaseStarts.get(phaseKey) ?? Date.now();
+  mainPhaseStarts.set(phaseKey, phaseStartedAt);
+  const remainingMs = Math.max(0, (durationSec * 1000) - (Date.now() - phaseStartedAt));
+
+  _phaseTimeout = setTimeout(() => {
+    if (state.scene !== "main") return;
+    cleanupMainWorkSystems();
+    actions.mutateState((draft) => {
+      draft.flags.pendingMinigameBriefing = true;
+      return draft;
+    });
+  }, remainingMs);
+}
+
+function getMainPhaseIndex(state) {
+  return Math.max(0, Math.min(MAIN_PHASE_DURATIONS_SEC.length - 1, state.minigameRound ?? 0));
+}
+
+function getMainPhaseKey(state, phaseIndex) {
+  return `${state.flags?.runId ?? "default"}:${phaseIndex}`;
+}
+
+function startPhoneSystem(screen, state, actions) {
+  cleanupPhoneSystem();
+  const phaseIndex = getMainPhaseIndex(state);
+  const durationSec = MAIN_PHASE_DURATIONS_SEC[phaseIndex];
+  if (!durationSec) return;
+
+  const plan = getPhonePlan(state, phaseIndex, durationSec);
+  if (!plan.willRing || plan.status === "done") return;
+
+  if (plan.status === "ringing") {
+    restoreRingingPhone(screen, state, actions, plan);
+    return;
+  }
+
+  const delayMs = Math.max(0, plan.ringAt - Date.now());
+  _phoneTimeout = setTimeout(() => ringPhone(screen, state, actions, plan), delayMs);
+}
+
+function getPhonePlan(state, phaseIndex, durationSec) {
+  const key = getMainPhaseKey(state, phaseIndex);
+  let plan = phonePlans.get(key);
+  if (plan) return plan;
+
+  const minSec = durationSec * 0.3;
+  const maxSec = durationSec * 0.8;
+  const delaySec = minSec + Math.random() * (maxSec - minSec);
+  plan = {
+    phaseIndex,
+    willRing: Math.random() < PHONE_CHANCE_BY_PHASE[phaseIndex],
+    ringAt: Date.now() + delaySec * 1000,
+    status: "waiting",
+  };
+  phonePlans.set(key, plan);
+  return plan;
+}
+
+function ringPhone(screen, state, actions, plan) {
+  const phoneButton = screen.querySelector(".main-work-phone-button");
+  const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
+  if (!phoneButton || !monitorScreen || !screen.isConnected || plan.status !== "waiting") return;
+
+  plan.status = "ringing";
+  plan.expiresAt = Date.now() + PHONE_RING_SECONDS * 1000;
+  activatePhoneButton(phoneButton);
+
+  const expireTimer = setTimeout(() => {
+    if (plan.status !== "ringing") return;
+    finishPhoneCall(plan, phoneButton, actions, "missed");
+  }, PHONE_RING_SECONDS * 1000);
+
+  phoneButton.onclick = () => openPhoneOverlay(monitorScreen, plan, phoneButton, actions, expireTimer);
+}
+
+function restoreRingingPhone(screen, state, actions, plan) {
+  const phoneButton = screen.querySelector(".main-work-phone-button");
+  const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
+  if (!phoneButton || !monitorScreen || !screen.isConnected) return;
+
+  activatePhoneButton(phoneButton);
+  const remainingMs = Math.max(0, (plan.expiresAt ?? Date.now()) - Date.now());
+  const expireTimer = setTimeout(() => {
+    if (plan.status !== "ringing") return;
+    finishPhoneCall(plan, phoneButton, actions, "missed");
+  }, remainingMs);
+
+  phoneButton.onclick = () => openPhoneOverlay(monitorScreen, plan, phoneButton, actions, expireTimer);
+}
+
+function activatePhoneButton(phoneButton) {
+  phoneButton.classList.add("is-ringing");
+  phoneButton.setAttribute("aria-label", "전화 수신 중");
+  phoneButton.title = "전화 수신 중";
+}
+
+function openPhoneOverlay(container, plan, phoneButton, actions, expireTimer) {
+  if (plan.status !== "ringing" || _phoneOverlay) return;
+
+  _phoneOverlay = el("div", { class: "main-work-phone-overlay" }, [
+    el("article", { class: "main-work-phone-card" }, [
+      el("header", { class: "main-work-phone-header" }, [
+        el("strong", { text: "휴대폰" }),
+        el("time", { text: "수신 중" }),
+      ]),
+      el("div", { class: "main-work-phone-body" }, [
+        el("div", { class: "main-work-phone-icon", text: "☎" }),
+        el("h2", { text: "동료 전화" }),
+        el("p", { text: "지금 받을까?" }),
+      ]),
+      el("div", { class: "main-work-phone-actions" }, [
+        el("button", {
+          class: "main-work-call-accept",
+          type: "button",
+          text: "받기",
+          onClick: () => {
+            clearTimeout(expireTimer);
+            finishPhoneCall(plan, phoneButton, actions, "accept");
+          },
+        }),
+        el("button", {
+          class: "main-work-call-reject",
+          type: "button",
+          text: "거절",
+          onClick: () => {
+            clearTimeout(expireTimer);
+            finishPhoneCall(plan, phoneButton, actions, "reject");
+          },
+        }),
+      ]),
+    ]),
+  ]);
+
+  container.append(_phoneOverlay);
+}
+
+function finishPhoneCall(plan, phoneButton, actions, outcome) {
+  if (plan.status === "done") return;
+
+  plan.status = "done";
+  phoneButton.classList.remove("is-ringing");
+  phoneButton.setAttribute("aria-label", "휴대폰");
+  phoneButton.title = "휴대폰";
+  phoneButton.onclick = null;
+  if (_phoneOverlay) {
+    _phoneOverlay.remove();
+    _phoneOverlay = null;
+  }
+
+  if (outcome === "accept") {
+    applyEffect({ stress: 5, colleagueTrust: 10, gameMinute: 2 }, actions, "동료 전화를 받았다. 해야 할 말이 하나 더 늘었다.");
+  } else if (outcome === "reject") {
+    applyEffect({ stress: 6, colleagueTrust: -10 }, actions, "동료 전화를 거절했다.");
+  } else {
+    applyEffect({ stress: 10, colleagueTrust: -10 }, actions, "걸려온 전화를 놓쳤다.");
   }
 }
 

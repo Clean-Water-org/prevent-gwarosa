@@ -3,7 +3,7 @@ import { applyDelta, checkEnding } from "../state.js";
 import { el, renderBadges, renderHud } from "../ui.js";
 
 export function renderMiniGame(root, state, actions) {
-  if (state.minigameRound >= 5 && !state.flags.devMode) {
+  if (state.minigameRound >= 4 && !state.flags.devMode) {
     actions.finishWith(state.stats.workload <= 0 ? "success" : "overtime");
     return;
   }
@@ -150,7 +150,9 @@ export function renderEmailGame(root, state, actions, game) {
   }
 
   function applyResult(result) {
-    actions.mutateState((draft) => applyMiniResult(draft, result, `${game.title}: 정확 ${run.correct}/${deck.length}`));
+    const message = `${game.title}: 정확 ${run.correct}/${deck.length}`;
+    if (actions.applyResult) actions.applyResult(result, message);
+    else actions.mutateState((draft) => applyMiniResult(draft, result, message));
   }
 
   function onKey(event) {
@@ -236,7 +238,7 @@ function renderPlaceholderMiniGame(root, state, actions, game) {
       el("div", { class: "desk" }, [
         el("div", { class: "mini-layout" }, [
           el("div", { class: "mini-header" }, [
-            el("h2", { text: `${state.minigameRound + 1}/5 ${game.title}` }),
+            el("h2", { text: `${state.minigameRound + 1}/4 ${game.title}` }),
             el("strong", { text: "프로토타입 판정" }),
           ]),
           renderBadges(state),
@@ -273,6 +275,9 @@ function applyMiniResult(state, result, message) {
   const ending = checkEnding(next);
   if (ending) {
     next.ending = ending;
+    next.scene = "ending";
+  } else if (next.minigameRound >= 4) {
+    next.ending = next.stats.workload <= 0 ? "success" : "overtime";
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
     next.scene = "lunch";

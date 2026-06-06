@@ -1,20 +1,16 @@
 import { el, renderBadges, renderHud } from "../../ui.js";
 import { applyDelta, checkEnding } from "../../state.js";
-import { minigames } from "../../data/minigames.js";
-import { renderEmailGame } from "../minigame.js";
+import { renderEmailPrototypeGame } from "./email.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
-
-// ⚠️ 라운드 수: 원안 5회 / v1.2 제출판 4회 — 확정 후 ROTATION 슬라이싱 및 종료 조건 통일 필요
-const ROTATION = ["email", "meeting", "report", "email", "meeting"];
+import { renderMiniGameBriefing } from "./briefing.js";
+import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js";
 
 const GAME_DELTAS = {
-  // 이메일은 원본 src/scenes/minigame.js의 자체 결과 처리(local applyMiniResult)를 사용함.
-  // 아래 email 항목은 폴백 기본값일 뿐 — 실제 이메일 보상은 minigame.js 기준.
   email: {
     success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 8, gameMinute: 60 },
-    fail: { workload: -3, stress: 18, health: -8, gameMinute: 60 },
+    partial: { workload: -10, stress: 5, gameMinute: 60 },
+    fail: { workload: -3, stress: 15, health: -5, gameMinute: 60 },
   },
   meeting: {
     success: { workload: -20, gameMinute: 60 },
@@ -34,21 +30,45 @@ export function renderMiniGame(root, state, actions) {
     return;
   }
 
-  const round = state.minigameRound;
-  const gameId = (state.flags.devMode && state.flags.devGameId)
-    ? state.flags.devGameId
-    : ROTATION[round % ROTATION.length];
-  const game = minigames.find((g) => g.id === gameId) || minigames[0];
+  const game = getCurrentMiniGame(state);
+  const gameId = game.id;
+  const briefingKey = getMiniGameBriefingKey(state, gameId);
+
+  if (state.flags?.minigameBriefingKey !== briefingKey) {
+    renderMiniGameBriefing(root, state, {
+      onStart: () => {
+        actions.mutateState((draft) => {
+          draft.flags.minigameBriefingKey = briefingKey;
+          draft.flags.pendingMinigameBriefing = false;
+          return draft;
+        });
+      },
+    }, game, "standalone");
+    return;
+  }
 
   const extendedActions = {
     ...actions,
+    go: (scene) => {
+      if (scene !== "minigame") {
+        actions.go(scene);
+        return;
+      }
+
+      actions.mutateState((draft) => {
+        draft.scene = "minigame";
+        draft.flags.minigameBriefingKey = null;
+        draft.flags.pendingMinigameBriefing = false;
+        return draft;
+      });
+    },
     applyResult: (result, message) => {
       actions.mutateState((draft) => applyMiniResult(draft, gameId, result, message));
     },
   };
 
   if (gameId === "email") {
-    renderEmailGame(root, state, extendedActions, game);
+    renderEmailPrototypeGame(root, state, extendedActions, game);
   } else if (gameId === "meeting") {
     renderMeetingGame(root, state, extendedActions, game);
   } else if (gameId === "report") {
@@ -66,16 +86,23 @@ function applyMiniResult(state, gameId, result, message) {
     next.scene = "title";
     next.flags.devMode = false;
     next.flags.devGameId = null;
+    next.flags.minigameBriefingKey = null;
+    next.flags.pendingMinigameBriefing = false;
     return next;
   }
 
   next.minigameRound += 1;
   next.counters.successStreak = result === "success" ? next.counters.successStreak + 1 : 0;
   next.counters.failures += result === "fail" ? 1 : 0;
+  next.flags.minigameBriefingKey = null;
+  next.flags.pendingMinigameBriefing = false;
 
   const ending = checkEnding(next);
   if (ending) {
     next.ending = ending;
+    next.scene = "ending";
+  } else if (next.minigameRound >= ROTATION.length) {
+    next.ending = next.stats.workload <= 0 ? "success" : "overtime";
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
     next.scene = "lunch";
