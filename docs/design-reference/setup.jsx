@@ -52,10 +52,10 @@ function SetupCard({ label, gender, kind }) {
   const genderName = gender === "male" ? "남성" : "여성";
   return (
     <Frame accent="#ffe08a">
-      <div style={{ padding: "14px 40px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "10px 40px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
         <Tag>{label}</Tag>
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start", minHeight: 0, marginTop: 8 }}>
-          <SkBox bg="#fffdf6" style={{ width: 880, padding: "14px 30px", display: "flex", flexDirection: "column", gap: 8, boxShadow: "5px 6px 0 rgba(0,0,0,.18)" }}>
+        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start", minHeight: 0, marginTop: 6 }}>
+          <SkBox bg="#fffdf6" style={{ width: 880, padding: "12px 30px", display: "flex", flexDirection: "column", gap: 6, boxShadow: "5px 6px 0 rgba(0,0,0,.18)" }}>
             {/* 상단 헤더 (카드 전체 너비) */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px dashed var(--ink)", paddingBottom: 6 }}>
               <span style={{ fontFamily: "var(--hand)", fontSize: 24, fontWeight: 700, whiteSpace: "nowrap" }}>📋 신규 입사자 정보 카드</span>
@@ -91,14 +91,12 @@ function SetupCard({ label, gender, kind }) {
               </div>
             </div>
 
-            {/* 하단: 아이템 안내 (카드 전체 너비) */}
-            <SkBox dash bg="#fbf9f2" style={{ padding: "9px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontFamily: "var(--hand)", fontSize: 18, fontWeight: 700, whiteSpace: "nowrap" }}>🎒 아이템 안내</span>
-                <Pill k="시작" v="선택한 유형의 기본 아이템 1개" />
-                <Pill k="추가" v="이벤트 보상으로만 획득" />
-              </div>
-              <Note style={{ fontSize: 15.5, color: "#999" }}>※ 각 아이템의 효과는 메인화면에서 슬롯에 마우스를 올리면 안내됩니다 (호버 토글)</Note>
+            {/* 하단: 아이템 안내 (카드 전체 너비) — 핵심만 */}
+            <SkBox dash bg="#fbf9f2" style={{ padding: "8px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontFamily: "var(--hand)", fontSize: 17, fontWeight: 700 }}>🎒 아이템 안내 <span style={{ fontSize: 14, color: "#999", fontWeight: 400 }}>(슬롯 3칸 · 메인화면에서만 사용)</span></span>
+              <span style={{ fontSize: 15, paddingLeft: 6 }}><b style={{ color: "#777" }}>시작 2칸</b> · {kind === "coffee" ? "커피 ☕" : "담배 🚬"} + 유튜브 쇼츠 📱</span>
+              <span style={{ fontSize: 15, paddingLeft: 6 }}><b style={{ color: "#777" }}>보상 1칸</b> · 동료 이벤트로 획득 (예: 홍삼스틱 🧴)</span>
+              <Note style={{ fontSize: 14.5, color: "#999" }}>※ 효과는 메인화면에서 슬롯에 마우스를 올리면 안내 (호버 토글)</Note>
             </SkBox>
 
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>

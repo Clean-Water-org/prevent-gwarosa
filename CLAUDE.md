@@ -46,12 +46,15 @@ prevent-gwarosa/
 │   ├── fonts/                        # Galmuri woff2 4종 (CSS에서만 참조)
 │   └── minigames/                    # 독립 실행 가능한 프로토타입 HTML (참고·비교용)
 │       ├── email-classification-prototype.html
-│       └── meeting-prep-prototype.html
+│       ├── meeting-prep-prototype.html
+│       └── report-typos-prototype.html   # 미니게임3 보고서 오탈자 (자체완결 실행본)
 │
 └── docs/
     ├── notion-brief.md               # 기획 브리프 (MVP 범위·핵심 방향)
     ├── implementation-plan.md        # 구현 계획·진행 상태 (이 파일과 함께 읽을 것)
     └── design-reference/             # Claude Design에서 추출한 JSX 원본 (참고용)
+        ├── setup.jsx                 # 설정 화면 (이름·성별·유형·아이템 안내)
+        ├── ending.jsx               # 엔딩 6종 (칼퇴 S/A/B·야근·당일퇴사·과로사)
         ├── meeting-proto.jsx         # 회의 준비 프로토타입 전체 로직
         ├── meeting-data.js           # 슬라이드·함정 원본 데이터
         ├── mg3-core.jsx              # 보고서 오탈자 찾기 코어
@@ -60,7 +63,11 @@ prevent-gwarosa/
         ├── mg3-proto.jsx             # 보고서 프로토타입 전체 로직
         ├── pixel-kit.jsx             # 공통 픽셀아트 컴포넌트 (SlideContent, MiniSlide 등)
         ├── mg2-game.jsx              # 모니터 베젤·소품 컴포넌트
-        └── ...                       # 나머지 와이어프레임 파일
+        ├── ...                       # 나머지 JSX 원본 파일
+        └── wireframes/               # 와이어프레임 설계 노트 + 실행본
+            ├── README.md            # 화면별 스펙·스타일토큰·소스 위치 인덱스 (먼저 읽을 것)
+            ├── wireframe-all-screens.html      # 전체화면 와이어프레임 자체완결 실행본 (9.1M, 설정·미니게임·엔딩)
+            └── _design-chat-transcript.md      # 디자인 대화 원본 (의도·결정 근거)
 ```
 
 ---
@@ -188,12 +195,17 @@ title → commute → main ─┬→ minigame(1) → main
 
 ## 참고 파일 위치
 
+- **와이어프레임 인덱스 (설정·미니게임2·3·엔딩 스펙)**: `docs/design-reference/wireframes/README.md` ← 화면 구현 전 먼저 읽을 것
+- **설정 화면 와이어프레임**: `docs/design-reference/setup.jsx`
+- **엔딩 6종 와이어프레임**: `docs/design-reference/ending.jsx`
 - **회의 준비 프로토타입 전체 로직**: `docs/design-reference/meeting-proto.jsx`
 - **슬라이드·함정 원본 데이터**: `docs/design-reference/meeting-data.js`
 - **보고서 오탈자 전체 로직**: `docs/design-reference/mg3-proto.jsx`
 - **보고서 데이터 + 토큰 포맷**: `docs/design-reference/mg3-data.js`
 - **공통 픽셀아트 컴포넌트**: `docs/design-reference/pixel-kit.jsx`
 - **실행 가능한 회의 준비 프로토타입**: `assets/minigames/meeting-prep-prototype.html`
+- **실행 가능한 보고서 오탈자 프로토타입**: `assets/minigames/report-typos-prototype.html`
+- **전체화면 와이어프레임 실행본 (설정·엔딩 시각 확인)**: `docs/design-reference/wireframes/wireframe-all-screens.html`
 
 ---
 
