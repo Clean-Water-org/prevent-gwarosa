@@ -9,7 +9,7 @@
 | 출근 (commute) | ✅ 완성 | |
 | 메인 업무화면 | ✅ 완성 | 채팅·전화·이벤트·아이템 모두 동작 |
 | 점심 이벤트 | ✅ 완성 | |
-| 엔딩 4종 | ✅ 기본 완성 | 텍스트만, 비주얼 미적용 |
+| 엔딩 6종 | ✅ 구현 (일러스트 대기) | 픽셀아트(칼퇴 S/A/B·야근·당일퇴사·과로사). 일러스트 에셋은 추후 제공 (assets/endings/) |
 | 이메일 분류 미니게임 | ✅ 완성 | 키보드 A/D/Space 지원, 상태이상 효과 적용 |
 | 회의 준비 미니게임 | 🔲 미구현 | 현재 판정 버튼 플레이스홀더 |
 | 보고서 오탈자 미니게임 | 🔲 미구현 | 현재 판정 버튼 플레이스홀더 |
@@ -141,6 +141,46 @@ createTimer(onTick, onEnd)  // → { start, pause, resume, stop, getLeft }
 - 씬별 애니메이션 (fade-in, pop-in)
 - 상태이상 CSS 효과 (`fx-gray`, `fx-shake`, `fx-jitter`) 전 씬에 적용
 - 엔딩 화면 비주얼 개선
+
+---
+
+### Phase 7 — 엔딩 화면 (6종)
+
+참고: `docs/design-reference/ending.jsx` (콘텐츠·레이아웃), `wireframes/README.md`
+
+> **스타일**: 설정·미니게임2/3과 동일한 **픽셀아트 레트로**(Galmuri 폰트, PX 팔레트, 오피스 배경 + CRT 모니터 프레임). 와이어프레임의 손그림 톤은 미적용 — 콘텐츠·레이아웃 참조용.
+>
+> **결정사항**: 일러스트 = **이미지 자리만(나중에 SVG/PNG 제공)** · 버튼 = **🔄 다시하기만**(공유 없음) · 프레임 = **CRT 모니터 + 오피스 배경**.
+
+**엔딩 판정(4종) → 엔딩 카드(6종) 매핑**
+| `checkEnding` ID | 조건 | 엔딩 카드 | accent |
+|---|---|---|---|
+| `success` | 업무량 ≤ 0 | 칼퇴 S / A / B (퇴근 시각 등급) | `#bfe3c0` |
+| `overtime` | 18:00에 업무량 > 0 | 야근 | `#cdd3da` |
+| `quit` | 스트레스 100 | 당일퇴사 | `#f3c7a6` |
+| `overwork` | 체력 0 | 과로사 (게임오버 최우선) | `#d8d2cb` |
+
+칼퇴 등급: 퇴근 시각(`gameMinute`) 기준 **S(17:00 이전) / A(17:00~17:30) / B(17:30~18:00)**.
+
+#### 7-1. 엔딩 데이터 (`src/data/endings.js`)
+`ending.jsx`의 6종 포팅 — 각 항목 `{ key, accent, emoji, title, lines[3], illo(설명 라벨), clockLabel, badgeLabel, statDirs }`.
+- `gradeOf(gameMinute)` → "S"/"A"/"B" (칼퇴 등급)
+- `resolveEnding(state)` → endingId(+등급)로 표시할 카드 1개 결정
+- 일러스트 에셋 키: `clear-s`, `clear-a`, `clear-b`, `overtime`, `quit`, `overwork`
+
+#### 7-2. 엔딩 씬 재구현 (`src/scenes/ending.js`)
+- 오피스 배경 + CRT 모니터 프레임 (setup/minigame과 동일한 픽셀 헬퍼)
+- **좌**: 일러스트 영역(`assets/endings/{key}.svg` 로드, 없으면 설명 라벨 placeholder) + 이모지 + 제목 + 연출 문구 3줄 박스
+- **우 패널(380px)**: 퇴근시각·등급 박스(accent 배경) + 최종 스탯요약 3바(**실제 `state.stats`** — 업무량·스트레스·체력) + 🔄 다시하기
+- 퇴근 시각: `formatTime(state.gameMinute)`; 당일퇴사·과로사는 라벨 변경("퇴사 선언 시각"/"쓰러진 시각")
+- 다시하기 → `createInitialState()` (타이틀로 리셋)
+
+#### 7-3. 에셋·연동
+- 일러스트: `assets/endings/` 폴더에 6종 SVG/PNG (증명사진과 동일 방식, 추후 제공 시 연결). 없을 때는 placeholder 박스 + 설명 라벨 표시
+- 칼퇴 등급은 `resolveEnding`에서 `gameMinute`로 산출 (state 추가 기록 불필요)
+
+#### 7-4. (선택) 픽셀 오피스 헬퍼 공통화
+- setup/meeting/report가 각자 인라인한 `makePixWindow/Clock/Plant/Mug/Monitor`를 `src/components/pixel-office.js`로 추출해 ending도 재사용 — 리스크(기존 파일 수정) 있어 별도 결정. 당장은 ending.js에 인라인해도 무방.
 
 ---
 
