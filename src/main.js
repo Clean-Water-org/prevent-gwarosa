@@ -1,4 +1,5 @@
 import { createInitialState } from "./state.js";
+import { items } from "./data/items.js";
 import { loadGame, saveGame } from "./lib/storage.js";
 import { renderTitle } from "./scenes/title.js";
 import { renderSetup } from "./scenes/setup.js";
@@ -72,9 +73,31 @@ export function finishWith(ending) {
   render();
 }
 
+export function useItem(index) {
+  if (state.scene === "main" && !state.flags?.handoverGuideSeen) return;
+
+  const itemId = state.inventory[index];
+  const item = items[itemId];
+  if (!item) return;
+
+  if (itemId === "coffee") playItemSound("assets/audio/swallow.wav");
+
+  mutateState((draft) => {
+    const draftItem = items[draft.inventory[index]];
+    if (!draftItem) return draft;
+    return draftItem.use(draft);
+  });
+}
+
+function playItemSound(src) {
+  const audio = new Audio(src);
+  audio.volume = 0.72;
+  audio.play().catch(() => {});
+}
+
 function render() {
   app.innerHTML = "";
-  scenes[state.scene]?.(app, state, { setState, mutateState, go, finishWith });
+  scenes[state.scene]?.(app, state, { setState, mutateState, go, finishWith, useItem });
   if (state.scene !== "title") saveGame(state);
 }
 
