@@ -1,4 +1,4 @@
-import { el } from "../ui.js";
+﻿import { el } from "../ui.js";
 
 export function renderTitle(root, state, actions) {
   root.append(
@@ -46,6 +46,10 @@ export function renderTitle(root, state, actions) {
               el("button", {
                 text: "09:00 시작화면 바로 보기",
                 onClick: () => actions.go("commute"),
+              }),
+              el("button", {
+                text: "메인화면 바로 보기",
+                onClick: () => actions.go("main"),
               }),
               el("button", {
                 text: "이메일 분류 원본 실행",
