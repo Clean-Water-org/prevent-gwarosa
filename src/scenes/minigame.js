@@ -13,7 +13,7 @@ export function renderMiniGame(root, state, actions) {
   else renderPlaceholderMiniGame(root, state, actions, game);
 }
 
-function renderEmailGame(root, state, actions, game) {
+export function renderEmailGame(root, state, actions, game) {
   const deck = buildEmailDeck(state);
   const run = {
     index: 0,
