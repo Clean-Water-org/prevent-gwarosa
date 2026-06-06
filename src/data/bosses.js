@@ -5,6 +5,7 @@ export const bosses = [
     publicHint: "꼼꼼하고 성과 지향적인 팀장님",
     trait: "업무 지시가 잦지만 성과를 인정한다.",
     weights: { order: 40, watch: 30, help: 20, praise: 50, shame: 50 },
+    speechNote: "간결·직접적. 마침표 강조. 성과 압박.",
   },
   {
     id: "smart-lazy",
@@ -12,6 +13,7 @@ export const bosses = [
     publicHint: "워라밸을 중시하지만 사고에는 민감한 팀장님",
     trait: "거절은 잘 통하지만 책임 전가가 무섭다.",
     weights: { order: 10, watch: 5, help: 0, praise: 10, shame: 5 },
+    speechNote: "부드럽지만 논리적. 선택지를 주는 척 선긋기.",
   },
   {
     id: "clumsy-busy",
@@ -19,6 +21,7 @@ export const bosses = [
     publicHint: "열정적이지만 방향이 자주 바뀌는 팀장님",
     trait: "업무 지시가 많고 방향도 엉뚱하다.",
     weights: { order: 40, watch: 40, help: 30, praise: 10, shame: 30 },
+    speechNote: "열정적·느낌표 남발. 두리뭉실한 지시.",
   },
   {
     id: "clumsy-lazy",
@@ -26,5 +29,6 @@ export const bosses = [
     publicHint: "자유로운 분위기를 선호하는 팀장님",
     trait: "패널티는 적지만 행동이 예측 불가하다.",
     weights: { order: 20, watch: 10, help: 10, praise: 5, shame: 10 },
+    speechNote: "무심·줄임표. 애매한 지시. 책임 소재 불명.",
   },
 ];

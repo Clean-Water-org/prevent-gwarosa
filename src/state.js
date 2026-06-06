@@ -8,7 +8,7 @@ export function createInitialState() {
     scene: "title",
     phaseIndex: 0,
     minigameRound: 0,
-    gameMinute: 9 * 60,
+    gameMinute: 8 * 60 + 58,
     ending: null,
     player: {
       name: "오늘의 직장인",
