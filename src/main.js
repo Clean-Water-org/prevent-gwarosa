@@ -1,6 +1,7 @@
 import { createInitialState } from "./state.js";
 import { loadGame, saveGame } from "./lib/storage.js";
 import { renderTitle } from "./scenes/title.js";
+import { renderSetup } from "./scenes/setup.js";
 import { renderOnboarding } from "./scenes/onboarding.js";
 import { renderCommute } from "./scenes/commute.js";
 import { renderMainWork } from "./scenes/main-work.js";
@@ -12,6 +13,7 @@ const app = document.querySelector("#app");
 
 const scenes = {
   title: renderTitle,
+  setup: renderSetup,
   onboarding: renderOnboarding,
   commute: renderCommute,
   main: renderMainWork,

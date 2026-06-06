@@ -26,7 +26,7 @@ export function renderTitle(root, state, actions) {
             el("div", { class: "title-buttons" }, [
               el("button", {
                 class: "title-main-button",
-                onClick: () => actions.go("commute"),
+                onClick: () => actions.go("setup"),
               }, [
                 el("span", { class: "play-mark", text: "▶" }),
                 el("span", { text: "출근하기" }),

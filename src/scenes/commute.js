@@ -38,7 +38,7 @@ export function renderCommute(root, state, actions) {
   root.append(
     el("section", { class: "briefing-screen survival-briefing" }, [
       el("header", { class: "briefing-hero survival-hero" }, [
-        renderEmployeeBadge(playerName),
+        renderEmployeeBadge(playerName, state.player.gender),
         el("div", { class: "briefing-clock survival-clock" }, [
           el("strong", { text: "09:00" }),
           el("span", { text: "월요일  |  2026년 5월 27일" }),
@@ -96,15 +96,15 @@ function pickTipIndex() {
   return nextIndex;
 }
 
-function renderEmployeeBadge(playerName) {
+function renderEmployeeBadge(playerName, gender) {
+  const portrait = gender === "female" ? "female" : "male";
   return el("article", { class: "employee-badge survival-badge" }, [
     el("div", { class: "badge-clip" }),
     el("div", { class: "badge-company" }, [
       el("span", { text: "DAEHAN TECH" }),
     ]),
-    el("div", { class: "badge-photo" }, [
-      el("span", { class: "badge-face" }),
-      el("span", { class: "badge-body" }),
+    el("div", { class: "badge-photo has-portrait" }, [
+      el("img", { class: "badge-portrait", src: `assets/portraits/${portrait}.svg`, alt: "증명사진" }),
     ]),
     el("strong", { text: "오늘의 직장인" }),
     el("b", { text: `사원 ${playerName}` }),

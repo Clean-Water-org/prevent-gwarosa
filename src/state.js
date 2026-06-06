@@ -1,4 +1,5 @@
 import { bosses } from "./data/bosses.js";
+import { startingInventory } from "./data/player-types.js";
 
 export function createInitialState() {
   const boss = bosses[Math.floor(Math.random() * bosses.length)];
@@ -11,7 +12,7 @@ export function createInitialState() {
     ending: null,
     player: {
       name: "오늘의 직장인",
-      gender: "neutral",
+      gender: "male",
       type: "coffee",
     },
     boss,
@@ -21,7 +22,8 @@ export function createInitialState() {
       stress: 0,
       health: 100,
     },
-    inventory: ["coffee", "shorts"],
+    // 설정 화면(서명하고 출근)에서 유형 기준으로 다시 설정됨. 기본값은 커피파.
+    inventory: startingInventory("coffee"),
     counters: {
       coffeeStreak: 0,
       smokeUses: 0,

@@ -17,7 +17,7 @@
 | localStorage 저장 | ✅ 완성 | `src/lib/storage.js`. 새로고침 복원 전용. 타이틀 진입 시 저장 무시, 이어하기 미구현 |
 | 타이머 유틸 | ✅ 완성 | `src/lib/timer.js`. pause/resume/stop 지원 |
 | 미니게임 서브폴더 분리 | ✅ 완성 | `src/scenes/minigame/index.js` + `email.js` |
-| 타이틀 입력 폼 | 🔲 미구현 | 와이어프레임 대기 중 |
+| 설정 화면 (입사 서류) | 🔲 미구현 | 와이어프레임 수령. 픽셀아트 스타일로 구현 예정 (Phase 4) |
 
 ---
 
@@ -101,13 +101,30 @@ createTimer(onTick, onEnd)  // → { start, pause, resume, stop, getLeft }
 
 ---
 
-### Phase 4 — 타이틀 입력 폼
+### Phase 4 — 설정 화면 (입사 서류 / 신규 입사자 정보 카드)
 
-와이어프레임 수령 후 진행. 예상 항목:
-- 이름 입력 (텍스트)
-- 성별 선택 (남/여/선택 안 함)
-- 커피파 / 담배파 선택 → `state.player.type` 결정
-- "이어하기" 버튼 (localStorage 저장 있을 때)
+참고: `docs/design-reference/setup.jsx` (콘텐츠·레이아웃), `wireframes/wireframe-all-screens.html`
+
+> **스타일**: 미니게임2와 동일한 **픽셀아트 레트로**(Galmuri 폰트, PX 팔레트, 오피스 배경 + 모니터/문서 프레임). 와이어프레임의 손그림 로파이 톤은 미적용 — 와이어프레임은 **콘텐츠·레이아웃 참조용**.
+
+#### 4-1. 데이터 (`src/data/player-types.js`)
+`setup.jsx`의 TYPE_DATA 포팅 — 유형별 가이드(기본아이템·효과·패널티):
+- **커피파** `coffee` ☕ "체력형": 기본 커피 / 효과 체력 +15 / 패널티 연속 2회 → 커피 과다복용(커서 떨림)
+- **담배파** `cigarette` 🚬 "멘탈형": 기본 담배 / 효과 스트레스 -12·시간 단축 / 패널티 체력 감소·30% 흡연 초과
+- 유형 → 인벤토리: 커피파 `["coffee","shorts"]` / 담배파 `["smoke","shorts"]` (담배 아이템 id는 `smoke`)
+
+#### 4-2. 씬 (`src/scenes/setup.js`)
+- `renderSetup(root, state, actions)` — 픽셀아트 입사 서류 카드
+- 헤더: 📋 신규 입사자 정보 카드 / 과로사 방지 (주)
+- 좌: **증명사진**(성별 연동 픽셀 도트 일러스트 남/여) · 우: 이름 입력 / 성별(👨남·👩여) / 유형(☕커피파·🚬담배파) / 유형 가이드 패널
+- 하단: 아이템 안내(슬롯 3칸 — 시작 2칸 유형기본+쇼츠 / 보상 1칸 동료 이벤트)
+- "서명하고 출근 →" → `state.player` 확정 + 인벤토리 설정 → commute
+
+#### 4-3. 상태·라우팅 반영
+- `player.name`(입력), `player.gender`("male"/"female", 기본 male), `player.type`("coffee"/"cigarette")
+- 인벤토리를 **유형 기준으로 설정** (현재 `createInitialState`의 `["coffee","shorts"]` 하드코딩 → setup에서 확정)
+- `main.js` scenes에 `setup` 등록 / title "출근하기" → `setup` / setup "서명하고 출근" → commute
+- **성별 남/여 2개**, **이어하기 버튼 제외** (와이어프레임 기준)
 
 ---
 
@@ -197,7 +214,7 @@ export function renderMiniGame(root, state, actions) {
 
 ## 미결 사항
 
-- [ ] 타이틀 와이어프레임 수령 → 입력 폼 구현
+- [x] 타이틀 와이어프레임 수령 → 설정 화면(입사 서류)으로 Phase 4 확정 (남/여·이어하기 제외·title→setup→commute)
 - [ ] **라운드 수 확정**: 원안 5회 vs v1.2 제출판 4회 — 통일 후 `minigameRound >= N` 수정
 - [ ] 미니게임 순서 확정 (현재: email·meeting·report·email·meeting 가정, 4회라면 앞 4개)
 - [ ] 점심 이후 메인화면 이벤트 풀 확장 (현재 3종)
