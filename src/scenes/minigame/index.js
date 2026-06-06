@@ -3,6 +3,7 @@ import { applyDelta, checkEnding } from "../../state.js";
 import { minigames } from "../../data/minigames.js";
 import { renderEmailGame } from "../minigame.js";
 import { renderMeetingGame } from "./meeting.js";
+import { renderReportGame } from "./report.js";
 
 // ⚠️ 라운드 수: 원안 5회 / v1.2 제출판 4회 — 확정 후 ROTATION 슬라이싱 및 종료 조건 통일 필요
 const ROTATION = ["email", "meeting", "report", "email", "meeting"];
@@ -48,6 +49,8 @@ export function renderMiniGame(root, state, actions) {
     renderEmailGame(root, state, extendedActions, game);
   } else if (gameId === "meeting") {
     renderMeetingGame(root, state, extendedActions, game);
+  } else if (gameId === "report") {
+    renderReportGame(root, state, extendedActions, game);
   } else {
     renderPlaceholderMiniGame(root, state, extendedActions, game);
   }

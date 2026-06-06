@@ -38,6 +38,11 @@ export function renderMainWork(root, state, actions) {
           draft.scene = "minigame";
           return draft;
         }) }),
+        el("button", { text: "미니게임 3 시작 (오탈자)", onClick: () => actions.mutateState((draft) => {
+          draft.minigameRound = 2;
+          draft.scene = "minigame";
+          return draft;
+        }) }),
         el("button", { text: "이벤트 테스트", onClick: () => openEvent(root, state, actions) }),
       ]),
     ]),
