@@ -148,7 +148,7 @@ export function renderSetup(root, state, actions) {
   titlebar.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#3a6ea5;border-bottom:3px solid ${PX.ink}`;
   const titleLeft = document.createElement("span");
   titleLeft.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#fff";
-  titleLeft.textContent = "📋 신규입사자_정보카드.hwp — 인사팀 전산";
+  titleLeft.textContent = "📋 출근부_2026.hwp — 인사팀 전산";
   const wbtns = document.createElement("div");
   wbtns.style.cssText = "display:flex;gap:4px";
   ["_", "▢", "✕"].forEach((c) => {
@@ -164,7 +164,7 @@ export function renderSetup(root, state, actions) {
   docHead.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#ffe9a8;border-bottom:3px solid ${PX.ink}`;
   const docTitle = document.createElement("span");
   docTitle.style.cssText = "font-family:Galmuri14,monospace;font-size:16px;color:var(--ink)";
-  docTitle.textContent = "📋 신규 입사자 정보 카드";
+  docTitle.textContent = "📋 오늘의 출근부";
   const docCo = document.createElement("span");
   docCo.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#7a5a2a";
   docCo.textContent = "과로사 방지 (주)";
@@ -196,7 +196,7 @@ export function renderSetup(root, state, actions) {
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.maxLength = 12;
-  nameInput.placeholder = "이름을 입력하세요 (화면 표시용)";
+  nameInput.placeholder = "이름을 입력하세요";
   nameInput.style.cssText = `font-family:Galmuri11,monospace;font-size:14px;color:${PX.ink};background:#fff;border:2px solid ${PX.ink};padding:7px 10px;outline:none`;
   nameInput.addEventListener("input", () => { form.name = nameInput.value; });
   nameWrap.append(flabel("이름"), nameInput);
@@ -242,7 +242,7 @@ export function renderSetup(root, state, actions) {
     typeRow.append(chip);
   });
   function updateTypeSel() { typeBtns.forEach(({ key, chip }) => styleSelectable(chip, form.type === key)); }
-  typeWrap.append(flabel("유형 — 기본 아이템 슬롯이 달라집니다"), typeRow);
+  typeWrap.append(flabel("오늘의 컨디션 — 기본 아이템이 달라집니다"), typeRow);
 
   // 유형 가이드 패널
   const guide = document.createElement("div");
