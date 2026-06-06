@@ -15,7 +15,7 @@ export function createInitialState() {
       type: "coffee",
     },
     boss,
-    colleagueTrust: 35,
+    colleagueTrust: 30,
     stats: {
       workload: 100,
       stress: 0,

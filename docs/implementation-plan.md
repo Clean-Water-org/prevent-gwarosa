@@ -13,8 +13,10 @@
 | 이메일 분류 미니게임 | ✅ 완성 | 키보드 A/D/Space 지원, 상태이상 효과 적용 |
 | 회의 준비 미니게임 | 🔲 미구현 | 현재 판정 버튼 플레이스홀더 |
 | 보고서 오탈자 미니게임 | 🔲 미구현 | 현재 판정 버튼 플레이스홀더 |
-| URL hash 라우팅 | 🔲 미구현 | 현재 state.scene 기반, hash 연동 없음 |
-| localStorage 저장 | 🔲 미구현 | |
+| URL hash 라우팅 | ✅ 완성 | `history.pushState` + `hashchange` 이벤트. 뒤로가기 지원 |
+| localStorage 저장 | ✅ 완성 | `src/lib/storage.js`. 새로고침 복원 전용. 타이틀 진입 시 저장 무시, 이어하기 미구현 |
+| 타이머 유틸 | ✅ 완성 | `src/lib/timer.js`. pause/resume/stop 지원 |
+| 미니게임 서브폴더 분리 | ✅ 완성 | `src/scenes/minigame/index.js` + `email.js` |
 | 타이틀 입력 폼 | 🔲 미구현 | 와이어프레임 대기 중 |
 
 ---
@@ -34,8 +36,9 @@ saveGame(state)   // JSON.stringify → localStorage['gwarosa_save']
 loadGame()        // parse 후 반환, 없으면 null
 clearGame()       // 저장 삭제
 ```
-- `main.js` render 호출마다 자동 저장
-- 타이틀 화면에 "이어하기" 버튼 (저장 있을 때만 표시)
+- `main.js` render 호출마다 자동 저장 (새로고침 시 진행 상태 복원용)
+- 타이틀 화면 진입 시에는 저장 데이터를 무시하고 항상 새 게임 시작
+- "이어하기" 버튼 미구현 — localStorage는 페이지 새로고침으로 인한 손실 방지 전용
 
 #### 1-3. 타이머 유틸 (`src/lib/timer.js`)
 ```js
@@ -167,10 +170,36 @@ export function renderMiniGame(root, state, actions) {
 
 ---
 
+## 코드 불일치 목록 (PDF 기획서 기준)
+
+> 기획서 최종본(v1.2) 검토 후 발견된 수정 필요 항목.
+
+| 위치 | 현재 코드 값 | 기획서 값 | 상태 |
+|---|---|---|---|
+| `src/state.js` `createInitialState()` | `colleagueTrust: 35` | 초기값 **30** | 🔲 미수정 |
+| `src/scenes/minigame.js` `applyMiniResult` | 단일 델타 (email·meeting·report 동일) | 게임별 상이한 델타 (아래 표 참고) | 🔲 미수정 |
+| `src/scenes/minigame.js` 이메일 부분성공 | `stress: +8` | `stress: +5` | 🔲 미수정 |
+| `src/scenes/minigame.js` 이메일 실패 | `stress: +18, health: -8` | `stress: +15, health: -5` | 🔲 미수정 |
+| `src/scenes/minigame.js` 보고서 실패 | `workload: -3` | `workload: **-5**` | 🔲 미수정 |
+| `src/scenes/minigame.js` 라운드 종료 조건 | `minigameRound >= 5` (5회) | v1.2 제출판 **4회** / 원안 5회 | ⚠️ 확인 필요 |
+| `src/data/items.js` | 사용 제한 없음 | 담배 5회·커피 3회·쇼츠 2회 | 🔲 미구현 |
+| `src/scenes/ending.js` | 성공 엔딩 단순 표시 | 칼퇴 등급 (S/A/B) 표시 | 🔲 미구현 |
+| headache 효과 | CSS 시각 효과만 | 게임시계 강제 +30분 (최대 1회) | 🔲 미구현 |
+
+**미니게임별 정확한 델타**:
+| 미니게임 | 성공 | 부분성공 | 실패 |
+|---|---|---|---|
+| 이메일 | workload -20 | workload -10, stress +5 | workload -3, stress +15, health -5 |
+| 회의 준비 | workload -20 | workload -10, stress +8 | workload -3, stress +20, health -8 |
+| 보고서 오탈자 | workload -20 | workload -10, stress +8 | workload **-5**, stress +20, health -8 |
+
+---
+
 ## 미결 사항
 
 - [ ] 타이틀 와이어프레임 수령 → 입력 폼 구현
-- [ ] 미니게임 5종 순서 확정 (현재: email·meeting·report·email·meeting 가정)
+- [ ] **라운드 수 확정**: 원안 5회 vs v1.2 제출판 4회 — 통일 후 `minigameRound >= N` 수정
+- [ ] 미니게임 순서 확정 (현재: email·meeting·report·email·meeting 가정, 4회라면 앞 4개)
 - [ ] 점심 이후 메인화면 이벤트 풀 확장 (현재 3종)
 - [ ] 동료 신뢰도(colleagueTrust) 실제 효과 연결
 - [ ] 상사 weights 이벤트 확률 적용
