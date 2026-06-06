@@ -402,7 +402,7 @@ export function renderMeetingGame(root, state, actions, game) {
     evJitter:false, jitterTimer:null,
     bossWatching:false,
     marks:null, result:null, gradeTimer:null, timerInterval:null,
-    usedEvents:{}, firedPoints:{},
+    usedEvents:{}, elapsed:0,
     floatTimer:null, trapTimer:null, evToastTimer:null, slipTimer:null, slowTimer:null,
   };
 
@@ -887,10 +887,9 @@ export function renderMeetingGame(root, state, actions, game) {
     run.timerInterval = setInterval(() => {
       if (run.done||run.phase!=="play") return;
       run.time=Math.max(0,run.time-1);
+      run.elapsed+=1; // 실제 경과 초 (run.time 조작과 무관 — 10초 주기 보장)
       updateTimerDisplay();
-      const elapsed=60-run.time;
-      if (elapsed>0 && elapsed%10===0 && !run.firedPoints[elapsed]) {
-        run.firedPoints[elapsed]=true;
+      if (run.elapsed % 10 === 0) {
         fireEvent(pickNextEvent());
       }
       if (run.time<=0) { clearInterval(run.timerInterval); finish(); }

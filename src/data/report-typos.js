@@ -147,3 +147,15 @@ export const DIFFICULTY = [
   { key: "lv1", label: "난이도1 (스트레스 50↑)", lines: 12, typo: 4, trap: 4, suspect: 8, wrongMax: 4, fx: "없음" },
   { key: "lv2", label: "난이도2 (스트레스 80↑)", lines: 12, typo: 4, trap: 4, suspect: 8, wrongMax: 3, fx: "화면 흔들림" },
 ];
+
+// 상사 빨간펜 코멘트 — 유형별 진실성 비율 (state.boss.id 기준, 합 100)
+//   real : 진짜 힌트 (정답 오탈자에 정확히 동그라미)
+//   half : 반쪽 힌트 (정답 오탈자가 있는 줄의 다른 단어에 동그라미)
+//   fake : 페이크 힌트 (정답이 없는 줄·단어에 동그라미)
+//   none : 코멘트 안 함
+export const BOSS_RED_PEN = {
+  "smart-busy": { name: "똑부", real: 80, half: 20, fake: 0, none: 0 },
+  "clumsy-busy": { name: "멍부", real: 30, half: 60, fake: 10, none: 0 },
+  "clumsy-lazy": { name: "멍게", real: 10, half: 20, fake: 70, none: 0 },
+  "smart-lazy": { name: "똑게", real: 0, half: 0, fake: 0, none: 100 },
+};

@@ -1,5 +1,6 @@
-import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY } from "../../data/report-typos.js";
+import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY, BOSS_RED_PEN } from "../../data/report-typos.js";
 import { el, renderHud } from "../../ui.js";
+import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -128,13 +129,17 @@ export function renderReportGame(root, state, actions, game) {
   const diff = diffOf(stress);
   const repIdx = pickReportIdx();
   const report = buildReport(repIdx, diff.lines);
-  const total = report.typoKeys.length;
+  let total = report.typoKeys.length; // addPage 이벤트로 증가할 수 있음
 
   const run = {
     time: 60, found: [], wrong: 0, phase: "play", done: false, ending: false,
+    elapsed: 0,
     flashKey: null, wrongKey: null,
+    penActive: false, penKey: null, firedPen: false,
+    spellKeys: [], usedEvents: {},
     timerInterval: null, flashTimer: null, wrongTimer: null, floatTimer: null,
-    toastTimer: null, warnTimer: null, endTimer: null,
+    toastTimer: null, warnTimer: null, endTimer: null, penHoldTimer: null, penOutTimer: null,
+    evToastTimer: null, spellTimer: null, saveTimer: null, flickTimer: null,
   };
 
   // ── 오피스 배경 셸 ──
@@ -284,6 +289,36 @@ export function renderReportGame(root, state, actions, game) {
   room.append(monitorScroll);
   shell.append(room);
 
+  // ── 상사 빨간펜 연출 오버레이 (고정) ──
+  // 화면 전체 어두운 오버레이
+  const darkOverlayEl = document.createElement("div");
+  darkOverlayEl.style.cssText = "position:fixed;inset:0;z-index:43;pointer-events:none;background:rgba(0,0,0,.15);opacity:0;transition:opacity .45s";
+  // 실루엣 뒤 빨간 비네팅
+  const vignetteEl = document.createElement("div");
+  vignetteEl.style.cssText = "position:fixed;inset:0;z-index:44;pointer-events:none;opacity:0;transition:opacity .45s;background:radial-gradient(ellipse 80% 80% at 80% 40%, rgba(200,40,40,0) 45%, rgba(170,30,30,.28) 80%, rgba(120,20,20,.42) 100%);mix-blend-mode:multiply";
+  // 상사 실루엣 (우측 상단에서 등장)
+  const bossOverlayEl = makeBossSilhouette({ direction: "right-top" });
+  bossOverlayEl.hidden = true;
+  // 빨간펜 말풍선
+  const penSpeechEl = document.createElement("div");
+  penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:Galmuri14,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  penSpeechEl.textContent = "여기 좀 이상한데? 🖋️";
+
+  // 중간 이벤트용 오버레이
+  const evToastEl = document.createElement("div");
+  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:Galmuri14,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  const flickerEl = document.createElement("div");
+  flickerEl.style.cssText = "position:fixed;inset:0;z-index:49;pointer-events:none;background:#fff;opacity:0";
+  const kakaoEl = document.createElement("div");
+  kakaoEl.hidden = true;
+  shell.append(darkOverlayEl, vignetteEl, bossOverlayEl, penSpeechEl, evToastEl, flickerEl, kakaoEl);
+
+  // 본문 영역 내부의 '저장 중...' 인디케이터
+  const savingEl = document.createElement("div");
+  savingEl.style.cssText = "position:absolute;left:20px;top:12px;z-index:8;font-family:Galmuri11,monospace;font-size:12px;color:#777;background:#eef0f3;border:2px solid #c5c9cf;padding:3px 11px;display:none";
+  savingEl.textContent = "💾 저장 중...";
+  board.append(savingEl);
+
   // ── 렌더 헬퍼 ──────────────────────────────────────────────────
   function renderSeg(s) {
     if (s.plain != null) {
@@ -294,7 +329,7 @@ export function renderReportGame(root, state, actions, game) {
         if (/^\s+$/.test(tok)) { nodes.push(document.createTextNode(tok)); return; }
         const wk = s.key + "-w" + i;
         nodes.push(el("span", {
-          class: "mg3p-word" + (run.wrongKey === wk ? " wrongflash" : ""),
+          class: "mg3p-word" + (run.wrongKey === wk ? " wrongflash" : "") + (run.penKey === wk ? " pen" : "") + (run.spellKeys.includes(wk) ? " spell" : ""),
           text: tok,
           onClick: () => clickWrong(wk, false),
         }));
@@ -309,14 +344,14 @@ export function renderReportGame(root, state, actions, game) {
         ])];
       }
       return [el("span", {
-        class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : ""),
+        class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : ""),
         text: s.wrong,
         onClick: () => clickTypo(s.key),
       })];
     }
     // trap
     return [el("span", {
-      class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : ""),
+      class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : "") + (run.spellKeys.includes(s.key) ? " spell" : ""),
       text: s.word,
       onClick: () => clickWrong(s.key, true),
     })];
@@ -410,12 +445,230 @@ export function renderReportGame(root, state, actions, game) {
     }
   }
 
+  // ── 상사 빨간펜 코멘트 ──────────────────────────────────────────
+  const bossRatio = BOSS_RED_PEN[state.boss && state.boss.id] || BOSS_RED_PEN["smart-busy"];
+
+  // 진실성 비율에 따라 real|half|fake|none 가중 추첨
+  function pickPenKind() {
+    const roll = Math.random() * 100;
+    let acc = 0;
+    for (const k of ["real", "half", "fake", "none"]) {
+      acc += bossRatio[k] || 0;
+      if (roll < acc) return k;
+    }
+    return "none";
+  }
+
+  // 줄 li에서 동그라미 칠 단어 키 하나 선택 (오탈자 세그먼트는 제외)
+  function pickWordKeyOnLine(li) {
+    const ln = report.lines.find((l) => l.li === li);
+    if (!ln) return null;
+    for (const s of ln.segs) {
+      if (s.plain != null) {
+        const parts = s.plain.split(/(\s+)/);
+        for (let i = 0; i < parts.length; i++) {
+          if (parts[i] && !/^\s+$/.test(parts[i])) return s.key + "-w" + i;
+        }
+      } else if (s.trap) {
+        return s.key;
+      }
+      // typo 세그먼트는 건너뜀
+    }
+    return null;
+  }
+
+  // kind별 동그라미 대상 키 결정
+  function resolvePenTarget(kind) {
+    const typoLines = new Set(report.typoKeys.map((k) => +k.split("-")[0]));
+    if (kind === "real") {
+      const unfound = report.typoKeys.filter((k) => !run.found.includes(k));
+      return unfound.length ? unfound[Math.floor(Math.random() * unfound.length)] : null;
+    }
+    if (kind === "half") {
+      // 오탈자가 있는 줄의 '다른 단어'
+      const lines = [...typoLines];
+      for (const li of lines.sort(() => Math.random() - 0.5)) {
+        const wk = pickWordKeyOnLine(li);
+        if (wk) return wk;
+      }
+      return null;
+    }
+    // fake: 오탈자가 없는 줄의 단어
+    const noTypoLines = report.lines.map((l) => l.li).filter((li) => !typoLines.has(li));
+    for (const li of noTypoLines.sort(() => Math.random() - 0.5)) {
+      const wk = pickWordKeyOnLine(li);
+      if (wk) return wk;
+    }
+    return null;
+  }
+
+  // 상사 빨간펜 발동 (forceKind 지정 시 강제). 실제 발동 시 true 반환
+  function firePen(forceKind) {
+    if (run.phase !== "play" || run.penActive || run.ending) return false;
+    const kind = forceKind || pickPenKind();
+    if (kind === "none") return false; // 똑게 등: 코멘트 안 함
+    const target = resolvePenTarget(kind);
+    if (!target) return false;
+
+    run.penActive = true;
+    run.penKey = target;
+    updateBody();
+
+    // 등장: 어두운 오버레이 + 빨간 비네팅 + 실루엣 슬라이드인 + 말풍선
+    darkOverlayEl.style.opacity = "1";
+    vignetteEl.style.opacity = "1";
+    bossOverlayEl.hidden = false;
+    bossOverlayEl.classList.remove("boss-leave");
+    bossOverlayEl.classList.add("boss-enter");
+    penSpeechEl.style.display = "block";
+    penSpeechEl.classList.remove("boss-leave");
+    penSpeechEl.classList.add("boss-enter");
+
+    // 3초 유지 후 페이드아웃(0.5초)
+    clearTimeout(run.penHoldTimer);
+    run.penHoldTimer = setTimeout(() => {
+      darkOverlayEl.style.opacity = "0";
+      vignetteEl.style.opacity = "0";
+      bossOverlayEl.classList.remove("boss-enter");
+      bossOverlayEl.classList.add("boss-leave");
+      penSpeechEl.classList.remove("boss-enter");
+      penSpeechEl.classList.add("boss-leave");
+      clearTimeout(run.penOutTimer);
+      run.penOutTimer = setTimeout(() => {
+        bossOverlayEl.hidden = true;
+        bossOverlayEl.classList.remove("boss-leave");
+        penSpeechEl.style.display = "none";
+        penSpeechEl.classList.remove("boss-leave");
+        run.penKey = null;
+        run.penActive = false;
+        if (run.phase === "play") updateBody();
+      }, 500);
+    }, 3000);
+    return true;
+  }
+
+  // ── 중간 이벤트 (6종) ──────────────────────────────────────────
+  const ALL_EVENTS = ["wrongFix", "spell", "addPage", "saveFail", "kakao", "flicker"];
+
+  function pickNextEvent() {
+    let pool = ALL_EVENTS.filter((t) => !run.usedEvents[t]);
+    if (pool.length === 0) { run.usedEvents = {}; pool = ALL_EVENTS.slice(); }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    run.usedEvents[pick] = true;
+    return pick;
+  }
+
+  function showEvToast(msg) {
+    evToastEl.textContent = msg;
+    evToastEl.style.display = "block";
+    evToastEl.className = "banner-in";
+    clearTimeout(run.evToastTimer);
+    run.evToastTimer = setTimeout(() => { evToastEl.style.display = "none"; }, 3000);
+  }
+
+  function parseLineToObj(raw, li) {
+    return { li, segs: parseReportLine(raw).map((s, si) => ({ ...s, key: li + "-" + si })) };
+  }
+
+  // 발견한 오탈자 1개를 미발견 상태로 되돌림
+  function loseOneFound() {
+    if (run.found.length) { run.found.pop(); updateBody(); updateFoundPill(); }
+  }
+
+  function fireMidEvent(type) {
+    if (run.phase !== "play" || run.ending) return;
+    if (type === "wrongFix") {
+      loseOneFound();
+      showEvToast("🤦 동료가 수정해줬어요... 근데 또 틀렸네요?");
+    } else if (type === "spell") {
+      const trapKeys = [];
+      report.lines.forEach((ln) => ln.segs.forEach((s) => { if (s.trap) trapKeys.push(s.key); }));
+      run.spellKeys = trapKeys.slice(0, 3);
+      updateBody();
+      clearTimeout(run.spellTimer);
+      run.spellTimer = setTimeout(() => { run.spellKeys = []; if (run.phase === "play") updateBody(); }, 5000);
+      showEvToast("🔄 맞춤법 검사기 오작동 중...");
+    } else if (type === "addPage") {
+      const baseLi = report.lines.length;
+      const extra = [
+        parseLineToObj("＋ 부록 — 세부 항목은 별도 «첩부|첨부|kr» 자료로 갈음한다.", baseLi),
+        parseLineToObj("＋ 보완 — 추가 사항은 다음 회의에서 다룬다.", baseLi + 1),
+      ];
+      report.lines.push(...extra);
+      extra.forEach((ln) => ln.segs.forEach((s) => { if (s.typo) report.typoKeys.push(s.key); }));
+      total = report.typoKeys.length;
+      updateBody();
+      updateFoundPill();
+      showEvToast("📄 팀장님: 이 내용도 추가해주세요");
+    } else if (type === "saveFail") {
+      savingEl.style.display = "block";
+      clearTimeout(run.saveTimer);
+      run.saveTimer = setTimeout(() => {
+        savingEl.style.display = "none";
+        loseOneFound();
+        showEvToast("💾 저장 실패! 일부 수정사항이 사라졌어요");
+      }, 1800);
+    } else if (type === "kakao") {
+      showKakao();
+    } else if (type === "flicker") {
+      flickerEl.style.animation = "mg3pFlick 1s steps(1)";
+      clearTimeout(run.flickTimer);
+      run.flickTimer = setTimeout(() => { flickerEl.style.animation = ""; }, 1000);
+    }
+  }
+
+  function showKakao() {
+    kakaoEl.replaceChildren();
+    const win = document.createElement("div");
+    win.style.cssText = `position:fixed;z-index:48;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;border:3px solid ${PX.ink};box-shadow:6px 6px 0 rgba(0,0,0,.35)`;
+    const bar = document.createElement("div");
+    bar.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:#fee500;padding:7px 12px;border-bottom:3px solid ${PX.ink}`;
+    const barTitle = document.createElement("span");
+    barTitle.style.cssText = "font-family:Galmuri14,monospace;font-size:13px;color:#3a2e00";
+    barTitle.textContent = "💬 까까오톡 PC";
+    const closeBtn = document.createElement("span");
+    closeBtn.style.cssText = `font-family:Galmuri14,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", () => { kakaoEl.replaceChildren(); kakaoEl.hidden = true; });
+    bar.append(barTitle, closeBtn);
+    const body = document.createElement("div");
+    body.style.cssText = "background:#b2c7d9;padding:10px 12px;display:flex;flex-direction:column;gap:8px";
+    [["오늘 점심 약속 잊지마! 🍱"], ["이번 주말 약속 시간 어때?"]].forEach(([msg]) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;gap:7px;align-items:flex-start";
+      const av = document.createElement("span");
+      av.style.cssText = `width:30px;height:30px;border:2px solid ${PX.ink};background:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto`;
+      av.textContent = "🙂";
+      const col = document.createElement("div");
+      col.style.cssText = "display:flex;flex-direction:column;gap:2px";
+      const who = document.createElement("span");
+      who.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#2a3a47";
+      who.textContent = "옆자리 동료";
+      const bubble = document.createElement("span");
+      bubble.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
+      bubble.textContent = msg;
+      col.append(who, bubble);
+      row.append(av, col);
+      body.append(row);
+    });
+    win.append(bar, body);
+    kakaoEl.append(win);
+    kakaoEl.hidden = false;
+  }
+
   // ── 타이머 ──
   function startTimer() {
     run.timerInterval = setInterval(() => {
       if (run.done || run.phase !== "play") return;
       run.time = Math.max(0, run.time - 1);
+      run.elapsed += 1; // 실제 경과 초 (run.time 조작과 무관 — 10초 주기 보장)
       updateTimer();
+      // 10초마다: 첫 발동은 상사 빨간펜 시도(코멘트 안 하면 대신 중간 이벤트), 이후는 중간 이벤트
+      if (run.elapsed % 10 === 0 && !run.ending) {
+        let bossFired = false;
+        if (!run.firedPen) { run.firedPen = true; bossFired = firePen(); }
+        if (!bossFired) fireMidEvent(pickNextEvent());
+      }
       if (run.time <= 0) { clearInterval(run.timerInterval); finish(); }
     }, 1000);
   }
@@ -486,7 +739,8 @@ export function renderReportGame(root, state, actions, game) {
 
   function cleanup() {
     clearInterval(run.timerInterval);
-    [run.flashTimer, run.wrongTimer, run.floatTimer, run.toastTimer, run.warnTimer, run.endTimer].forEach(clearTimeout);
+    [run.flashTimer, run.wrongTimer, run.floatTimer, run.toastTimer, run.warnTimer, run.endTimer, run.penHoldTimer, run.penOutTimer,
+     run.evToastTimer, run.spellTimer, run.saveTimer, run.flickTimer].forEach(clearTimeout);
   }
 
   // ── 초기화 ──
