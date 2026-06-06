@@ -57,6 +57,22 @@ export function renderTitle(root, state, actions) {
                   window.location.href = "./assets/minigames/email-classification-prototype.html";
                 },
               }),
+              el("button", {
+                text: "회의 준비 바로 보기",
+                onClick: () => actions.mutateState((draft) => ({
+                  ...draft,
+                  scene: "minigame",
+                  flags: { ...draft.flags, devMode: true, devGameId: "meeting" },
+                })),
+              }),
+              el("button", {
+                text: "보고서 오탈자 바로 보기",
+                onClick: () => actions.mutateState((draft) => ({
+                  ...draft,
+                  scene: "minigame",
+                  flags: { ...draft.flags, devMode: true, devGameId: "report" },
+                })),
+              }),
             ]),
           ]),
         ]),

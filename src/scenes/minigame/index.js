@@ -35,7 +35,9 @@ export function renderMiniGame(root, state, actions) {
   }
 
   const round = state.minigameRound;
-  const gameId = ROTATION[round % ROTATION.length];
+  const gameId = (state.flags.devMode && state.flags.devGameId)
+    ? state.flags.devGameId
+    : ROTATION[round % ROTATION.length];
   const game = minigames.find((g) => g.id === gameId) || minigames[0];
 
   const extendedActions = {
@@ -63,6 +65,7 @@ function applyMiniResult(state, gameId, result, message) {
   if (next.flags.devMode) {
     next.scene = "title";
     next.flags.devMode = false;
+    next.flags.devGameId = null;
     return next;
   }
 
