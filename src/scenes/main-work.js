@@ -33,6 +33,11 @@ export function renderMainWork(root, state, actions) {
         phone ? renderPhone(phone, resolve, state) : el("div", { class: "phone-card", text: "전화기는 조용합니다." }),
         renderLog(state),
         el("button", { class: "primary", text: nextLabel(state), onClick: () => advancePhase(state, actions) }),
+        el("button", { text: "미니게임 2 시작 (회의 준비)", onClick: () => actions.mutateState((draft) => {
+          draft.minigameRound = 1;
+          draft.scene = "minigame";
+          return draft;
+        }) }),
         el("button", { text: "이벤트 테스트", onClick: () => openEvent(root, state, actions) }),
       ]),
     ]),
