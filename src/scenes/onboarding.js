@@ -4,13 +4,25 @@ export function renderOnboarding(root, state, actions) {
   root.append(
     el("section", { class: "screen" }, [
       el("article", { class: "document" }, [
-        el("h1", { text: "신입사원 온보딩 안내서" }),
-        el("p", { text: "오늘 하루는 업무량, 스트레스, 체력을 동시에 관리합니다. 업무량은 낮을수록, 스트레스는 낮을수록, 체력은 높을수록 좋습니다." }),
-        el("div", { class: "manual-grid" }, [
-          note("업무 처리", "메인화면에서는 채팅과 전화가 동시에 쌓입니다. 급한 것부터 답장해야 합니다."),
-          note("집중 업무", "미니게임은 총 5회입니다. 성공하면 업무량이 크게 줄고, 실패하면 스트레스와 체력이 흔들립니다."),
-          note("복지 혜택", "아이템은 메인화면에서만 사용합니다. 슬롯은 최대 3칸입니다."),
-          note("팀장님 성향", "팀장님은 네 가지 성향 중 하나입니다. 이름은 공개되지 않으니 행동 패턴으로 추리하세요."),
+        el("div", { class: "handover-doc" }, [
+          el("div", { class: "handover-title", text: "📄 업무 인수인계서" }),
+          el("div", { class: "handover-meta" }, [
+            el("span", { text: "작성자: 전임자" }),
+            el("span", { class: "meta-sep", text: "ㅣ" }),
+            el("span", { text: "열람 권장" }),
+          ]),
+          el("div", { class: "handover-rule" }),
+          el("ol", { class: "handover-items" }, [
+            item("업무량은 100에서 시작합니다. 18시 전에 모두 처리하면 퇴근할 수 있습니다."),
+            item("스트레스가 100이 되면 더 이상 버틸 수 없습니다. 적절히 관리하세요."),
+            item("체력이 0이 되면 업무를 진행할 수 없습니다. 무리하지 마세요."),
+            item("상사마다 성향이 다릅니다. 관찰하면 패턴을 찾을 수 있습니다."),
+            item("메신저는 자주 확인하는 것이 좋습니다. 답장이 늦어질수록 업무가 늘어날 수 있습니다."),
+            item("아이템은 필요할 때 사용하세요. 아껴둘 이유는 없습니다."),
+            item("미니게임을 성공하면 업무량을 크게 줄일 수 있습니다."),
+          ]),
+          el("div", { class: "handover-rule" }),
+          el("p", { class: "handover-closing", text: "마지막으로. 아직 늦지 않았습니다." }),
         ]),
         el("div", { class: "actions" }, [
           el("button", { class: "primary", text: "출근하기", onClick: () => actions.go("commute") }),
@@ -21,6 +33,6 @@ export function renderOnboarding(root, state, actions) {
   );
 }
 
-function note(title, body) {
-  return el("section", { class: "note" }, [el("h2", { text: title }), el("p", { text: body })]);
+function item(text) {
+  return el("li", { class: "handover-item", text });
 }

@@ -60,3 +60,105 @@ export function renderBadges(state) {
   badges.push(`상사 힌트: ${state.boss.publicHint}`);
   return el("div", { class: "status-badges" }, badges.map((badge) => el("span", { class: "badge", text: badge })));
 }
+
+export function renderNarrationPopup(lines, options = {}) {
+  const lineTexts = Array.isArray(lines) ? lines : [lines];
+  const typingSpeed = options.typingSpeed ?? 34;
+  const lineDelay = options.lineDelay ?? 320;
+  const promptKey = options.promptKey ?? "Enter";
+  const promptText = options.promptText ?? "다음";
+  const extraClass = options.className ? ` ${options.className}` : "";
+  const timers = [];
+  let stopped = false;
+  let cursor = null;
+
+  const lineList = el("div", { class: "narration-popup-lines" });
+  const prompt = el("footer", { class: "narration-popup-prompt" }, [
+    el("kbd", { text: promptKey }),
+    el("span", { text: promptText }),
+  ]);
+  const node = el("aside", {
+    class: `narration-popup${extraClass}`,
+    role: "status",
+    "aria-live": "polite",
+  }, [lineList, prompt]);
+
+  if (options.showPrompt === false) prompt.hidden = true;
+
+  function queue(callback, delay) {
+    const timer = window.setTimeout(callback, delay);
+    timers.push(timer);
+    return timer;
+  }
+
+  function clearTimers() {
+    while (timers.length > 0) window.clearTimeout(timers.pop());
+  }
+
+  function moveCursorTo(line) {
+    cursor?.remove();
+    cursor = el("span", { class: "narration-popup-cursor", "aria-hidden": "true", text: " " });
+    line.append(cursor);
+  }
+
+  function typeLine(index) {
+    if (stopped || index >= lineTexts.length) {
+      node.classList.add("typing-complete");
+      options.onComplete?.();
+      return;
+    }
+
+    const text = String(lineTexts[index] ?? "");
+    const line = el("p", { class: "narration-popup-line" });
+    const textNode = el("span", { class: "narration-popup-text" });
+    line.append(textNode);
+    lineList.append(line);
+    moveCursorTo(line);
+
+    let charIndex = 0;
+    const tick = () => {
+      if (stopped) return;
+      textNode.textContent = text.slice(0, charIndex);
+      if (charIndex < text.length) {
+        charIndex += 1;
+        queue(tick, typingSpeed);
+        return;
+      }
+
+      queue(() => typeLine(index + 1), lineDelay);
+    };
+
+    tick();
+  }
+
+  function start() {
+    stopped = false;
+    clearTimers();
+    lineList.textContent = "";
+    node.classList.remove("typing-complete");
+    queue(() => typeLine(0), options.startDelay ?? 0);
+  }
+
+  function finish() {
+    stopped = true;
+    clearTimers();
+    lineList.textContent = "";
+    for (const text of lineTexts) {
+      lineList.append(el("p", { class: "narration-popup-line", text: String(text ?? "") }));
+    }
+    cursor?.remove();
+    cursor = el("span", { class: "narration-popup-cursor", "aria-hidden": "true", text: " " });
+    lineList.lastElementChild?.append(cursor);
+    node.classList.add("typing-complete");
+  }
+
+  function stop() {
+    stopped = true;
+    clearTimers();
+    cursor?.remove();
+  }
+
+  if (options.autoStart !== false) start();
+
+  return { node, start, finish, stop };
+}
