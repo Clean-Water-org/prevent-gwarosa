@@ -1,3 +1,5 @@
+import { addLogEntry } from "../state.js";
+
 export const items = {
   coffee: {
     label: "커피",
@@ -6,9 +8,16 @@ export const items = {
     use(state) {
       state.stats.health = Math.min(100, state.stats.health + 15);
       state.counters.coffeeStreak += 1;
-      state.log.unshift("커피를 마셨습니다. 체력이 조금 회복됩니다.");
+      addLogEntry(state, {
+        cause: "커피를 마셨다.",
+        delta: { health: 15 },
+      });
       if (state.counters.coffeeStreak >= 2) {
-        state.log.unshift("손이 미세하게 떨립니다. 다음 미니게임이 불안정해집니다.");
+        addLogEntry(state, {
+          icon: "🟡",
+          cause: "커피를 연속으로 마셨다.",
+          effects: ["다음 미니게임 손떨림"],
+        });
       }
       return state;
     },
@@ -22,7 +31,10 @@ export const items = {
       state.stats.health = Math.max(0, state.stats.health - 3);
       state.counters.smokeUses += 1;
       state.counters.coffeeStreak = 0;
-      state.log.unshift("잠깐 바람을 쐬었습니다. 스트레스가 내려갑니다.");
+      addLogEntry(state, {
+        cause: "잠깐 바람을 쐬었다.",
+        delta: { stress: -12, health: -3 },
+      });
       if (Math.random() < 0.3) state.flags.nextBossOrderBoost = true;
       return state;
     },
@@ -34,7 +46,10 @@ export const items = {
     use(state) {
       state.stats.health = Math.min(100, state.stats.health + 25);
       state.counters.coffeeStreak = 0;
-      state.log.unshift("홍삼스틱을 먹었습니다. 몸이 조금 돌아옵니다.");
+      addLogEntry(state, {
+        cause: "홍삼스틱을 먹었다.",
+        delta: { health: 25 },
+      });
       return state;
     },
   },
@@ -46,7 +61,12 @@ export const items = {
       state.stats.stress = Math.max(0, state.stats.stress - 10);
       state.flags.nextBossOrderBoost = true;
       state.counters.coffeeStreak = 0;
-      state.log.unshift("짧은 영상을 봤습니다. 마음은 풀렸지만 찜찜합니다.");
+      addLogEntry(state, {
+        cause: "짧은 영상을 봤다.",
+        delta: { stress: -10 },
+        effects: ["다음 메인화면 상사 이벤트 확률 증가"],
+        icon: "🟡",
+      });
       return state;
     },
   },
