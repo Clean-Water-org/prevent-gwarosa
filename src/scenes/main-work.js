@@ -1,11 +1,16 @@
 import { el, renderNarrationPopup } from "../ui.js";
-import { formatTime, applyDelta, checkEnding } from "../state.js";
+import { formatTime, applyDelta, checkEnding, normalizeLogEntry } from "../state.js";
 import { chatPool } from "../data/events.js";
 import { items } from "../data/items.js";
 
 let _notifPanel = null;
 let _spawnTimeout = null;
 let _localWorkload = 0;
+let _clockInterval = null;
+let _snoozedChats = [];
+
+const MAIN_CLOCK_TICK_MS = 1000;
+const CHAT_NOTIFICATION_SOUND_SRC = "assets/audio/messenger-notification.mp3";
 
 const handoverNotes = [
   "업무량은 100에서 시작합니다. 18시 전에 모두 처리하면 퇴근할 수 있습니다.",
@@ -20,7 +25,7 @@ const handoverNotes = [
 let stopHandoverGuide = null;
 
 export function renderMainWork(root, state, actions) {
-  cleanupChatSystem();
+  cleanupMainWorkSystems();
   stopHandoverGuide?.();
 
   const startChats = () => {
@@ -55,6 +60,7 @@ export function renderMainWork(root, state, actions) {
             renderDesktopDocuments(() => screen, firstTime, actions, startChats),
             intranetPanel,
           ]),
+          renderRecentLogPanel(state, actions),
           renderTaskbar(toggleIntranet, (btn) => { intranetBtn = btn; }),
         ]),
       ]),
@@ -77,6 +83,7 @@ export function renderMainWork(root, state, actions) {
     });
   } else {
     startChats();
+    startMainClock(screen, state, actions);
   }
 }
 
@@ -92,7 +99,7 @@ function renderMainWorkHud(state, actions) {
       renderMainWorkItemHub(state, actions),
       el("button", { class: "main-work-gear", type: "button", "aria-label": "설정", text: "⚙" }),
       el("div", { class: "main-work-hud-time" }, [
-        el("strong", { text: formatTime(state.gameMinute) }),
+        el("strong", { class: "main-work-current-time", text: formatTime(state.gameMinute) }),
         el("span", { text: "2026.06.05 금요일" }),
       ]),
     ]),
@@ -163,6 +170,46 @@ function renderMainWorkItemButton(itemId, index, actions) {
   ]);
 }
 
+function renderRecentLogPanel(state, actions) {
+  const logs = (state.log ?? []).map((entry) => normalizeLogEntry(state, entry));
+  const collapsed = Boolean(state.flags?.recentLogCollapsed);
+  const title = `📋 최근 기록 (${logs.length})`;
+
+  return el("aside", {
+    class: `main-work-recent-log${collapsed ? " is-collapsed" : ""}`,
+    "aria-label": "최근 기록",
+  }, [
+    el("header", { class: "main-work-recent-log-head" }, [
+      el("strong", { text: title }),
+      el("button", {
+        class: "main-work-recent-log-toggle",
+        type: "button",
+        text: collapsed ? "펼치기" : "접기",
+        onClick: () => actions.mutateState((draft) => {
+          draft.flags.recentLogCollapsed = !Boolean(draft.flags?.recentLogCollapsed);
+          return draft;
+        }),
+      }),
+    ]),
+    ...(collapsed
+      ? []
+      : [el("div", { class: "main-work-recent-log-list" }, logs.length
+        ? logs.map(renderRecentLogEntry)
+        : [el("p", { class: "main-work-recent-log-empty", text: "아직 기록된 변화가 없습니다." })])]),
+  ]);
+}
+
+function renderRecentLogEntry(entry) {
+  return el("article", { class: "main-work-recent-log-entry" }, [
+    el("span", { class: "main-work-recent-log-icon", text: entry.icon ?? "🔵" }),
+    el("div", { class: "main-work-recent-log-copy" }, [
+      el("time", { text: entry.time ?? "" }),
+      el("p", { text: entry.cause ?? "기록된 행동" }),
+      ...(entry.effects ?? []).map((effect) => el("span", { text: effect })),
+    ]),
+  ]);
+}
+
 function renderIntranetWindow() {
   return el("section", { class: "main-work-intranet" }, [
     el("header", { class: "main-work-intranet-tabs" }, [
@@ -226,6 +273,12 @@ function playHandoverGuide(screen, actions, onStartChats) {
   });
   const guideLayer = el("div", { class: "main-work-guide-layer" }, [
     narration.node,
+    el("button", {
+      class: "main-work-guide-skip",
+      type: "button",
+      text: "Skip · 바로 게임 시작",
+      onClick: () => startGameFromGuide(),
+    }),
     el("div", { class: "main-work-fake-cursor", text: "🖱️" }),
   ]);
   const cursor = guideLayer.querySelector(".main-work-fake-cursor");
@@ -258,6 +311,15 @@ function playHandoverGuide(screen, actions, onStartChats) {
     narration.stop();
     guideLayer.remove();
     if (stopHandoverGuide === clearGuideLayer) stopHandoverGuide = null;
+  }
+
+  function startGameFromGuide() {
+    clearGuideLayer();
+    actions.mutateState((draft) => {
+      draft.flags.handoverGuideSeen = true;
+      draft.gameMinute = 9 * 60;
+      return draft;
+    });
   }
 
   return clearGuideLayer;
@@ -362,16 +424,64 @@ function renderTaskbar(onIntranetClick, registerIntranetBtn) {
       intranetBtn,
     ]),
     el("div", { class: "main-work-taskbar-right" }, [
-      el("span", { class: "main-work-task-clock", text: "AM 09:05" }),
+      el("span", { class: "main-work-task-clock", text: "AM 09:00" }),
     ]),
   ]);
 }
 
 // ── 채팅 알림 시스템 ─────────────────────────────────────────
 
+function cleanupMainWorkSystems() {
+  cleanupChatSystem();
+  cleanupMainClock();
+}
+
 function cleanupChatSystem() {
   if (_notifPanel) { _notifPanel.remove(); _notifPanel = null; }
   if (_spawnTimeout) { clearTimeout(_spawnTimeout); _spawnTimeout = null; }
+}
+
+function cleanupMainClock() {
+  if (_clockInterval) {
+    clearInterval(_clockInterval);
+    _clockInterval = null;
+  }
+}
+
+function startMainClock(screen, state, actions) {
+  cleanupMainClock();
+  if (!state.flags?.handoverGuideSeen) return;
+
+  let currentMinute = state.gameMinute;
+  updateMainClockDisplay(screen, currentMinute);
+
+  _clockInterval = setInterval(() => {
+    const nextMinute = actions.advanceGameMinute?.(1) ?? currentMinute + 1;
+    if (!screen.isConnected) {
+      cleanupMainWorkSystems();
+      return;
+    }
+
+    currentMinute = nextMinute;
+    updateMainClockDisplay(screen, currentMinute);
+  }, MAIN_CLOCK_TICK_MS);
+}
+
+function updateMainClockDisplay(screen, gameMinute) {
+  const time = formatTime(gameMinute);
+  const hudClock = screen.querySelector(".main-work-current-time");
+  if (hudClock) hudClock.textContent = time;
+
+  const taskClock = screen.querySelector(".main-work-task-clock");
+  if (taskClock) taskClock.textContent = toTaskbarTime(gameMinute);
+}
+
+function toTaskbarTime(gameMinute) {
+  const hours = Math.floor(gameMinute / 60);
+  const minutes = gameMinute % 60;
+  const period = hours < 12 ? "AM" : "PM";
+  const hour12 = hours % 12 || 12;
+  return `${period} ${String(hour12).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function startChatNotifications(state, actions, container) {
@@ -404,11 +514,12 @@ function spawnOneNotification(state, actions) {
     [..._notifPanel.querySelectorAll(".chat-notif-sender")].map(el => el.textContent),
   );
 
-  const chat = pickOneChat(state, activeSenders);
+  const chat = takeSnoozedChat(activeSenders) ?? pickOneChat(state, activeSenders);
   if (!chat) return;
 
   const card = renderNotifCard(chat, actions);
   _notifPanel.append(card);
+  playChatNotificationSound();
 }
 
 function pickOneChat(state, activeSenders = new Set()) {
@@ -433,6 +544,13 @@ function pickOneChat(state, activeSenders = new Set()) {
   return { ...template, resolvedText: text, timerSec: isBoss ? 10 : 15 };
 }
 
+function takeSnoozedChat(activeSenders) {
+  const index = _snoozedChats.findIndex(chat => !activeSenders.has(chat.from));
+  if (index < 0) return null;
+  const [chat] = _snoozedChats.splice(index, 1);
+  return { ...chat, done: false, timerSec: Math.max(5, chat.timerSec - 4) };
+}
+
 function renderNotifCard(chat, actions) {
   const timerBar = el("div", { class: "chat-notif-timer-bar" });
   timerBar.style.animationDuration = `${chat.timerSec}s`;
@@ -444,9 +562,19 @@ function renderNotifCard(chat, actions) {
     el("p", { class: "chat-notif-body", text: chat.resolvedText }),
     el("div", { class: "chat-notif-footer" }, [
       el("button", {
-        class: "chat-notif-reply",
-        text: "답장",
-        onClick: () => handleNotifReply(chat, card, actions),
+        class: "chat-notif-action chat-notif-action-read",
+        text: "읽기",
+        onClick: () => handleNotifRead(chat, card, actions),
+      }),
+      el("button", {
+        class: "chat-notif-action chat-notif-action-later",
+        text: "나중에",
+        onClick: () => handleNotifSnooze(chat, card, actions),
+      }),
+      el("button", {
+        class: "chat-notif-action chat-notif-action-ignore",
+        text: "무시",
+        onClick: () => handleNotifIgnore(chat, card, actions),
       }),
     ]),
     el("div", { class: "chat-notif-timer" }, [timerBar]),
@@ -459,21 +587,36 @@ function renderNotifCard(chat, actions) {
   return card;
 }
 
-function handleNotifReply(chat, card, actions) {
+function handleNotifRead(chat, card, actions) {
   if (chat.done || !_notifPanel) return;
   chat.done = true;
-  applyEffect(chat.reply, actions);
+  actions.advanceGameMinute?.(1);
+  applyEffect(chat.reply, actions, buildChatLogCause(chat, "read"));
+  dismissCard(card);
+}
+
+function handleNotifSnooze(chat, card) {
+  if (chat.done || !_notifPanel) return;
+  chat.done = true;
+  _snoozedChats.push({ ...chat, snoozeCount: (chat.snoozeCount ?? 0) + 1 });
+  dismissCard(card);
+}
+
+function handleNotifIgnore(chat, card, actions) {
+  if (chat.done || !_notifPanel) return;
+  chat.done = true;
+  applyEffect(chat.miss, actions, buildChatLogCause(chat, "ignore"));
   dismissCard(card);
 }
 
 function handleNotifExpire(chat, card, actions) {
   if (chat.done || !_notifPanel) return;
   chat.done = true;
-  applyEffect(chat.miss, actions);
+  applyEffect(chat.miss, actions, buildChatLogCause(chat, "expire"));
   dismissCard(card);
 }
 
-function applyEffect(delta, actions) {
+function applyEffect(delta, actions, cause) {
   if (!delta || Object.keys(delta).length === 0) return;
 
   if (delta.workload !== undefined) {
@@ -482,14 +625,54 @@ function applyEffect(delta, actions) {
 
   let pendingEnding = null;
   actions.mutateState(draft => {
-    const next = applyDelta(draft, delta);
+    const next = applyDelta(draft, delta, cause);
     pendingEnding = checkEnding(next);
     return next;
   });
   if (pendingEnding) actions.finishWith(pendingEnding);
 }
 
+function buildChatLogCause(chat, outcome) {
+  const sender = chat.from ?? "메시지";
+  const topic = summarizeChatTopic(chat);
+  if (outcome === "read") {
+    if (chat.kind === "boss-task") return `${sender}의 ${topic} 요청을 처리했다.`;
+    if (chat.kind === "boss-praise") return `${sender}의 ${topic} 메시지를 확인했다.`;
+    if (chat.kind === "colleague-help") return `동료의 ${topic} 부탁을 도와주었다.`;
+    if (chat.kind === "colleague-chat") return "동료와 잠깐 대화했다.";
+    return `${sender}의 ${topic} 공지를 확인했다.`;
+  }
+
+  if (outcome === "ignore") {
+    if (chat.kind === "boss-task") return `${sender}의 ${topic} 요청을 무시했다.`;
+    if (chat.kind === "colleague-help") return `동료의 ${topic} 부탁을 거절했다.`;
+    return `${sender} 메시지를 무시했다.`;
+  }
+
+  if (chat.kind === "boss-task") return `${sender}의 ${topic} 요청을 놓쳐 일이 밀렸다.`;
+  if (chat.kind === "colleague-help") return `동료의 ${topic} 부탁에 답하지 못했다.`;
+  return `${sender} 메시지를 제때 확인하지 못했다.`;
+}
+
+function summarizeChatTopic(chat) {
+  const text = chat.resolvedText ?? chat.text ?? "";
+  if (text.includes("보고서")) return "보고서 수정";
+  if (text.includes("이메일") || text.includes("회신")) return "거래처 이메일";
+  if (text.includes("회의") || text.includes("자료")) return "회의 자료";
+  if (text.includes("문서")) return "문서 검토";
+  if (text.includes("발표")) return "발표";
+  if (text.includes("복지포인트")) return "복지포인트";
+  if (text.includes("네트워크")) return "네트워크 점검";
+  return "업무";
+}
+
 function dismissCard(card) {
   card.classList.add("notif-dismissed");
   setTimeout(() => card.remove(), 220);
+}
+
+function playChatNotificationSound() {
+  const audio = new Audio(CHAT_NOTIFICATION_SOUND_SRC);
+  audio.volume = 0.7;
+  audio.play().catch(() => {});
 }

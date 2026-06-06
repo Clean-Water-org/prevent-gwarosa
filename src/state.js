@@ -34,7 +34,14 @@ export function createInitialState() {
       forcedMeeting: false,
       nextBossOrderBoost: false,
     },
-    log: ["09:00 출근 준비 완료. 오늘 안에 업무량을 0으로 만들어야 합니다."],
+    log: [
+      {
+        time: "09:00",
+        icon: "🔵",
+        cause: "출근 준비를 마쳤다.",
+        effects: ["오늘 안에 업무량을 0으로 만들어야 한다."],
+      },
+    ],
   };
 }
 
@@ -49,8 +56,66 @@ export function applyDelta(state, delta, message) {
     if (key === "colleagueTrust") next.colleagueTrust = clampStat(next.colleagueTrust + value);
     if (key === "gameMinute") next.gameMinute += value;
   }
-  if (message) next.log = [message, ...next.log].slice(0, 8);
+  if (message) addLogEntry(next, { cause: message, delta });
   return next;
+}
+
+export function addLogEntry(state, entry) {
+  const normalized = normalizeLogEntry(state, entry);
+  state.log = [...(state.log ?? []), normalized].slice(-20);
+  return state;
+}
+
+export function normalizeLogEntry(state, entry) {
+  if (typeof entry === "string") {
+    return {
+      time: formatTime(state.gameMinute),
+      icon: "🔵",
+      cause: entry,
+      effects: [],
+    };
+  }
+
+  const effects = [...describeDelta(entry.delta ?? {}), ...(entry.effects ?? [])];
+  return {
+    time: entry.time ?? formatTime(state.gameMinute),
+    icon: entry.icon ?? iconForDelta(entry.delta ?? {}, effects),
+    cause: entry.cause,
+    effects,
+  };
+}
+
+function describeDelta(delta) {
+  const labels = {
+    workload: "업무량",
+    stress: "스트레스",
+    health: "체력",
+    colleagueTrust: "신뢰도",
+    gameMinute: "시간",
+  };
+
+  return Object.entries(delta)
+    .filter(([, value]) => value !== 0)
+    .map(([key, value]) => {
+      const label = labels[key] ?? key;
+      const suffix = key === "gameMinute" ? "분" : "";
+      return `${label} ${value > 0 ? "+" : ""}${value}${suffix}`;
+    });
+}
+
+function iconForDelta(delta, effects) {
+  const values = Object.entries(delta).filter(([key, value]) => key !== "gameMinute" && value !== 0);
+  if (values.some(([key]) => key === "workload")) return "🔵";
+
+  const score = values.reduce((total, [key, value]) => {
+    if (key === "stress") return total + (value < 0 ? 1 : -1);
+    if (key === "health" || key === "colleagueTrust") return total + (value > 0 ? 1 : -1);
+    return total;
+  }, 0);
+
+  if (score > 0) return "🟢";
+  if (score < 0) return "🔴";
+  return effects.length > 1 ? "🟡" : "🔵";
 }
 
 export function checkEnding(state) {

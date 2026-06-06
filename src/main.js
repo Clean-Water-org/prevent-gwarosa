@@ -1,4 +1,4 @@
-import { createInitialState } from "./state.js";
+import { checkEnding, createInitialState } from "./state.js";
 import { items } from "./data/items.js";
 import { loadGame, saveGame } from "./lib/storage.js";
 import { renderTitle } from "./scenes/title.js";
@@ -73,6 +73,22 @@ export function finishWith(ending) {
   render();
 }
 
+export function advanceGameMinute(minutes = 1) {
+  if (state.scene !== "main" || !state.flags?.handoverGuideSeen || state.ending) {
+    return state.gameMinute;
+  }
+
+  state = { ...state, gameMinute: state.gameMinute + minutes };
+  const ending = checkEnding(state);
+  if (ending) {
+    finishWith(ending);
+  } else {
+    saveGame(state);
+  }
+
+  return state.gameMinute;
+}
+
 export function useItem(index) {
   if (state.scene === "main" && !state.flags?.handoverGuideSeen) return;
 
@@ -97,7 +113,7 @@ function playItemSound(src) {
 
 function render() {
   app.innerHTML = "";
-  scenes[state.scene]?.(app, state, { setState, mutateState, go, finishWith, useItem });
+  scenes[state.scene]?.(app, state, { setState, mutateState, go, finishWith, useItem, advanceGameMinute });
   if (state.scene !== "title") saveGame(state);
 }
 
