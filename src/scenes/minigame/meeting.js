@@ -1,5 +1,6 @@
 import { TOPICS, TRAPS, TRAP_MSGS } from "../../data/meeting-slides.js";
 import { renderHud } from "../../ui.js";
+import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 
 const CARD_W = 120, CARD_H = 150;
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
@@ -148,29 +149,7 @@ function makePixMug() {
   return d;
 }
 
-// ── 상사 실루엣 SVG ────────────────────────────────────────────────
-function makeBossSilhouette() {
-  const NS = "http://www.w3.org/2000/svg";
-  function s(tag, attrs = {}) {
-    const el = document.createElementNS(NS, tag);
-    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-    return el;
-  }
-  const wrap = document.createElement("div");
-  wrap.style.cssText = "position:fixed;inset:0;z-index:46;pointer-events:none;overflow:hidden";
-  const svg = s("svg", { viewBox: "0 0 300 320", preserveAspectRatio: "xMidYMax meet",
-    style: "position:absolute;top:-8%;right:-2%;height:125vh;width:auto;opacity:.32" });
-  const defs = s("defs");
-  const filter = s("filter", { id: "bossSoftP", x: "-6%", y: "-6%", width: "112%", height: "112%" });
-  filter.append(s("feGaussianBlur", { stdDeviation: "1.6" }));
-  defs.append(filter);
-  const g = s("g", { filter: "url(#bossSoftP)", fill: "#161616" });
-  g.append(s("circle", { cx: "150", cy: "84", r: "52" }));
-  g.append(s("path", { d: "M 18 320 C 26 205 80 142 150 140 C 220 142 274 205 282 320 Z" }));
-  svg.append(defs, g);
-  wrap.append(svg);
-  return wrap;
-}
+// ── 상사 실루엣 SVG → src/components/boss-silhouette.js 로 공통화 (Phase 5) ──
 
 // ── 모니터 베젤 ────────────────────────────────────────────────────
 function makeMonitor(content) {
@@ -421,6 +400,7 @@ export function renderMeetingGame(root, state, actions, game) {
     dragId:null, overSlot:null,
     wrongCount:0, lockId:null, lockTimer:null,
     evJitter:false, jitterTimer:null,
+    bossWatching:false,
     marks:null, result:null, gradeTimer:null, timerInterval:null,
     usedEvents:{}, firedPoints:{},
     floatTimer:null, trapTimer:null, evToastTimer:null, slipTimer:null, slowTimer:null,
@@ -471,7 +451,7 @@ export function renderMeetingGame(root, state, actions, game) {
 
   // ── 모니터 영역 ──
   const monitorScroll = document.createElement("div");
-  monitorScroll.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px 16px;overflow:auto";
+  monitorScroll.style.cssText = "position:absolute;inset:0;display:flex;align-items:safe center;justify-content:center;padding:18px 16px;overflow:auto";
 
   const monitorWrapper = document.createElement("div");
   monitorWrapper.style.cssText = "width:min(1000px, 96vw)";
@@ -645,7 +625,7 @@ export function renderMeetingGame(root, state, actions, game) {
   room.append(monitorScroll);
 
   // 고정 오버레이들
-  const bossOverlayEl = makeBossSilhouette();
+  const bossOverlayEl = makeBossSilhouette({ direction: "right" });
   bossOverlayEl.hidden = true;
 
   const bossBannerEl = document.createElement("div");
@@ -889,8 +869,9 @@ export function renderMeetingGame(root, state, actions, game) {
         slipToast.style.display="block"; clearTimeout(run.slipTimer); run.slipTimer=setTimeout(()=>{slipToast.style.display="none";},850);
         updateBoard(); return;
       }
-      if (stress>=70) {
+      if (stress>=70 || run.bossWatching) {
         const did=String(dragId);
+        slowToast.textContent = run.bossWatching ? "👀 상사가 보고 있다… 손이 굳는다" : "🥵 느릿… 커서가 무겁다";
         slowToast.style.display="block";
         clearTimeout(run.slowTimer); run.slowTimer=setTimeout(()=>{
           slowToast.style.display="none"; placeInSlot(did,target);
@@ -999,6 +980,8 @@ export function renderMeetingGame(root, state, actions, game) {
 
   function setBoss(on) {
     bossOverlayEl.hidden=!on;
+    run.bossWatching=on;
+    refreshFxClass();
     if (on) {
       bossBannerEl.style.display="flex";
       bossBannerEl.replaceChildren();
