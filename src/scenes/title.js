@@ -1,4 +1,4 @@
-import { el } from "../ui.js";
+﻿import { el } from "../ui.js";
 
 export function renderTitle(root, state, actions) {
   root.append(
@@ -48,10 +48,30 @@ export function renderTitle(root, state, actions) {
                 onClick: () => actions.go("commute"),
               }),
               el("button", {
+                text: "메인화면 바로 보기",
+                onClick: () => actions.go("main"),
+              }),
+              el("button", {
                 text: "이메일 분류 원본 실행",
                 onClick: () => {
                   window.location.href = "./assets/minigames/email-classification-prototype.html";
                 },
+              }),
+              el("button", {
+                text: "회의 준비 바로 보기",
+                onClick: () => actions.mutateState((draft) => ({
+                  ...draft,
+                  scene: "minigame",
+                  flags: { ...draft.flags, devMode: true, devGameId: "meeting" },
+                })),
+              }),
+              el("button", {
+                text: "보고서 오탈자 바로 보기",
+                onClick: () => actions.mutateState((draft) => ({
+                  ...draft,
+                  scene: "minigame",
+                  flags: { ...draft.flags, devMode: true, devGameId: "report" },
+                })),
               }),
             ]),
           ]),
