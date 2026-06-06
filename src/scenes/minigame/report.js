@@ -1,6 +1,7 @@
 import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY, BOSS_RED_PEN } from "../../data/report-typos.js";
 import { el, renderHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
+import { playBgm, stopBgm } from "../../lib/audio.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -678,6 +679,7 @@ export function renderReportGame(root, state, actions, game) {
     if (run.done) return;
     run.done = true;
     run.phase = "result";
+    stopBgm();
     clearInterval(run.timerInterval);
     const fc = run.found.length;
     let tier = forceTier;
@@ -738,6 +740,7 @@ export function renderReportGame(root, state, actions, game) {
   }
 
   function cleanup() {
+    stopBgm();
     clearInterval(run.timerInterval);
     [run.flashTimer, run.wrongTimer, run.floatTimer, run.toastTimer, run.warnTimer, run.endTimer, run.penHoldTimer, run.penOutTimer,
      run.evToastTimer, run.spellTimer, run.saveTimer, run.flickTimer].forEach(clearTimeout);
@@ -749,5 +752,6 @@ export function renderReportGame(root, state, actions, game) {
   updateFoundPill();
   updateWrongPill();
   updateTimer();
+  playBgm("assets/audio/report_bgm.mp3");
   startTimer();
 }

@@ -1,6 +1,7 @@
 import { TOPICS, TRAPS, TRAP_MSGS } from "../../data/meeting-slides.js";
 import { renderHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
+import { playBgm, stopBgm } from "../../lib/audio.js";
 
 const CARD_W = 120, CARD_H = 150;
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
@@ -1014,6 +1015,7 @@ export function renderMeetingGame(root, state, actions, game) {
   function finish() {
     if (run.done||run.phase!=="play") return;
     run.done=true; run.phase="result";
+    stopBgm();
     clearInterval(run.timerInterval); clearTimeout(run.gradeTimer);
     const m={}; let errors=0;
     mg.order.forEach((correctId,i) => {
@@ -1074,6 +1076,7 @@ export function renderMeetingGame(root, state, actions, game) {
   }
 
   function cleanup() {
+    stopBgm();
     clearInterval(run.timerInterval);
     [run.gradeTimer,run.lockTimer,run.jitterTimer,run.slowTimer,run.floatTimer,run.trapTimer,run.evToastTimer,run.slipTimer,run.evTimer,run.bossTimer].forEach(clearTimeout);
   }
@@ -1081,5 +1084,6 @@ export function renderMeetingGame(root, state, actions, game) {
   // ── 초기화 ──
   updateBoard();
   updateTimerDisplay();
+  playBgm("assets/audio/meeting_bgm.mp3");
   startTimer();
 }

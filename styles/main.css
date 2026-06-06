@@ -3959,8 +3959,9 @@ select {
   height: 100%;
   margin: 0;
   display: grid;
-  place-items: center;
+  place-items: safe center;
   padding: 24px;
+  overflow-y: auto;
   text-align: center;
   background:
     repeating-linear-gradient(rgba(29, 31, 46, 0.055) 0 2px, transparent 2px 4px),
