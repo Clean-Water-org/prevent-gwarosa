@@ -1,6 +1,29 @@
 import { bosses } from "./data/bosses.js";
 import { startingInventory } from "./data/player-types.js";
 
+export const MINI_GAMES = ["email", "meeting", "report"];
+export const MINI_ROUNDS = 5;
+export const MAIN_PHASE_MINUTES = 35; // 메인화면 1회 체류 게임시간 (실시간 35초)
+
+// 미니게임 5라운드 순서 생성:
+//   1~3라운드 = 3종 셔플 (모두 1회 등장 · 서로 달라 연속 중복 없음)
+//   4~5라운드 = 직전 라운드와 다른 것 랜덤
+// → 3종 각각 최소 1회 보장 + 같은 미니게임 연속(예: 1→1) 금지.
+export function buildMiniOrder() {
+  const order = MINI_GAMES.slice();
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  while (order.length < MINI_ROUNDS) {
+    let pick;
+    do { pick = MINI_GAMES[Math.floor(Math.random() * MINI_GAMES.length)]; }
+    while (pick === order[order.length - 1]);
+    order.push(pick);
+  }
+  return order;
+}
+
 export function createInitialState() {
   const boss = bosses[Math.floor(Math.random() * bosses.length)];
 
@@ -8,6 +31,7 @@ export function createInitialState() {
     scene: "title",
     phaseIndex: 0,
     minigameRound: 0,
+    miniOrder: buildMiniOrder(),
     gameMinute: 8 * 60 + 58,
     ending: null,
     player: {

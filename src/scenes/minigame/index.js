@@ -1,49 +1,50 @@
 import { el, renderBadges, renderHud } from "../../ui.js";
-import { applyDelta, checkEnding } from "../../state.js";
+import { applyDelta, checkEnding, buildMiniOrder, MINI_ROUNDS, MAIN_PHASE_MINUTES } from "../../state.js";
 import { minigames } from "../../data/minigames.js";
 import { renderEmailGame } from "../minigame.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
 
-// ⚠️ 라운드 수: 원안 5회 / v1.2 제출판 4회 — 확정 후 ROTATION 슬라이싱 및 종료 조건 통일 필요
-const ROTATION = ["email", "meeting", "report", "email", "meeting"];
+// 미니게임 순서: state.miniOrder(게임 시작 시 생성, 3종 보장+연속 중복 없음). 총 MINI_ROUNDS(5)회.
 
+// 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
 const GAME_DELTAS = {
   // 이메일은 원본 src/scenes/minigame.js의 자체 결과 처리(local applyMiniResult)를 사용함.
   // 아래 email 항목은 폴백 기본값일 뿐 — 실제 이메일 보상은 minigame.js 기준.
   email: {
-    success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 8, gameMinute: 60 },
-    fail: { workload: -3, stress: 18, health: -8, gameMinute: 60 },
+    success: { workload: -20 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -3, stress: 18, health: -8 },
   },
   meeting: {
-    success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 8, gameMinute: 60 },
-    fail: { workload: -3, stress: 20, health: -8, gameMinute: 60 },
+    success: { workload: -20 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -3, stress: 20, health: -8 },
   },
   report: {
-    success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 8, gameMinute: 60 },
-    fail: { workload: -5, stress: 20, health: -8, gameMinute: 60 },
+    success: { workload: -20 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -5, stress: 20, health: -8 },
   },
 };
 
 export function renderMiniGame(root, state, actions) {
-  if (state.minigameRound >= ROTATION.length && !state.flags.devMode) {
+  if (state.minigameRound >= MINI_ROUNDS && !state.flags.devMode) {
     actions.finishWith(state.stats.workload <= 0 ? "success" : "overtime");
     return;
   }
 
   const round = state.minigameRound;
+  const order = state.miniOrder && state.miniOrder.length ? state.miniOrder : buildMiniOrder();
   const gameId = (state.flags.devMode && state.flags.devGameId)
     ? state.flags.devGameId
-    : ROTATION[round % ROTATION.length];
+    : order[round % order.length];
   const game = minigames.find((g) => g.id === gameId) || minigames[0];
 
   const extendedActions = {
     ...actions,
-    applyResult: (result, message) => {
-      actions.mutateState((draft) => applyMiniResult(draft, gameId, result, message));
+    applyResult: (result, message, usedSec = 60) => {
+      actions.mutateState((draft) => applyMiniResult(draft, gameId, result, message, usedSec));
     },
   };
 
@@ -58,9 +59,11 @@ export function renderMiniGame(root, state, actions) {
   }
 }
 
-function applyMiniResult(state, gameId, result, message) {
+function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   const deltas = GAME_DELTAS[gameId] || GAME_DELTAS.email;
   let next = applyDelta(state, deltas[result], message);
+  // 미니게임 실제 소요 시간만큼 게임시간 진행 (빨리 깰수록 일찍 퇴근)
+  next.gameMinute += Math.max(0, Math.min(60, Math.round(usedSec)));
 
   if (next.flags.devMode) {
     next.scene = "title";
@@ -77,11 +80,16 @@ function applyMiniResult(state, gameId, result, message) {
   if (ending) {
     next.ending = ending;
     next.scene = "ending";
+  } else if (next.minigameRound >= MINI_ROUNDS) {
+    // 5라운드 모두 마침 → 마감 판정 (18:00 도달 전이라도 더 할 미니게임 없음)
+    next.ending = next.stats.workload <= 0 ? "success" : "overtime";
+    next.scene = "ending";
   } else if (next.minigameRound === 2) {
     next.scene = "lunch";
     next.gameMinute = Math.max(next.gameMinute, 12 * 60);
   } else {
     next.scene = "main";
+    next.flags.mainPhaseEnd = next.gameMinute + MAIN_PHASE_MINUTES;
   }
   return next;
 }
@@ -93,7 +101,7 @@ function renderPlaceholderMiniGame(root, state, actions, game) {
       el("div", { class: "desk" }, [
         el("div", { class: "mini-layout" }, [
           el("div", { class: "mini-header" }, [
-            el("h2", { text: `${state.minigameRound + 1}/${ROTATION.length} ${game.title}` }),
+            el("h2", { text: `${state.minigameRound + 1}/${MINI_ROUNDS} ${game.title}` }),
             el("strong", { text: "프로토타입 판정" }),
           ]),
           renderBadges(state),

@@ -82,10 +82,16 @@ export function advanceGameMinute(minutes = 1) {
   const ending = checkEnding(state);
   if (ending) {
     finishWith(ending);
-  } else {
-    saveGame(state);
+    return state.gameMinute;
   }
 
+  // 메인화면 체류 시간(35분) 경과 → 미니게임 자동 진입
+  if (state.flags?.mainPhaseEnd != null && state.gameMinute >= state.flags.mainPhaseEnd) {
+    go("minigame");
+    return state.gameMinute;
+  }
+
+  saveGame(state);
   return state.gameMinute;
 }
 

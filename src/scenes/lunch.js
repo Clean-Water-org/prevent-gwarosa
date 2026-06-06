@@ -1,5 +1,5 @@
 import { lunchEvents } from "../data/events.js";
-import { applyDelta } from "../state.js";
+import { applyDelta, MAIN_PHASE_MINUTES } from "../state.js";
 import { el, renderHud } from "../ui.js";
 
 export function renderLunch(root, state, actions) {
@@ -18,6 +18,7 @@ export function renderLunch(root, state, actions) {
             onClick: () => actions.mutateState((draft) => {
               const next = applyDelta(draft, { ...event.delta, gameMinute: 60 }, `점심시간: ${event.title}`);
               next.scene = "main";
+              next.flags.mainPhaseEnd = next.gameMinute + MAIN_PHASE_MINUTES;
               return next;
             }),
           }),

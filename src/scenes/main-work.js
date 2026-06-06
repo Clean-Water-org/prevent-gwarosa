@@ -1,5 +1,5 @@
 import { el, renderNarrationPopup } from "../ui.js";
-import { formatTime, applyDelta, checkEnding, normalizeLogEntry } from "../state.js";
+import { formatTime, applyDelta, checkEnding, normalizeLogEntry, MAIN_PHASE_MINUTES } from "../state.js";
 import { chatPool } from "../data/events.js";
 import { items } from "../data/items.js";
 
@@ -318,6 +318,7 @@ function playHandoverGuide(screen, actions, onStartChats) {
     actions.mutateState((draft) => {
       draft.flags.handoverGuideSeen = true;
       draft.gameMinute = 9 * 60;
+      draft.flags.mainPhaseEnd = draft.gameMinute + MAIN_PHASE_MINUTES;
       return draft;
     });
   }
@@ -337,6 +338,7 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
         actions.mutateState((draft) => {
           draft.flags.handoverGuideSeen = true;
           draft.gameMinute = 9 * 60;
+          draft.flags.mainPhaseEnd = draft.gameMinute + MAIN_PHASE_MINUTES;
           return draft;
         });
         onStartChats?.();

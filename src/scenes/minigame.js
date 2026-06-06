@@ -150,7 +150,9 @@ export function renderEmailGame(root, state, actions, game) {
   }
 
   function applyResult(result) {
-    actions.mutateState((draft) => applyMiniResult(draft, result, `${game.title}: 정확 ${run.correct}/${deck.length}`));
+    // 라우터(index.js)의 applyResult로 통일 — 실제 소요 시간(usedSec)·라운드·mainPhaseEnd 처리를 공유.
+    const usedSec = 60 - run.left;
+    actions.applyResult(result, `${game.title}: 정확 ${run.correct}/${deck.length}`, usedSec);
   }
 
   function onKey(event) {
