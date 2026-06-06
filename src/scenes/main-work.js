@@ -173,11 +173,11 @@ function renderMainWorkItemButton(itemId, index, actions) {
 function renderRecentLogPanel(state, actions) {
   const logs = (state.log ?? []).map((entry) => normalizeLogEntry(state, entry));
   const collapsed = Boolean(state.flags?.recentLogCollapsed);
-  const title = `📋 최근 기록 (${logs.length})`;
+  const title = `📋 업무 일지 (${logs.length})`;
 
   return el("aside", {
     class: `main-work-recent-log${collapsed ? " is-collapsed" : ""}`,
-    "aria-label": "최근 기록",
+    "aria-label": "업무 일지",
   }, [
     el("header", { class: "main-work-recent-log-head" }, [
       el("strong", { text: title }),

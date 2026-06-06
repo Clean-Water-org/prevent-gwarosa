@@ -945,7 +945,7 @@
 
 .main-work-recent-log {
   position: absolute;
-  right: 20px;
+  left: 20px;
   bottom: 58px;
   z-index: 35;
   width: min(300px, calc(100% - 40px));
@@ -1727,7 +1727,7 @@
   }
 
   .main-work-recent-log {
-    right: 10px;
+    left: 10px;
     bottom: 58px;
     width: min(280px, calc(100% - 20px));
     max-height: 142px;
