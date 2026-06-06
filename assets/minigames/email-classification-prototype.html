@@ -955,6 +955,32 @@
     const feedback = $("feedback");
     const resultPanel = $("resultPanel");
     const startPanel = $("startPanel");
+    const BGM_SRC = "../audio/email_bgm.mp3";
+    let bgmAudio = null;
+
+    function getBgmAudio() {
+      if (!bgmAudio) {
+        bgmAudio = new Audio(BGM_SRC);
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0.4;
+      }
+      return bgmAudio;
+    }
+
+    function playBgm() {
+      const audio = getBgmAudio();
+      audio.play().catch(() => {});
+    }
+
+    function stopBgm() {
+      if (!bgmAudio) return;
+      bgmAudio.pause();
+      bgmAudio.currentTime = 0;
+    }
+
+    function unlockBgmDuringGame() {
+      if (state.running) playBgm();
+    }
 
     function shuffle(list) {
       const copy = list.slice();
@@ -985,6 +1011,7 @@
     }
 
     function startGame() {
+      playBgm();
       Object.assign(state, {
         deck: buildRoundDeck(),
         index: 0,
@@ -1204,6 +1231,7 @@
       const result = state.correct >= 8 ? "success" : state.correct >= 5 ? "partial" : "fail";
       const title = state.correct >= 8 ? "이메일 처리 완료!" : state.correct >= 5 ? "아슬아슬하게 분류했다" : "받은편지함이 터졌다";
       const effect = state.correct >= 8 ? "성공 · 업무량 -20" : state.correct >= 5 ? "부분성공 · 업무량 -10, 스트레스 +5" : "실패 · 업무량 -3, 스트레스 +15, 체력 -5";
+      stopBgm();
       state.result = {
         result,
         correct: state.correct,
@@ -1245,7 +1273,9 @@
       });
     }
 
+    document.addEventListener("pointerdown", unlockBgmDuringGame, { passive: true });
     document.addEventListener("keydown", (e) => {
+      unlockBgmDuringGame();
       const key = e.key.toLowerCase();
       if (key === "a" || key === "arrowleft") classify("good");
       if (key === "d" || key === "arrowright") classify("spam");

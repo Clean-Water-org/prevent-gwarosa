@@ -731,7 +731,7 @@ export function renderReportGame(root, state, actions, game) {
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
-    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`); });
+    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `발견 ${found}/${total}`); });
     nextBtn.append(btnInner);
 
     panel.append(emojiEl, titleEl, statsRow, deltaRow, note, nextBtn);

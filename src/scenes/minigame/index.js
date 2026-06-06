@@ -6,6 +6,8 @@ import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js";
 
+const RESULT_LABEL = { success: "성공", partial: "부분성공", fail: "실패" };
+
 const GAME_DELTAS = {
   email: {
     success: { workload: -20, gameMinute: 60 },
@@ -62,7 +64,9 @@ export function renderMiniGame(root, state, actions) {
         return draft;
       });
     },
-    applyResult: (result, message) => {
+    applyResult: (result, detail) => {
+      const label = RESULT_LABEL[result] ?? result;
+      const message = detail ? `${game.title} ${label} (${detail})` : `${game.title} ${label}`;
       actions.mutateState((draft) => applyMiniResult(draft, gameId, result, message));
     },
   };
@@ -94,6 +98,9 @@ function applyMiniResult(state, gameId, result, message) {
   next.minigameRound += 1;
   next.counters.successStreak = result === "success" ? next.counters.successStreak + 1 : 0;
   next.counters.failures += result === "fail" ? 1 : 0;
+  if (gameId === "email" && result === "fail") {
+    next.flags.badMailInterview = true;
+  }
   next.flags.minigameBriefingKey = null;
   next.flags.pendingMinigameBriefing = false;
 
@@ -131,9 +138,9 @@ function renderPlaceholderMiniGame(root, state, actions, game) {
         ]),
       ]),
       el("footer", { class: "item-row" }, [
-        el("button", { class: "primary", text: "성공", onClick: () => actions.applyResult("success", `${game.title} 성공`) }),
-        el("button", { text: "부분성공", onClick: () => actions.applyResult("partial", `${game.title} 부분성공`) }),
-        el("button", { class: "danger", text: "실패", onClick: () => actions.applyResult("fail", `${game.title} 실패`) }),
+        el("button", { class: "primary", text: "성공", onClick: () => actions.applyResult("success") }),
+        el("button", { text: "부분성공", onClick: () => actions.applyResult("partial") }),
+        el("button", { class: "danger", text: "실패", onClick: () => actions.applyResult("fail") }),
       ]),
     ]),
   );

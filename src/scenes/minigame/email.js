@@ -20,7 +20,7 @@ export function renderEmailPrototypeGame(root, state, actions, game) {
     const result = event.data.result ?? "fail";
     const correct = event.data.correct ?? 0;
     const total = event.data.total ?? 10;
-    actions.applyResult(result, `${game.title}: 정확 ${correct}/${total}`);
+    actions.applyResult(result, `정확 ${correct}/${total}`);
   };
 
   window.addEventListener("message", onMessage);

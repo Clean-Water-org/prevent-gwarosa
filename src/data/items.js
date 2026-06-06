@@ -35,7 +35,14 @@ export const items = {
         cause: "잠깐 바람을 쐬었다.",
         delta: { stress: -12, health: -3 },
       });
-      if (Math.random() < 0.3) state.flags.nextBossOrderBoost = true;
+      if (state.counters.smokeUses >= 3) {
+        state.flags.nextBossOrderBoost = true;
+        addLogEntry(state, {
+          icon: "🟡",
+          cause: "상사가 뭔가 째려보는 것 같다... 기분 탓인가?",
+          effects: ["갑작스러운 업무 지시 확률 증가"],
+        });
+      }
       return state;
     },
   },

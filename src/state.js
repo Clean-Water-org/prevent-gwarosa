@@ -29,11 +29,17 @@ export function createInitialState() {
       smokeUses: 0,
       successStreak: 0,
       failures: 0,
+      mainEventCount: 0,
+      mainPhaseEventUsed: null,
     },
     flags: {
       runId: createRunId(),
       forcedMeeting: false,
       nextBossOrderBoost: false,
+      forcedBossOrder: false,
+      hiddenBreakPenalty: false,
+      badMailInterview: false,
+      statusEvents: {},
     },
     log: [
       {
@@ -103,6 +109,9 @@ function describeDelta(delta) {
     .filter(([, value]) => value !== 0)
     .map(([key, value]) => {
       const label = labels[key] ?? key;
+      if (key === "gameMinute") {
+        return value > 0 ? `시간 경과 ${value}분` : `시간 단축 ${Math.abs(value)}분`;
+      }
       const suffix = key === "gameMinute" ? "분" : "";
       return `${label} ${value > 0 ? "+" : ""}${value}${suffix}`;
     });
