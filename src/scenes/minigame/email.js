@@ -6,6 +6,7 @@ export function renderEmailPrototypeGame(root, state, actions, game) {
     title: game.title,
     src: buildPrototypeUrl(state),
   });
+  iframe.addEventListener("load", () => iframe.contentWindow?.focus());
 
   const shell = el("section", { class: "email-prototype-shell" }, [
     renderHud(state),
@@ -31,6 +32,7 @@ export function renderEmailPrototypeGame(root, state, actions, game) {
 
   window.addEventListener("message", onMessage);
   root.append(shell);
+  iframe.focus();
 }
 
 function buildPrototypeUrl(state) {

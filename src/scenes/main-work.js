@@ -8,6 +8,7 @@ import {
   positiveMainEvents,
 } from "../data/events.js";
 import { items } from "../data/items.js";
+import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
 
@@ -24,6 +25,9 @@ let _mainEventOverlay = null;
 let _statusEventOverlay = null;
 let _snoozedChats = [];
 let _nextBossTaskTimerPenalty = 0;
+let _chatSnapshot = null;
+let _spawnScheduledAt = 0;
+let _spawnDelayMs = 0;
 
 const STATUS_EVENT_CONFIGS = {
   burnout: {
@@ -82,6 +86,10 @@ const handoverNotes = [
 let stopHandoverGuide = null;
 
 export function renderMainWork(root, state, actions) {
+  if (!state.flags?.handoverGuideSeen) {
+    // 새 게임 시작 시점 — 이전 판의 채팅 스냅샷이 남아있다면 폐기한다.
+    _chatSnapshot = null;
+  }
   cleanupMainWorkSystems();
   stopHandoverGuide?.();
 
@@ -105,34 +113,32 @@ export function renderMainWork(root, state, actions) {
 
   const firstTime = !state.flags?.handoverGuideSeen;
 
-  const screen = el("section", { class: "main-work-screen" }, [
-    el("div", { class: "main-work-room" }, [
-      el("div", { class: "main-work-wall-note" }, [
-        el("strong", { text: "TO DO" }),
-        el("span", { text: "보고서" }),
-        el("span", { text: "회의" }),
-      ]),
-      el("div", { class: "main-work-monitor" }, [
-        el("div", { class: "main-work-monitor-camera" }),
-        el("div", { class: "main-work-monitor-screen" }, [
-          renderMainWorkHud(state, actions),
-          el("main", { class: "main-work-center" }, [
-            renderDesktopDocuments(() => screen, firstTime, actions, startChats),
-            intranetPanel,
-          ]),
-          renderRecentLogPanel(state, actions),
-          renderTaskbar(state.gameMinute, toggleIntranet, (btn) => { intranetBtn = btn; }),
-        ]),
-      ]),
-      el("div", { class: "main-work-monitor-neck" }),
-      el("div", { class: "main-work-monitor-base" }),
-      el("div", { class: "main-work-desk" }, [
-        el("div", { class: "main-work-keyboard" }),
-        el("div", { class: "main-work-mouse" }),
-        el("div", { class: "main-work-coffee" }),
-      ]),
+  const monitorScreen = el("div", { class: "main-work-monitor-screen" }, [
+    renderMainWorkHud(state, actions),
+    el("main", { class: "main-work-center" }, [
+      renderDesktopDocuments(() => screen, firstTime, actions, startChats),
+      intranetPanel,
     ]),
+    renderRecentLogPanel(state, actions),
+    renderTaskbar(state.gameMinute, toggleIntranet, (btn) => { intranetBtn = btn; }),
   ]);
+
+  // 회의 준비 미니게임과 동일한 오피스 룸 + CHADOL-TRON 모니터 비주얼로 통일
+  const room = makeOfficeRoom();
+  room.classList.add("main-work-room");
+  appendDefaultRoomProps(room);
+  room.append(el("div", { class: "main-work-wall-note" }, [
+    el("strong", { text: "TO DO" }),
+    el("span", { text: "보고서" }),
+    el("span", { text: "회의" }),
+  ]));
+
+  const monitorScroll = el("div", { class: "main-work-monitor-scroll" });
+  const monitorWrapper = el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]);
+  monitorScroll.append(monitorWrapper);
+  room.append(monitorScroll);
+
+  const screen = el("section", { class: "main-work-screen" }, [room]);
 
   root.append(screen);
 
@@ -589,11 +595,43 @@ function cleanupStatusEventSystem() {
   }
 }
 
+// 화면 전환(미니게임 진입 등)이나 리렌더로 채팅 패널이 사라지기 직전 상태를 스냅샷으로
+// 남겨둔다. startChatNotifications가 같은 판으로 복귀했을 때 이 스냅샷을 보고
+// "타이머가 멈춘 채" 그대로 이어서 보여준다.
+function captureChatSnapshot() {
+  if (!_notifPanel) return null;
+  const now = Date.now();
+
+  const notifications = [..._notifPanel.querySelectorAll(".chat-notif-card")]
+    .map((card) => {
+      const chat = card._chatRef;
+      if (!chat || chat.done) return null;
+      const elapsedMs = now - (chat.spawnedAt ?? now);
+      const remainingMs = Math.max(1000, chat.timerSec * 1000 - elapsedMs);
+      return { chat, remainingMs };
+    })
+    .filter(Boolean);
+
+  const nextSpawnRemainingMs = _spawnTimeout
+    ? Math.max(0, _spawnDelayMs - (now - _spawnScheduledAt))
+    : 3000;
+
+  return {
+    notifications,
+    snoozedChats: [..._snoozedChats],
+    nextBossTaskTimerPenalty: _nextBossTaskTimerPenalty,
+    nextSpawnRemainingMs,
+    localWorkload: _localWorkload,
+  };
+}
+
 function cleanupChatSystem() {
-  if (_notifPanel) { _notifPanel.remove(); _notifPanel = null; }
+  if (_notifPanel) {
+    _chatSnapshot = captureChatSnapshot();
+    _notifPanel.remove();
+    _notifPanel = null;
+  }
   if (_spawnTimeout) { clearTimeout(_spawnTimeout); _spawnTimeout = null; }
-  _nextBossTaskTimerPenalty = 0;
-  _snoozedChats = [];
 }
 
 function pauseChatSystem() {
@@ -1280,25 +1318,55 @@ function toTaskbarTime(gameMinute) {
 }
 
 function startChatNotifications(state, actions, container) {
-  _localWorkload = state.stats.workload;
   _notifPanel = el("div", { class: "chat-notif-panel" });
   container.append(_notifPanel);
 
+  if (_chatSnapshot) {
+    restoreChatSnapshot(state, actions);
+    return;
+  }
+
+  _localWorkload = state.stats.workload;
+  _snoozedChats = [];
+  _nextBossTaskTimerPenalty = 0;
+
   // 첫 메시지는 3초 후 즉시 등장, 이후 정상 간격
+  scheduleSpawn(state, actions, 3000);
+}
+
+// 미니게임 등으로 화면을 떠났다가 돌아왔을 때, 멈춰뒀던 채팅 패널을 그대로 복원한다.
+// 카드별 남은 시간·스누즈 큐·다음 알림까지 남은 시간을 모두 멈췄던 지점에서 이어간다.
+function restoreChatSnapshot(state, actions) {
+  const snapshot = _chatSnapshot;
+  _chatSnapshot = null;
+
+  _localWorkload = snapshot.localWorkload;
+  _snoozedChats = snapshot.snoozedChats;
+  _nextBossTaskTimerPenalty = snapshot.nextBossTaskTimerPenalty;
+
+  for (const { chat, remainingMs } of snapshot.notifications) {
+    chat.done = false;
+    chat.spawnedAt = Date.now();
+    chat.timerSec = remainingMs / 1000;
+    _notifPanel.append(renderNotifCard(chat, actions));
+  }
+
+  scheduleSpawn(state, actions, snapshot.nextSpawnRemainingMs);
+}
+
+function scheduleSpawn(state, actions, delayMs) {
+  _spawnScheduledAt = Date.now();
+  _spawnDelayMs = delayMs;
   _spawnTimeout = setTimeout(() => {
     if (!_notifPanel) return;
     spawnOneNotification(state, actions);
     scheduleNextSpawn(state, actions);
-  }, 3000);
+  }, delayMs);
 }
 
 function scheduleNextSpawn(state, actions) {
   const delay = _localWorkload >= 70 ? 15000 : 30000;
-  _spawnTimeout = setTimeout(() => {
-    if (!_notifPanel) return;
-    spawnOneNotification(state, actions);
-    scheduleNextSpawn(state, actions);
-  }, delay);
+  scheduleSpawn(state, actions, delay);
 }
 
 function spawnOneNotification(state, actions) {
@@ -1312,6 +1380,7 @@ function spawnOneNotification(state, actions) {
   const chat = takeSnoozedChat(activeSenders) ?? pickOneChat(state, activeSenders);
   if (!chat) return;
 
+  chat.spawnedAt = Date.now();
   const card = renderNotifCard(chat, actions);
   _notifPanel.append(card);
   playChatNotificationSound();
@@ -1386,6 +1455,8 @@ function renderNotifCard(chat, actions) {
     el("p", { class: "chat-notif-body", text: chat.resolvedText }),
     el("div", { class: "chat-notif-footer" }),
   ]);
+  // 화면 전환 시 스냅샷을 뜰 때 카드 → chat 데이터를 역으로 찾기 위한 참조
+  card._chatRef = chat;
 
   card.querySelector(".chat-notif-footer").append(
     renderNotifPrimaryButton(readSpec, chat, card, actions),
