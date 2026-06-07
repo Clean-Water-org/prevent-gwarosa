@@ -2258,6 +2258,7 @@ function selectMainEvent(state, phaseIndex) {
 }
 
 function selectForcedMainEvent(state) {
+  if (state.flags?.forcedShortsScolding) return getBossMainEvent("work-attitude");
   if (state.flags?.badMailInterview) return getBossMainEvent("boss-interview");
   // public-shame / public-praise는 페이즈 2~3 회의 이벤트(showMeetingEventPopup) 전용
   if (state.flags?.forcedBossOrder) return getBossMainEvent("sudden-order");
@@ -2504,6 +2505,7 @@ function applyMainEventFlags(state, event, choice, phaseIndex) {
   state.counters.mainPhaseEventUsed = phaseIndex;
 
   if (event.id === "boss-interview") state.flags.badMailInterview = false;
+  if (event.id === "work-attitude") { state.flags.forcedShortsScolding = false; state.counters.shortsStreak = 0; }
   if (event.id === "public-shame") state.counters.failures = 0;
   if (event.id === "public-praise") state.counters.successStreak = 0;
 

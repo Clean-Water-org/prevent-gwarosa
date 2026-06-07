@@ -282,6 +282,16 @@ export const bossMainEvents = [
       { id: "close", label: "면담을 마친다", delta: { gameMinute: 30, stress: 10 }, message: "잘못 보낸 메일 건으로 상사와 면담했다." },
     ],
   },
+  {
+    id: "work-attitude",
+    type: "boss",
+    title: "근무태도 지적",
+    speaker: "팀장님",
+    body: "근무 중에 핸드폰으로 영상을 자주 보는 게 눈에 띄네요. 집중 좀 부탁해요.",
+    choices: [
+      { id: "close", label: "죄송합니다", delta: { stress: 7 }, message: "근무 중 딴짓이 상사 눈에 띄어 근무태도를 지적받았다." },
+    ],
+  },
 ];
 
 export const colleagueMainEvents = [

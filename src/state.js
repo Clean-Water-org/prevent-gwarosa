@@ -53,6 +53,7 @@ export function createInitialState() {
     inventory: startingInventory("coffee"),
     counters: {
       coffeeStreak: 0,
+      shortsStreak: 0,
       smokeUses: 0,
       successStreak: 0,
       failures: 0,

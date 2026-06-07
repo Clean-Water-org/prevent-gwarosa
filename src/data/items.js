@@ -8,6 +8,7 @@ export const items = {
     use(state) {
       state.stats.health = Math.min(100, state.stats.health + 15);
       state.counters.coffeeStreak += 1;
+      state.counters.shortsStreak = 0;
       addLogEntry(state, {
         cause: "커피를 마셨다.",
         delta: { health: 15 },
@@ -31,6 +32,7 @@ export const items = {
       state.stats.health = Math.max(0, state.stats.health - 3);
       state.counters.smokeUses += 1;
       state.counters.coffeeStreak = 0;
+      state.counters.shortsStreak = 0;
       addLogEntry(state, {
         cause: "잠깐 바람을 쐬었다.",
         delta: { stress: -12, health: -3 },
@@ -53,6 +55,7 @@ export const items = {
     use(state) {
       state.stats.health = Math.min(100, state.stats.health + 25);
       state.counters.coffeeStreak = 0;
+      state.counters.shortsStreak = 0;
       addLogEntry(state, {
         cause: "홍삼스틱을 먹었다.",
         delta: { health: 25 },
@@ -68,11 +71,21 @@ export const items = {
       state.stats.stress = Math.max(0, state.stats.stress - 10);
       state.flags.nextBossOrderBoost = true;
       state.counters.coffeeStreak = 0;
+      state.counters.shortsStreak = (state.counters.shortsStreak ?? 0) + 1;
       addLogEntry(state, {
         cause: "짧은 영상을 봤다.",
         effects: ["살짝 상사 눈치가 보인다.."],
         icon: "🟡",
       });
+      // 2회 이상 연속 사용 → 다음 메인 상사 이벤트로 '근무태도 지적'(스트레스) 강제 발생
+      if (state.counters.shortsStreak >= 2) {
+        state.flags.forcedShortsScolding = true;
+        addLogEntry(state, {
+          icon: "🟡",
+          cause: "근무 중 영상을 너무 자주 봤다.",
+          effects: ["상사가 근무태도를 지적할 것 같다"],
+        });
+      }
       return state;
     },
   },
