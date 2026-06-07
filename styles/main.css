@@ -4362,6 +4362,28 @@ select {
   gap: 10px;
 }
 
+/* 도움말(인수인계서) 버튼 — 미니게임 브리핑 '업무 시작' 버튼과 동일한 디자인 */
+.document .actions button {
+  min-width: 132px;
+  padding: 10px 22px;
+  border: 3px solid var(--ink, #1d1f2e);
+  border-radius: 6px;
+  background: #fdfcf2;
+  color: var(--ink, #1d1f2e);
+  box-shadow: 4px 4px 0 var(--ink, #1d1f2e);
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.document .actions button.primary {
+  background: var(--accent, #ffd23f);
+}
+.document .actions button:hover {
+  transform: none;
+  filter: brightness(1.04);
+}
+
 .document {
   padding: clamp(20px, 4vw, 42px);
 }
@@ -4373,7 +4395,7 @@ select {
 /* ── 업무 인수인계서 ─────────────────────────── */
 .handover-doc {
   cursor: default;
-  background: #ffffff;
+  background: transparent;
   padding: 8px 4px 4px;
 }
 

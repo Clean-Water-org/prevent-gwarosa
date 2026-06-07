@@ -1,6 +1,5 @@
 ﻿import { el } from "../ui.js";
 import { playClickSfx } from "../lib/audio.js";
-import { renderDevPanel } from "./dev-panel.js";
 
 const WINDOW_TITLE_NORMAL = "🏢 overwork_prevention.exe — 출근 준비";
 const WINDOW_TITLE_ALTS = [
@@ -211,7 +210,6 @@ export function renderTitle(root, state, actions) {
         ]),
         el("div", { class: "title-menu-content" }, [
           crtCard,
-          renderDevPanel(state, actions),
         ]),
       ]),
     ]),
