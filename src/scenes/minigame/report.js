@@ -3,7 +3,7 @@ import { el, renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
-import { formatHeadacheDisplayText } from "../../lib/headache-fx.js";
+import { headacheCorruptText } from "../../lib/headache-fx.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -126,12 +126,32 @@ function pickReportIdx() {
   return ri;
 }
 
+// 미니게임 인스턴스(briefingKey)당 주제를 1회만 뽑아 state.flags에 고정.
+// 같은 인스턴스가 재렌더되면 저장된 주제를 그대로 재사용해 도중 변경을 막는다.
+function pickStableReportIdx(state, actions) {
+  const runKey = state.flags?.minigameBriefingKey ?? `report:${state.minigameRound ?? 0}`;
+  if (state.flags?.reportRunKey === runKey && Number.isInteger(state.flags?.reportRunIdx)) {
+    return state.flags.reportRunIdx;
+  }
+  const repIdx = pickReportIdx();
+  // 재렌더 없이 상태만 갱신(patchGameState) — 없으면 이번 렌더 값만 사용(폴백).
+  actions.patchGameState?.((draft) => {
+    draft.flags.reportRunKey = runKey;
+    draft.flags.reportRunIdx = repIdx;
+    return draft;
+  });
+  return repIdx;
+}
+
 // ══════════════════════════════════════════════════════════════════
 export function renderReportGame(root, state, actions, game) {
   const stress = state.stats.stress;
   const isHeadache = state.stats.health <= 30;
+  const isBurnout = stress >= 70; // 번아웃: 회색 필터 + 발동 토스트 + 커서 느려짐
   const diff = diffOf(stress);
-  const repIdx = pickReportIdx();
+  // 보고서 주제는 미니게임 인스턴스당 1회만 선택해 고정한다.
+  // 게임 도중 어떤 이유로든 재렌더가 일어나도 같은 인스턴스(briefingKey)면 주제가 바뀌지 않는다.
+  const repIdx = pickStableReportIdx(state, actions);
   const report = buildReport(repIdx, diff.lines);
   let total = report.typoKeys.length; // addPage 이벤트로 증가할 수 있음
 
@@ -145,6 +165,29 @@ export function renderReportGame(root, state, actions, game) {
     toastTimer: null, warnTimer: null, endTimer: null, penHoldTimer: null, penOutTimer: null,
     evToastTimer: null, spellTimer: null, saveTimer: null, flickTimer: null,
   };
+
+  // ── 두통 효과 대상 단어 선정 (정답=오탈자·함정 단어는 제외, 일반 단어만) ──
+  // 문자 깨짐(□▓)은 일반 단어 2개에만, 블러는 나머지 일반 단어에 띄엄띄엄.
+  // 게임 시작 시 한 번만 정해 updateBody 재빌드에도 고정(깜빡임 방지).
+  run.headacheCorruptKeys = new Set();
+  run.headacheBlurKeys = new Set();
+  if (isHeadache) {
+    const plainKeys = [];
+    report.lines.forEach((ln) => ln.segs.forEach((s) => {
+      if (s.plain == null) return;
+      s.plain.split(/(\s+)/).forEach((tok, i) => {
+        if (tok === "" || /^\s+$/.test(tok)) return;
+        plainKeys.push(s.key + "-w" + i);
+      });
+    }));
+    const shuffled = plainKeys.slice().sort(() => Math.random() - 0.5);
+    shuffled.slice(0, 2).forEach((k) => run.headacheCorruptKeys.add(k)); // 문자 깨짐 2개
+    shuffled.slice(2).forEach((k) => { if (Math.random() < 0.28) run.headacheBlurKeys.add(k); }); // 블러 띄엄띄엄
+    // 정답(오탈자) 단어 중 1개에도 블러 (문자 깨짐은 적용 안 함, 블러만)
+    if (report.typoKeys.length) {
+      run.headacheBlurKeys.add(report.typoKeys[Math.floor(Math.random() * report.typoKeys.length)]);
+    }
+  }
 
   // ── 오피스 배경 셸 ──
   const shell = document.createElement("section");
@@ -240,6 +283,7 @@ export function renderReportGame(root, state, actions, game) {
   board.style.cssText = "position:relative;background:#fbfaf4;padding:16px 26px;min-height:300px";
   if (diff.fx === "화면 흔들림") board.className = "fx-shake";
   if (isHeadache) board.classList.add("fx-headache-report");
+  if (isBurnout) board.classList.add("fx-gray"); // 번아웃 — 보고서 회색 필터
 
   const reportHolder = document.createElement("div");
   board.append(reportHolder);
@@ -316,6 +360,26 @@ export function renderReportGame(root, state, actions, game) {
   kakaoEl.hidden = true;
   shell.append(darkOverlayEl, vignetteEl, bossOverlayEl, penSpeechEl, bossSpeechEl, flickerEl, kakaoEl);
 
+  // ── 번아웃(스트레스 70↑) 상태이상 오버레이 ──
+  // 전체화면 회색 비네팅 (가장자리→가운데, multiply)
+  const burnoutVignetteEl = document.createElement("div");
+  burnoutVignetteEl.style.cssText = "position:fixed;inset:0;z-index:44;pointer-events:none;opacity:0;transition:opacity .6s;background:radial-gradient(ellipse 70% 70% at 50% 50%, rgba(90,90,100,0) 30%, rgba(70,70,80,.45) 78%, rgba(40,40,48,.7) 100%);mix-blend-mode:multiply";
+  // 느린(지연된) 가짜 커서 — 실제 커서는 숨기고 이 화살표가 뒤늦게 따라온다
+  const fakeCursorEl = document.createElement("div");
+  fakeCursorEl.style.cssText = "position:fixed;left:0;top:0;width:26px;height:26px;z-index:70;pointer-events:none;display:none;background:#1d1f2e;clip-path:polygon(0 0,0 75%,22% 57%,38% 94%,54% 88%,38% 52%,70% 52%);filter:drop-shadow(1px 1px 0 #fff) drop-shadow(-1px -1px 0 #fff) drop-shadow(1px -1px 0 #fff) drop-shadow(-1px 1px 0 #fff)";
+  // 상태이상 발동 토스트 배너
+  const statusToastEl = document.createElement("div");
+  statusToastEl.style.cssText = "position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:55;width:360px;max-width:84%;pointer-events:none;display:none";
+  const statusToastInner = document.createElement("div");
+  statusToastInner.style.cssText = `background:#fff;border:3px solid ${PX.red};box-shadow:4px 4px 0 rgba(0,0,0,.25);padding:10px 16px;display:flex;flex-direction:column;gap:3px`;
+  const statusToastTitle = document.createElement("div");
+  statusToastTitle.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red}`;
+  const statusToastSub = document.createElement("div");
+  statusToastSub.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
+  statusToastInner.append(statusToastTitle, statusToastSub);
+  statusToastEl.append(statusToastInner);
+  shell.append(burnoutVignetteEl, statusToastEl, fakeCursorEl);
+
   // 본문 영역 내부의 '저장 중...' 인디케이터
   const savingEl = document.createElement("div");
   savingEl.style.cssText = "position:absolute;left:20px;top:12px;z-index:8;font-family:NeoDunggeunmo,monospace;font-size:12px;color:#777;background:#eef0f3;border:2px solid #c5c9cf;padding:3px 11px;display:none";
@@ -323,9 +387,13 @@ export function renderReportGame(root, state, actions, game) {
   board.append(savingEl);
 
   // ── 렌더 헬퍼 ──────────────────────────────────────────────────
-  function displayWord(text, seed = 0) {
-    if (!isHeadache) return text;
-    return formatHeadacheDisplayText(text, { part: "body", seed, enabled: true });
+  // 선정된 일반 단어만 문자 깨짐(□▓). 정답(오탈자)·함정 단어는 절대 적용 안 함.
+  function corruptIfSelected(text, key) {
+    if (isHeadache && run.headacheCorruptKeys.has(key)) return headacheCorruptText(text, 0.42, key.length);
+    return text;
+  }
+  function blurClass(key) {
+    return (isHeadache && run.headacheBlurKeys.has(key)) ? " headache-blur" : "";
   }
 
   function renderSeg(s) {
@@ -337,8 +405,8 @@ export function renderReportGame(root, state, actions, game) {
         if (/^\s+$/.test(tok)) { nodes.push(document.createTextNode(tok)); return; }
         const wk = s.key + "-w" + i;
         nodes.push(el("span", {
-          class: "mg3p-word" + (run.wrongKey === wk ? " wrongflash" : "") + (run.penKey === wk ? " pen" : "") + (run.spellKeys.includes(wk) ? " spell" : ""),
-          text: displayWord(tok, wk.length),
+          class: "mg3p-word" + (run.wrongKey === wk ? " wrongflash" : "") + (run.penKey === wk ? " pen" : "") + (run.spellKeys.includes(wk) ? " spell" : "") + blurClass(wk),
+          text: corruptIfSelected(tok, wk),
           onClick: () => clickWrong(wk, false),
         }));
       });
@@ -347,29 +415,29 @@ export function renderReportGame(root, state, actions, game) {
     if (s.typo) {
       if (run.found.includes(s.key)) {
         return [el("span", { class: "mg3p-fixed" + (run.flashKey === s.key ? " flash" : "") }, [
-          el("span", { class: "mg3p-old", text: displayWord(s.wrong, s.key.length) }),
+          el("span", { class: "mg3p-old", text: s.wrong }),
           el("span", { class: "mg3p-new", text: s.correct + " ✓" }),
         ])];
       }
       return [el("span", {
-        class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : ""),
-        text: displayWord(s.wrong, s.key.length),
+        class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : "") + blurClass(s.key),
+        text: s.wrong,
         onClick: () => clickTypo(s.key),
       })];
     }
     // trap
     return [el("span", {
       class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : "") + (run.spellKeys.includes(s.key) ? " spell" : ""),
-      text: displayWord(s.word, s.key.length),
+      text: s.word,
       onClick: () => clickWrong(s.key, true),
     })];
   }
 
   function buildReportNode() {
-    const rep = el("div", { class: "mg3p-report" + (isHeadache ? " headache-text-host" : "") });
+    const rep = el("div", { class: "mg3p-report" });
     rep.append(el("p", {
       class: "mg3p-title",
-      text: "제목. " + displayWord(report.title, 7),
+      text: "제목. " + (isHeadache ? headacheCorruptText(report.title, 0.09, 7) : report.title),
     }));
     report.lines.forEach((ln) => {
       const p = el("p", { class: "mg3p-line" });
@@ -724,6 +792,7 @@ export function renderReportGame(root, state, actions, game) {
     run.done = true;
     run.phase = "result";
     stopBgm();
+    stopBurnout(); // 결과 화면은 정상 커서로 — 번아웃 효과 해제
     clearInterval(run.timerInterval);
     // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 전부 정리 (까까오 PC창·상사 펜·토스트·깜빡임)
     kakaoEl.replaceChildren(); kakaoEl.hidden = true;
@@ -793,9 +862,76 @@ export function renderReportGame(root, state, actions, game) {
 
   function cleanup() {
     stopBgm();
+    stopBurnout();
     clearInterval(run.timerInterval);
     [run.flashTimer, run.wrongTimer, run.floatTimer, run.toastTimer, run.warnTimer, run.endTimer, run.penHoldTimer, run.penOutTimer,
      run.evToastTimer, run.spellTimer, run.saveTimer, run.flickTimer].forEach(clearTimeout);
+  }
+
+  // ── 번아웃 상태이상 시스템 (회색 비네팅 + 발동 토스트 + 커서 느려짐) ──
+  const burnout = { active: false, raf: 0, realX: 0, realY: 0, x: 0, y: 0, synthClick: false, onMove: null, onClick: null, toastTimer: null };
+
+  function showStatusToast(title, sub) {
+    statusToastTitle.textContent = title;
+    statusToastSub.textContent = sub;
+    statusToastEl.style.display = "block";
+    statusToastInner.className = "banner-in";
+    clearTimeout(burnout.toastTimer);
+    burnout.toastTimer = setTimeout(() => { statusToastEl.style.display = "none"; }, 3000);
+  }
+
+  function startBurnout() {
+    if (!isBurnout || burnout.active) return;
+    burnout.active = true;
+    burnout.realX = burnout.x = window.innerWidth / 2;
+    burnout.realY = burnout.y = window.innerHeight / 2;
+    burnoutVignetteEl.style.opacity = "1";
+    shell.classList.add("mg3-burnout-cursor"); // 실제 커서 숨김(CSS)
+    fakeCursorEl.style.display = "block";
+    fakeCursorEl.style.transform = `translate(${burnout.x}px, ${burnout.y}px)`;
+
+    burnout.onMove = (e) => { burnout.realX = e.clientX; burnout.realY = e.clientY; };
+    window.addEventListener("mousemove", burnout.onMove, { passive: true });
+
+    // 클릭을 '보이는(지연된) 커서' 위치로 전달해, 화면에 보이는 커서와 실제 클릭 지점을 일치시킨다.
+    burnout.onClick = (e) => {
+      if (!burnout.active || burnout.synthClick) return; // 합성 클릭은 그대로 통과
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      const tgt = document.elementFromPoint(burnout.x, burnout.y);
+      if (tgt) {
+        burnout.synthClick = true;
+        tgt.click();
+        burnout.synthClick = false;
+      }
+    };
+    window.addEventListener("click", burnout.onClick, true); // 캡처 단계에서 가로채기
+
+    const EASE = 0.11; // 작을수록 더 느리게(지연) 따라온다
+    const tick = () => {
+      if (!burnout.active) return;
+      burnout.x += (burnout.realX - burnout.x) * EASE;
+      burnout.y += (burnout.realY - burnout.y) * EASE;
+      fakeCursorEl.style.transform = `translate(${burnout.x}px, ${burnout.y}px)`;
+      burnout.raf = requestAnimationFrame(tick);
+    };
+    burnout.raf = requestAnimationFrame(tick);
+
+    showStatusToast("🥵 번아웃 발동", "스트레스가 70을 넘었습니다");
+  }
+
+  function stopBurnout() {
+    if (!burnout.active) return;
+    burnout.active = false;
+    cancelAnimationFrame(burnout.raf);
+    if (burnout.onMove) window.removeEventListener("mousemove", burnout.onMove);
+    if (burnout.onClick) window.removeEventListener("click", burnout.onClick, true);
+    clearTimeout(burnout.toastTimer);
+    fakeCursorEl.style.display = "none";
+    shell.classList.remove("mg3-burnout-cursor");
+    burnoutVignetteEl.style.opacity = "0";
+    statusToastEl.style.display = "none";
   }
 
   // ── 초기화 ──
@@ -811,4 +947,5 @@ export function renderReportGame(root, state, actions, game) {
     clockEl: shell.querySelector(".hud .clock"),
   });
   startTimer();
+  startBurnout();
 }

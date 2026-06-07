@@ -7677,6 +7677,10 @@ textarea,
   position: relative;
 }
 
+.headache-blur {
+  filter: blur(1.6px);
+}
+
 .fx-headache-report .mg3p-word {
   text-shadow: 0.5px 0 0 rgba(192, 57, 43, 0.08), -0.5px 0 0 rgba(52, 152, 219, 0.06);
 }
@@ -7840,6 +7844,13 @@ textarea,
   cursor: pointer;
   padding: 0 1px;
   border-radius: 2px;
+}
+/* 번아웃 상태이상 — 실제 커서 숨김(가짜 느린 커서로 대체) */
+.mg3-burnout-cursor,
+.mg3-burnout-cursor *,
+.mg2-burnout-cursor,
+.mg2-burnout-cursor * {
+  cursor: none !important;
 }
 .mg3p-word:hover {
   background: #fff0a8;
