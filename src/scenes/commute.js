@@ -280,9 +280,6 @@ function renderCommuteTaskbar() {
       el("span", { class: "main-work-task-icon is-disabled", text: "사내포털" }),
       el("span", { class: "main-work-task-icon is-disabled main-work-task-messenger", text: "💬" }),
     ]),
-    el("div", { class: "main-work-taskbar-right" }, [
-      el("span", { class: "main-work-task-clock", text: "오전 9:00" }),
-    ]),
   ]);
 }
 

@@ -645,9 +645,6 @@ function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn, onMesse
       intranetBtn,
       messengerBtn,
     ]),
-    el("div", { class: "main-work-taskbar-right" }, [
-      el("span", { class: "main-work-task-clock", text: toTaskbarTime(gameMinute) }),
-    ]),
   ]);
 }
 
