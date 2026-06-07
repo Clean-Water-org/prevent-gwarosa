@@ -78,6 +78,7 @@ let _lastRenderedState = null;
 let _openMessengerRoom = null;
 let _replyExpireTimers = new Map();
 let _preservingNotifications = false;
+let _preservingMeetingEvent = false;
 let _logHighlightClearId = null;
 let _logHighlightTimer = null;
 let _preserveSpawnMs = null;
@@ -543,6 +544,8 @@ function renderRecentLogEntry(entry, highlightId) {
 }
 
 const INTRANET_STATIC_NOTICES = [
+  "[안내] 불필요한 야근 자제 안내",
+  "[중요] 사무실 내 간이침대 사용 수칙 안내",
   "[중요] 2분기 업무 효율화 캠페인 안내",
   "[중요] 사내 수면실 이용 제한 안내",
   "사내 보안 점검으로 인한 문서 서버 순단 예정",
@@ -1738,13 +1741,22 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
 
   if (prevScene !== "main" || !_messengerState) {
     _preservingNotifications = false;
+    _preservingMeetingEvent = false;
     return;
+  }
+
+  if (nextScene !== "main") {
+    _preservingMeetingEvent = false;
   }
 
   if (nextScene === "main") {
     if (_notifPanel?.parentElement) {
       _notifPanel.remove();
       pauseChatSystem();
+    }
+    if (_meetingEventOverlay?.parentElement) {
+      _meetingEventOverlay.remove();
+      _preservingMeetingEvent = true;
     }
     _preserveSpawnMs = _spawnTimeout
       ? Math.max(0, _spawnDelayMs - (Date.now() - _spawnScheduledAt))
@@ -1979,6 +1991,7 @@ function cleanupMainEventSystem() {
 }
 
 function cleanupMeetingEventSystem() {
+  if (_preservingMeetingEvent) return;
   if (_meetingEventTimeout) {
     clearTimeout(_meetingEventTimeout);
     _meetingEventTimeout = null;
@@ -2110,7 +2123,13 @@ function shouldShowMeetingEvent(state) {
 }
 
 function showMeetingEventPopup(state, container, actions) {
-  if (_meetingEventOverlay) return;
+  if (_meetingEventOverlay) {
+    if (!_meetingEventOverlay.isConnected) {
+      container.append(_meetingEventOverlay);
+    }
+    _preservingMeetingEvent = false;
+    return;
+  }
   playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
   pauseChatSystem();
   cleanupMainClock();
@@ -2125,7 +2144,9 @@ function showMeetingEventPopup(state, container, actions) {
     _meetingEventTimeout = null;
     const outcome = getMeetingEventOutcome(state);
     const resultPopup = renderMeetingOutcomePopup(outcome, state, actions);
-    _meetingEventOverlay?.replaceWith(resultPopup);
+    if (_meetingEventOverlay?.isConnected) {
+      _meetingEventOverlay.replaceWith(resultPopup);
+    }
     _meetingEventOverlay = resultPopup;
   }, 1800);
 }
@@ -2237,6 +2258,11 @@ function buildMeetingOutcomeEvent(outcome, state) {
 }
 
 function closeMeetingEventChoice(actions, state, choice, outcome) {
+  _preservingMeetingEvent = false;
+  if (_meetingEventTimeout) {
+    clearTimeout(_meetingEventTimeout);
+    _meetingEventTimeout = null;
+  }
   _meetingEventOverlay?.remove();
   _meetingEventOverlay = null;
 
