@@ -925,7 +925,7 @@ function renderMessengerShell(container, state, actions, onClose) {
   container.replaceChildren(windowEl);
   requestAnimationFrame(() => {
     const log = container.querySelector(".main-work-messenger-thread-log");
-    if (log) log.scrollTop = 0;
+    if (log) log.scrollTop = log.scrollHeight;
   });
 }
 
@@ -959,7 +959,7 @@ function renderMessengerThread(room, state, actions) {
       el("span", { class: "main-work-messenger-presence", text: room.id === "hr" ? "인사 알림" : "업무 중" }),
     ]),
     el("div", { class: "main-work-messenger-thread-log" }, messages.length
-      ? [...messages].reverse().map((message) => renderMessengerMessage(message, state, actions))
+      ? messages.map((message) => renderMessengerMessage(message, state, actions))
       : [el("p", { class: "main-work-messenger-empty", text: "아직 도착한 메시지가 없습니다." })]),
   ]);
 }
@@ -1669,14 +1669,46 @@ function cleanupMainPhaseTimer() {
   }
 }
 
-function cleanupPhoneSystem() {
-  for (const timeout of _phoneTimeouts) clearTimeout(timeout);
-  _phoneTimeouts.clear();
+function clearPhonePlanTimers(plan) {
+  if (plan.timeoutId) {
+    clearTimeout(plan.timeoutId);
+    _phoneTimeouts.delete(plan.timeoutId);
+    plan.timeoutId = null;
+  }
+  if (plan.expireTimerId) {
+    clearTimeout(plan.expireTimerId);
+    plan.expireTimerId = null;
+  }
+}
+
+function abandonRingingPhonePlans() {
+  for (const plans of phonePlans.values()) {
+    for (const plan of plans) {
+      if (plan.status !== "ringing") continue;
+      clearPhonePlanTimers(plan);
+      plan.status = "done";
+    }
+  }
+  stopPhoneRingAudio();
   if (_phoneOverlay) {
     _phoneOverlay.remove();
     _phoneOverlay = null;
   }
+}
+
+function cleanupPhoneSystem() {
+  for (const timeout of _phoneTimeouts) clearTimeout(timeout);
+  _phoneTimeouts.clear();
+  for (const plans of phonePlans.values()) {
+    for (const plan of plans) {
+      clearPhonePlanTimers(plan);
+    }
+  }
   stopPhoneRingAudio();
+  if (_phoneOverlay) {
+    _phoneOverlay.remove();
+    _phoneOverlay = null;
+  }
 }
 
 function cleanupMainEventSystem() {
@@ -1709,6 +1741,13 @@ function getPendingStatusEvent(state) {
   return null;
 }
 
+function pauseMainWorkForBlockingEvent() {
+  pauseChatSystem();
+  cleanupMainClock();
+  cleanupMainPhaseTimer();
+  abandonRingingPhonePlans();
+}
+
 function showStatusEventPopup(type, state, container, actions) {
   if (_statusEventOverlay) return;
   if (type === "headache") {
@@ -1717,6 +1756,7 @@ function showStatusEventPopup(type, state, container, actions) {
   }
   const config = STATUS_EVENT_CONFIGS[type];
   if (!config) return;
+  pauseMainWorkForBlockingEvent();
   playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
 
   const openedAt = Date.now();
@@ -1780,6 +1820,7 @@ function showStatusEventPopup(type, state, container, actions) {
 }
 
 function showHeadacheStatusPopup(state, container, actions) {
+  pauseMainWorkForBlockingEvent();
   const openedAt = Date.now();
   const clockEl = container.querySelector(".main-work-current-time");
 
@@ -2368,6 +2409,22 @@ function getPhonePlans(state, phaseIndex, durationSec) {
   return plans;
 }
 
+function startPhoneRingAudio() {
+  stopPhoneRingAudio();
+  _phoneRingAudio = new Audio("assets/audio/phone-ring.wav");
+  _phoneRingAudio.loop = true;
+  _phoneRingAudio.play().catch(() => {});
+}
+
+function schedulePhoneExpire(plan, phoneButton, actions, delayMs) {
+  clearPhonePlanTimers(plan);
+  plan.expireTimerId = setTimeout(() => {
+    plan.expireTimerId = null;
+    if (plan.status !== "ringing") return;
+    finishPhoneCall(plan, phoneButton, actions, "missed");
+  }, delayMs);
+}
+
 function ringPhone(screen, state, actions, plan) {
   const phoneButton = screen.querySelector(".main-work-phone-button");
   const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
@@ -2376,17 +2433,10 @@ function ringPhone(screen, state, actions, plan) {
   plan.status = "ringing";
   plan.expiresAt = Date.now() + PHONE_RING_SECONDS * 1000;
   activatePhoneButton(phoneButton);
+  startPhoneRingAudio();
+  schedulePhoneExpire(plan, phoneButton, actions, PHONE_RING_SECONDS * 1000);
 
-  _phoneRingAudio = new Audio("assets/audio/phone-ring.wav");
-  _phoneRingAudio.loop = true;
-  _phoneRingAudio.play().catch(() => {});
-
-  const expireTimer = setTimeout(() => {
-    if (plan.status !== "ringing") return;
-    finishPhoneCall(plan, phoneButton, actions, "missed");
-  }, PHONE_RING_SECONDS * 1000);
-
-  phoneButton.onclick = () => openPhoneOverlay(monitorScreen, plan, phoneButton, actions, expireTimer);
+  phoneButton.onclick = () => openPhoneOverlay(monitorScreen, plan, phoneButton, actions);
 }
 
 function restoreRingingPhone(screen, state, actions, plan) {
@@ -2395,13 +2445,11 @@ function restoreRingingPhone(screen, state, actions, plan) {
   if (!phoneButton || !monitorScreen || !screen.isConnected) return;
 
   activatePhoneButton(phoneButton);
+  startPhoneRingAudio();
   const remainingMs = Math.max(0, (plan.expiresAt ?? Date.now()) - Date.now());
-  const expireTimer = setTimeout(() => {
-    if (plan.status !== "ringing") return;
-    finishPhoneCall(plan, phoneButton, actions, "missed");
-  }, remainingMs);
+  schedulePhoneExpire(plan, phoneButton, actions, remainingMs);
 
-  phoneButton.onclick = () => openPhoneOverlay(monitorScreen, plan, phoneButton, actions, expireTimer);
+  phoneButton.onclick = () => openPhoneOverlay(monitorScreen, plan, phoneButton, actions);
 }
 
 function activatePhoneButton(phoneButton) {
@@ -2410,7 +2458,7 @@ function activatePhoneButton(phoneButton) {
   phoneButton.title = "전화 수신 중";
 }
 
-function openPhoneOverlay(container, plan, phoneButton, actions, expireTimer) {
+function openPhoneOverlay(container, plan, phoneButton, actions) {
   if (plan.status !== "ringing" || _phoneOverlay) return;
   pauseChatSystem();
 
@@ -2440,7 +2488,7 @@ function openPhoneOverlay(container, plan, phoneButton, actions, expireTimer) {
           type: "button",
           text: "받기",
           onClick: () => {
-            clearTimeout(expireTimer);
+            clearPhonePlanTimers(plan);
             finishPhoneCall(plan, phoneButton, actions, "accept");
           },
         }),
@@ -2449,7 +2497,7 @@ function openPhoneOverlay(container, plan, phoneButton, actions, expireTimer) {
           type: "button",
           text: "거절",
           onClick: () => {
-            clearTimeout(expireTimer);
+            clearPhonePlanTimers(plan);
             finishPhoneCall(plan, phoneButton, actions, "reject");
           },
         }),
@@ -2461,16 +2509,18 @@ function openPhoneOverlay(container, plan, phoneButton, actions, expireTimer) {
 }
 
 function stopPhoneRingAudio() {
-  if (_phoneRingAudio) {
-    _phoneRingAudio.pause();
-    _phoneRingAudio.currentTime = 0;
-    _phoneRingAudio = null;
-  }
+  if (!_phoneRingAudio) return;
+  _phoneRingAudio.loop = false;
+  _phoneRingAudio.pause();
+  _phoneRingAudio.currentTime = 0;
+  _phoneRingAudio.src = "";
+  _phoneRingAudio = null;
 }
 
 function finishPhoneCall(plan, phoneButton, actions, outcome) {
   if (plan.status === "done") return;
 
+  clearPhonePlanTimers(plan);
   plan.status = "done";
   stopPhoneRingAudio();
   phoneButton.classList.remove("is-ringing");
