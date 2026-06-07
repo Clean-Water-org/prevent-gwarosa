@@ -33,10 +33,12 @@ export function createInitialState() {
       failures: 0,
       mainEventCount: 0,
       mainPhaseEventUsed: null,
+      minigameResults: [],
     },
     flags: {
       runId: createRunId(),
       forcedMeeting: false,
+      meetingEventDone: false,
       nextBossOrderBoost: false,
       forcedBossOrder: false,
       hiddenBreakPenalty: false,

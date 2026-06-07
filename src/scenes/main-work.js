@@ -22,6 +22,8 @@ let _phoneOverlay = null;
 let _phoneRingAudio = null;
 let _mainEventTimeout = null;
 let _mainEventOverlay = null;
+let _meetingEventTimeout = null;
+let _meetingEventOverlay = null;
 let _statusEventOverlay = null;
 let _snoozedChats = [];
 let _nextBossTaskTimerPenalty = 0;
@@ -169,6 +171,9 @@ export function renderMainWork(root, state, actions) {
     if (pendingStatus) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
       showStatusEventPopup(pendingStatus, state, monitorEl, actions);
+    } else if (shouldShowMeetingEvent(state)) {
+      const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
+      showMeetingEventPopup(state, monitorEl, actions);
     } else {
       startChats();
       startMainClock(screen, state, actions);
@@ -585,6 +590,7 @@ function cleanupMainWorkSystems() {
   cleanupMainPhaseTimer();
   cleanupPhoneSystem();
   cleanupMainEventSystem();
+  cleanupMeetingEventSystem();
   cleanupStatusEventSystem();
 }
 
@@ -680,6 +686,17 @@ function cleanupMainEventSystem() {
   }
 }
 
+function cleanupMeetingEventSystem() {
+  if (_meetingEventTimeout) {
+    clearTimeout(_meetingEventTimeout);
+    _meetingEventTimeout = null;
+  }
+  if (_meetingEventOverlay) {
+    _meetingEventOverlay.remove();
+    _meetingEventOverlay = null;
+  }
+}
+
 function getPendingStatusEvent(state) {
   if (!state.flags?.handoverGuideSeen) return null;
   const triggered = state.flags?.statusEvents ?? {};
@@ -751,6 +768,161 @@ function showStatusEventPopup(type, state, container, actions) {
   ]);
 
   container.append(_statusEventOverlay);
+}
+
+function shouldShowMeetingEvent(state) {
+  const phaseIndex = getMainPhaseIndex(state);
+  return phaseIndex >= 2 && phaseIndex <= 3 && state.flags?.meetingEventDone === false;
+}
+
+function showMeetingEventPopup(state, container, actions) {
+  if (_meetingEventOverlay) return;
+  pauseChatSystem();
+  cleanupMainClock();
+  cleanupMainPhaseTimer();
+  cleanupPhoneSystem();
+  cleanupMainEventSystem();
+
+  _meetingEventOverlay = renderMeetingIntroPopup();
+  container.append(_meetingEventOverlay);
+
+  _meetingEventTimeout = setTimeout(() => {
+    _meetingEventTimeout = null;
+    const outcome = getMeetingEventOutcome(state);
+    const resultPopup = renderMeetingOutcomePopup(outcome, state, actions);
+    _meetingEventOverlay?.replaceWith(resultPopup);
+    _meetingEventOverlay = resultPopup;
+  }, 1000);
+}
+
+function renderMeetingIntroPopup() {
+  return el("div", { class: "main-event-overlay" }, [
+    el("article", { class: "main-event-card main-event-common", role: "dialog", "aria-modal": "true" }, [
+      el("header", { class: "main-event-titlebar" }, [
+        el("div", { class: "main-event-source" }, [
+          el("span", { class: "main-event-diamond", text: "◆" }),
+          el("span", { text: "회의" }),
+        ]),
+        el("time", { class: "main-event-timer", text: "MEETING" }),
+      ]),
+      el("section", { class: "main-event-body" }, [
+        el("p", { class: "main-event-kicker", text: "회의실" }),
+        el("h2", { text: "📢 회의 진행 중" }),
+      ]),
+    ]),
+  ]);
+}
+
+function getMeetingEventOutcome(state) {
+  const recent = (state.counters?.minigameResults ?? []).slice(-2).map((entry) => entry.result);
+  const failCount = recent.filter((result) => result === "fail").length;
+  const partialCount = recent.filter((result) => result === "partial").length;
+  if (failCount >= 1 || partialCount >= 2) return "shame";
+
+  const successCount = recent.filter((result) => result === "success").length;
+  if ((recent.length >= 2 && successCount === 2) || state.stats.workload <= 50) return "praise";
+
+  return "followup";
+}
+
+function renderMeetingOutcomePopup(outcome, state, actions) {
+  const event = {
+    id: `meeting-${outcome}`,
+    type: "boss",
+    speaker: state.boss?.name ?? "상사",
+    title: outcome === "shame" ? "공개 망신" : outcome === "praise" ? "공개 칭찬" : "후속 업무",
+    body: getMeetingSpeech(outcome, state),
+  };
+
+  if (outcome === "followup") {
+    event.choices = [
+      { id: "accept", label: "수락", delta: { workload: 10, stress: 5 }, message: "회의 후속 업무를 맡았다." },
+      { id: "reject", label: "거절", next: "meeting-reject" },
+    ];
+  } else {
+    event.choices = [
+      {
+        id: "confirm",
+        label: "확인",
+        delta: outcome === "shame" ? { stress: 20, health: -5 } : { stress: -15 },
+        message: outcome === "shame" ? "회의 중 공개적으로 지적을 받았다." : "회의 중 공개적으로 칭찬을 받았다.",
+      },
+    ];
+  }
+
+  return renderMainEventPopup(event, {
+    state,
+    onChoice: (choice) => closeMeetingEventChoice(actions, state, choice),
+  });
+}
+
+function closeMeetingEventChoice(actions, state, choice) {
+  _meetingEventOverlay?.remove();
+  _meetingEventOverlay = null;
+
+  const finalChoice = choice.next === "meeting-reject" ? getMeetingRejectChoice(state) : choice;
+  let pendingEnding = null;
+  actions.mutateState((draft) => {
+    let next = applyDelta(draft, finalChoice.delta ?? {}, null);
+    next.flags.meetingEventDone = true;
+    addLogEntry(next, {
+      cause: finalChoice.message,
+      delta: finalChoice.delta ?? {},
+    });
+    pendingEnding = checkEnding(next);
+    return next;
+  });
+
+  if (pendingEnding) actions.finishWith(pendingEnding);
+}
+
+function getMeetingRejectChoice(state) {
+  const success = Math.random() < getBossRejectSuccessRate(getBossSpeechKey(state));
+  return {
+    id: "reject",
+    delta: success ? {} : { workload: 10, stress: 15 },
+    message: success ? "회의 후속 업무를 피했다." : "회의 후속 업무를 떠맡게 되었다.",
+  };
+}
+
+function getMeetingSpeech(outcome, state) {
+  const key = getBossSpeechKey(state);
+  const speeches = {
+    shame: {
+      "smart-busy": "입사한지 몇 개월인데 이렇게 간단한것도 못해?",
+      "smart-lazy": "알아서 센스 있게 잘 처리해 봐.",
+      "clumsy-busy": "내가 하라면 해.",
+      "clumsy-lazy": "내가 언제? 기억안나는데?",
+    },
+    praise: {
+      "smart-busy": "이 정도면 올려도 되겠네.",
+      "smart-lazy": "덕분에 빨리 끝났네.",
+      "clumsy-busy": "이번엔 느낌이 괜찮은데?",
+      "clumsy-lazy": "그래.",
+    },
+    followup: {
+      "smart-busy": "회의록 오늘 안으로.",
+      "smart-lazy": "알아서 정리해서 올려줘.",
+      "clumsy-busy": "일단 해와. 보고 방향 잡자.",
+      "clumsy-lazy": "위에서 그러래. 나도 몰라.",
+    },
+  };
+  return speeches[outcome]?.[key] ?? speeches[outcome]?.["smart-busy"] ?? "";
+}
+
+function getBossSpeechKey(state) {
+  const raw = state.bossType ?? state.boss?.id ?? state.boss?.name;
+  const aliases = {
+    똑부: "smart-busy",
+    똑게: "smart-lazy",
+    멍부: "clumsy-busy",
+    멍게: "clumsy-lazy",
+    "smart-busy": "smart-busy",
+    "smart-lazy": "smart-lazy",
+    "clumsy-busy": "clumsy-busy",
+    "clumsy-lazy": "clumsy-lazy",
+  };
+  return aliases[raw] ?? "smart-busy";
 }
 
 function startMainPhaseTimer(state, actions) {
@@ -962,6 +1134,7 @@ function renderMainEventChoice(choice, state, onClick, index) {
 
 function renderMainEventPreview(choice, state) {
   if (choice.next === "reject-reason") return [el("span", { text: "거절 사유 선택" })];
+  if (choice.next === "meeting-reject") return [el("span", { text: "상사 성향에 따라 결과가 달라진다" })];
 
   const preview = deltaToEventChips(choice.delta ?? {});
   const itemId = choice.item ?? getPreviewRandomItem(choice);

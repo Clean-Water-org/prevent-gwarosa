@@ -1,6 +1,6 @@
 import { el, renderBadges, renderHud } from "../../ui.js";
 import { applyDelta, checkEnding } from "../../state.js";
-import { renderEmailPrototypeGame } from "./email.js";
+import { renderEmailGame } from "./email.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
@@ -72,7 +72,7 @@ export function renderMiniGame(root, state, actions) {
   };
 
   if (gameId === "email") {
-    renderEmailPrototypeGame(root, state, extendedActions, game);
+    renderEmailGame(root, state, extendedActions, game);
   } else if (gameId === "meeting") {
     renderMeetingGame(root, state, extendedActions, game);
   } else if (gameId === "report") {
@@ -98,6 +98,10 @@ function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   }
 
   next.minigameRound += 1;
+  next.counters.minigameResults = [
+    ...(next.counters.minigameResults ?? []),
+    { gameId, result },
+  ].slice(-2);
   next.counters.successStreak = result === "success" ? next.counters.successStreak + 1 : 0;
   next.counters.failures += result === "fail" ? 1 : 0;
   if (gameId === "email" && result === "fail") {

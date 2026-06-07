@@ -1,53 +1,691 @@
-import { el, renderHud } from "../../ui.js";
+import { emailDeck } from "../../data/minigames.js";
+import { renderHud } from "../../ui.js";
+import { makeBossSilhouette } from "../../components/boss-silhouette.js";
+import { playBgm, stopBgm } from "../../lib/audio.js";
+import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
-export function renderEmailPrototypeGame(root, state, actions, game) {
-  const iframe = el("iframe", {
-    class: "email-prototype-frame",
-    title: game.title,
-    src: buildPrototypeUrl(state),
+const TRUSTED_HOSTS = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "crm.company.com", "docs.google.com", "drive.partner-office.kr"];
+
+function shuffled(a) {
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
+  return r;
+}
+
+function pickByDifficulty(difficulty, count) {
+  return shuffled(emailDeck.filter((m) => m.difficulty === difficulty)).slice(0, count);
+}
+
+function buildRoundDeck() {
+  const easy = pickByDifficulty("easy", 2);
+  const normal = pickByDifficulty("normal", 4);
+  const hard = pickByDifficulty("hard", 3);
+  const evil = pickByDifficulty("evil", 1);
+  let deck = shuffled([...easy, ...normal, ...hard, ...evil]);
+  const goodCount = deck.filter((m) => m.type === "good").length;
+  if (deck.length < 10 || goodCount < 4 || goodCount > 6) {
+    const good = shuffled(emailDeck.filter((m) => m.type === "good")).slice(0, 5);
+    const spam = shuffled(emailDeck.filter((m) => m.type === "spam")).slice(0, 5);
+    deck = shuffled([...good, ...spam]);
+  }
+  return deck;
+}
+
+// ── 본문 미리보기 요약 (제목 키워드 기반) ──────────────────────────
+function makeBasicPreview(mail) {
+  const s = mail.subject;
+  if (mail.type === "spam") {
+    if (mail.attachment && /\.(zip|exe|xlsm)$/i.test(mail.attachment)) return "첨부 파일 실행 또는 보안 확인이 필요합니다.";
+    if (mail.link && mail.link !== "없음") return "링크에서 로그인 또는 인증을 완료해주세요.";
+    if (s.includes("당첨") || s.includes("상품권") || s.includes("복지포인트")) return "오늘 안에 신청해야 지급됩니다.";
+    if (s.includes("송금")) return "우선 결제 처리가 필요합니다.";
+    if (s.includes("계정") || s.includes("용량")) return "즉시 확인하지 않으면 계정이 제한될 수 있습니다.";
+    return "즉시 확인하지 않으면 제한될 수 있습니다.";
+  }
+  if (s.includes("법인카드")) return "정산 대상 여부를 확인해주세요.";
+  if (s.includes("회의실")) return "예약 상태가 변경되었습니다.";
+  if (s.includes("VPN")) return "인증 방식 확인이 필요합니다.";
+  if (s.includes("연차")) return "사용 계획 등록이 필요합니다.";
+  if (s.includes("견적서")) return "수정본 확인 부탁드립니다.";
+  if (s.includes("보안교육")) return "교육 이수 상태를 확인해주세요.";
+  if (s.includes("급한 건")) return "우선 확인 부탁드립니다.";
+  if (s.includes("송금")) return "결제 건 확인 부탁드립니다.";
+  if (s.includes("공지")) return "안내 사항을 확인해주세요.";
+  return "관련 내용 확인 부탁드립니다.";
+}
+
+function buildBasicClues(mail) {
+  const clues = [];
+  if (mail.attachment && mail.attachment !== "없음") {
+    const ext = mail.attachment.split(".").pop().toLowerCase();
+    clues.push({ text: `첨부 ${ext}`, danger: ["zip", "exe", "xlsm"].includes(ext), warn: !["zip", "exe", "xlsm"].includes(ext) });
+  }
+  if (mail.link && mail.link !== "없음") {
+    const host = mail.link.split("/")[0];
+    const trustedHost = TRUSTED_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+    const looksLikeCompany = /(^|[-.])(company|cornpany)([-.]|$)/i.test(host);
+    clues.push({ text: trustedHost ? "업무 링크" : "링크 포함" });
+    if (looksLikeCompany && !trustedHost) clues.push({ text: "링크 경로", warn: true });
+  }
+  if (/인증|로그인|주민등록번호|계좌|주소와 연락처|실행/.test(mail.body)) clues.push({ text: "민감 요청", danger: true });
+  if (mail.recipient && mail.recipient.includes("개별")) clues.push({ text: "개별 발송", warn: true });
+  if (mail.time && /^0[0-6]:/.test(mail.time)) clues.push({ text: "새벽 발신", warn: true });
+  return clues.slice(0, 2);
+}
+
+function corruptText(text, ratio, seed) {
+  const noise = ["□", "▒", "?", "_", "…"];
+  return Array.from(text).map((ch, i) => {
+    if (ch === " " || /[.,:[\]()]/.test(ch)) return ch;
+    const wave = Math.sin((i + seed * 7) * 2.17) * 0.5 + 0.5;
+    return wave < ratio ? noise[(i + seed) % noise.length] : ch;
+  }).join("");
+}
+
+// ── 분류함 ─────────────────────────────────────────────────────────
+function makeDropZone(kind) {
+  const isGood = kind === "good";
+  const accent = isGood ? PX.green : PX.red;
+  const bg = isGood ? "#e3f7e2" : "#ffe3e0";
+  const wrap = document.createElement("div");
+  wrap.style.cssText = `flex:0 0 168px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
+  const icon = document.createElement("span");
+  icon.style.fontSize = "30px";
+  icon.textContent = isGood ? "📥" : "🗑️";
+  const title = document.createElement("span");
+  title.style.cssText = `font-family:Galmuri14,monospace;font-size:18px;color:${accent}`;
+  title.textContent = isGood ? "중요" : "스팸";
+  const key = document.createElement("span");
+  key.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#8a8478";
+  key.textContent = isGood ? "← / A" : "D / →";
+  const list = document.createElement("div");
+  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;width:100%;min-height:96px";
+  const count = document.createElement("span");
+  count.style.cssText = `font-family:Galmuri9,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px`;
+  count.textContent = "0";
+  wrap.append(icon, title, key, list, count);
+  return { wrap, list, count, accent, kind };
+}
+
+// ── 까까오톡 팝업 ──────────────────────────────────────────────────
+function makeKakaoWin({ msgs, onClose }) {
+  const win = document.createElement("div");
+  win.style.cssText = `position:fixed;z-index:47;width:340px;border:3px solid ${PX.ink};box-shadow:6px 6px 0 rgba(0,0,0,.35);top:16%;right:8%`;
+  const bar = document.createElement("div");
+  bar.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:#fee500;padding:7px 12px;border-bottom:3px solid ${PX.ink}`;
+  const barTitle = document.createElement("span");
+  barTitle.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:#3a2e00;font-weight:700";
+  barTitle.textContent = "💬 까까오톡 PC";
+  const closeBtn = document.createElement("span");
+  closeBtn.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", onClose);
+  bar.append(barTitle, closeBtn);
+  const body = document.createElement("div");
+  body.style.cssText = "background:#b2c7d9;padding:10px 12px;display:flex;flex-direction:column;gap:8px";
+  msgs.forEach(([emo, name, text]) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:7px;align-items:flex-start";
+    const avatar = document.createElement("span");
+    avatar.style.cssText = `width:30px;height:30px;border:2px solid ${PX.ink};background:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto`;
+    avatar.textContent = emo;
+    const msgBody = document.createElement("div");
+    msgBody.style.cssText = "display:flex;flex-direction:column;gap:2px";
+    const nameEl = document.createElement("span");
+    nameEl.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#2a3a47";
+    nameEl.textContent = name;
+    const textEl = document.createElement("span");
+    textEl.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
+    textEl.textContent = text;
+    msgBody.append(nameEl, textEl);
+    row.append(avatar, msgBody);
+    body.append(row);
   });
-  iframe.addEventListener("load", () => iframe.contentWindow?.focus());
+  win.append(bar, body);
+  return win;
+}
 
-  const shell = el("section", { class: "email-prototype-shell" }, [
-    renderHud(state),
-    el("div", { class: "email-prototype-stage" }, [iframe]),
-  ]);
+// ══════════════════════════════════════════════════════════════════
+export function renderEmailGame(root, state, actions, game) {
+  const ALL_EVENTS = ["boss", "kakao", "chat"];
 
-  const startedAt = Date.now();
+  const stress = state.stats.stress;
+  const isHeadache = state.stats.health <= 30;
+  const isCoffee = state.counters.coffeeStreak >= 2;
 
-  const onMessage = (event) => {
-    if (event.source !== iframe.contentWindow) return;
-    if (event.data?.type !== "email-minigame-result") return;
-
-    window.removeEventListener("message", onMessage);
-    const result = event.data.result ?? "fail";
-    const correct = event.data.correct ?? 0;
-    const total = event.data.total ?? 10;
-    // 실제 소요 시간(초): 프로토타입이 usedSec를 보내면 우선, 없으면 래퍼가 경과 시간으로 측정 (0~60)
-    const usedSec = event.data.usedSec != null
-      ? event.data.usedSec
-      : Math.max(0, Math.min(60, Math.round((Date.now() - startedAt) / 1000)));
-    actions.applyResult(result, `정확 ${correct}/${total}`, usedSec);
+  const run = {
+    phase: "play", time: 60, done: false,
+    deck: buildRoundDeck(), index: 0,
+    correct: 0, wrong: 0, missed: 0,
+    locked: false, detailOpen: false, cardY: 12,
+    sortedGood: [], sortedSpam: [],
+    bossWatching: false, evJitter: false,
+    raf: null, timerInterval: null, elapsed: 0, usedEvents: {},
+    floatTimer: null, feedbackTimer: null, evToastTimer: null, evTimer: null, bossTimer: null, kakaoTimer: null, classifyTimer: null,
   };
 
-  window.addEventListener("message", onMessage);
-  root.append(shell);
-  iframe.focus();
-}
+  // ── HUD 참조 ──
+  let scorePill = null, timerPill = null, timerNum = null, floatEl = null;
 
-function buildPrototypeUrl(state) {
-  const params = new URLSearchParams({
-    embedded: "1",
-    stress: String(state.stats?.stress ?? 0),
-    fx: getPrototypeFx(state),
+  // ── 오피스 배경 + 소품 ──
+  const shell = document.createElement("section");
+  shell.style.cssText = "position:fixed;inset:0;overflow:hidden;background:#caa46a;display:grid;grid-template-rows:auto 1fr";
+  shell.append(renderHud(state));
+
+  const room = makeOfficeRoom();
+  appendDefaultRoomProps(room);
+
+  const monitorScroll = document.createElement("div");
+  monitorScroll.style.cssText = "position:absolute;inset:0;display:flex;align-items:safe center;justify-content:center;padding:18px 16px;overflow:auto";
+
+  const monitorWrapper = document.createElement("div");
+  monitorWrapper.style.cssText = "width:min(1000px, 96vw)";
+
+  const gameContent = document.createElement("div");
+  gameContent.style.cssText = "position:relative";
+
+  const fxWrap = document.createElement("div");
+  fxWrap.style.cssText = "position:relative";
+
+  // 타이틀바
+  const titlebar = document.createElement("div");
+  titlebar.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#3a6ea5;border-bottom:3px solid ${PX.ink}`;
+  const titleLeft = document.createElement("span");
+  titleLeft.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#fff";
+  titleLeft.textContent = "📧 받은편지함_정리_확인요망.eml — 아웃클룩";
+  const wbtns = document.createElement("div");
+  wbtns.style.cssText = "display:flex;gap:4px";
+  ["_", "▢", "✕"].forEach((c) => {
+    const b = document.createElement("span");
+    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:Galmuri11,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
+    b.textContent = c;
+    wbtns.append(b);
+  });
+  titlebar.append(titleLeft, wbtns);
+
+  // 메뉴바
+  const menubar = document.createElement("div");
+  menubar.style.cssText = `display:flex;align-items:center;gap:14px;padding:3px 12px;background:#ece6d6;border-bottom:3px solid ${PX.ink}`;
+  ["파일", "편집", "보기", "메일", "도구"].forEach((m) => {
+    const s = document.createElement("span");
+    s.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a5440";
+    s.textContent = m;
+    menubar.append(s);
   });
 
-  return `./assets/minigames/email-classification-prototype.html?${params.toString()}`;
-}
+  // HUD 스트립
+  const hud = document.createElement("div");
+  hud.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#ffe9a8;border-bottom:3px solid ${PX.ink}`;
+  const topicLabel = document.createElement("span");
+  topicLabel.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
+  topicLabel.textContent = "📧 이메일 분류 — 받은편지함";
+  const hudRight = document.createElement("div");
+  hudRight.style.cssText = "display:flex;align-items:center;gap:10px;flex-shrink:0";
 
-function getPrototypeFx(state) {
-  if ((state.stats?.health ?? 100) <= 30) return "headache";
-  if ((state.counters?.coffeeStreak ?? 0) >= 2) return "coffee";
-  if ((state.stats?.stress ?? 0) >= 70) return "burnout";
-  return "";
+  scorePill = document.createElement("span");
+  scorePill.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;padding:3px 9px;border:2px solid ${PX.ink};background:#fff3c4;color:#8a6d12;white-space:nowrap`;
+
+  const timerWrap = document.createElement("div");
+  timerWrap.style.cssText = "position:relative;display:flex;align-items:center";
+  floatEl = document.createElement("span");
+  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:Galmuri14,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
+  floatEl.hidden = true;
+  timerPill = document.createElement("div");
+  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:Galmuri9,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
+  const timerIcon = document.createElement("span");
+  timerIcon.style.fontSize = "15px";
+  timerIcon.textContent = "⏱";
+  timerNum = document.createElement("span");
+  timerNum.style.cssText = "font-size:20px;letter-spacing:1px";
+  timerNum.textContent = "0:60";
+  timerPill.append(timerIcon, timerNum);
+  timerWrap.append(floatEl, timerPill);
+
+  hudRight.append(scorePill, timerWrap);
+  hud.append(topicLabel, hudRight);
+
+  // 보드 영역
+  const board = document.createElement("div");
+  board.style.cssText = "position:relative;background:#e8eef7;padding:12px 16px 14px";
+
+  const hintEl = document.createElement("div");
+  hintEl.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a6478;margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap";
+  ["← / A 분류: 중요  ·", "SPACE 상세 확인 (-2초)", "· D / → 분류: 스팸"].forEach((txt, i) => {
+    const s = document.createElement("span");
+    if (i === 1) s.style.cssText = "font-weight:700;color:#3a6ea5";
+    s.textContent = txt;
+    hintEl.append(s);
+  });
+
+  const statusRow = document.createElement("div");
+  statusRow.style.cssText = "display:none;align-items:center;gap:8px;margin-bottom:8px;font-family:Galmuri11,monospace;font-size:12px;color:#8a6d12;background:#fff3c4;border:2px solid #d8c27a;padding:5px 11px";
+  const statusIcon = document.createElement("span");
+  statusIcon.style.fontSize = "15px";
+  const statusCap = document.createElement("span");
+  statusRow.append(statusIcon, statusCap);
+
+  const gameRow = document.createElement("div");
+  gameRow.style.cssText = "display:flex;gap:12px;align-items:stretch";
+
+  const goodZone = makeDropZone("good");
+  const spamZone = makeDropZone("spam");
+  goodZone.wrap.addEventListener("click", () => classify("good"));
+  spamZone.wrap.addEventListener("click", () => classify("spam"));
+
+  const stage = document.createElement("div");
+  stage.style.cssText = `position:relative;flex:1;min-width:0;height:340px;background:#fbfaf5;border:3px solid ${PX.ink};overflow:hidden;box-sizing:border-box`;
+
+  const mailCard = document.createElement("article");
+  mailCard.className = "mg-mail-card";
+  mailCard.style.cssText = `position:absolute;left:50%;transform:translateX(-50%);width:300px;border:3px solid ${PX.ink};background:#fff;box-shadow:4px 4px 0 ${PX.ink};padding:11px 14px;cursor:pointer;box-sizing:border-box;transition:width .15s,box-shadow .15s`;
+  mailCard.addEventListener("click", () => toggleDetail());
+
+  const feedbackEl = document.createElement("span");
+  feedbackEl.style.cssText = "position:absolute;left:50%;top:46%;transform:translateX(-50%);z-index:5;font-family:Galmuri14,monospace;font-size:22px;text-shadow:2px 2px 0 #fff;display:none;pointer-events:none";
+
+  stage.append(mailCard, feedbackEl);
+  gameRow.append(goodZone.wrap, stage, spamZone.wrap);
+
+  const resultOverlay = document.createElement("div");
+  resultOverlay.style.cssText = "position:absolute;inset:0;background:rgba(20,24,40,.5);display:none;align-items:center;justify-content:center;z-index:20";
+
+  board.append(hintEl, statusRow, gameRow, resultOverlay);
+
+  fxWrap.append(titlebar, menubar, hud, board);
+  gameContent.append(fxWrap);
+
+  // 모드 칩
+  const modeChip = document.createElement("div");
+  modeChip.style.cssText = "display:flex;justify-content:center;margin-top:10px";
+  const modeChipInner = document.createElement("span");
+  modeChipInner.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
+  modeChipInner.textContent = `받은편지함 ${run.deck.length}통${stress >= 80 ? " · 스트레스 80↑ 본문 축약" : stress >= 50 ? " · 스트레스 50↑ 낙하 가속" : ""}`;
+  modeChip.append(modeChipInner);
+
+  monitorWrapper.append(makeMonitor(gameContent), modeChip);
+  monitorScroll.append(monitorWrapper);
+  room.append(monitorScroll);
+
+  // 고정 오버레이들
+  const bossOverlayEl = makeBossSilhouette({ direction: "right" });
+  bossOverlayEl.hidden = true;
+
+  const bossBannerEl = document.createElement("div");
+  bossBannerEl.style.cssText = "position:fixed;left:0;right:0;top:15%;z-index:45;display:none;justify-content:center;pointer-events:none";
+  bossBannerEl.className = "banner-in";
+
+  const kakaoEl = document.createElement("div");
+  kakaoEl.hidden = true;
+
+  const evToastEl = document.createElement("div");
+  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:Galmuri14,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  evToastEl.className = "banner-in";
+
+  shell.append(room, bossOverlayEl, bossBannerEl, kakaoEl, evToastEl);
+  root.append(shell);
+
+  // ── 헬퍼 ──────────────────────────────────────────────────────
+  function refreshFxClass() {
+    const c = [];
+    if (stress >= 70) c.push("fx-gray");
+    if (isHeadache) c.push("fx-shake");
+    if (isCoffee || run.evJitter) c.push("fx-jitter");
+    fxWrap.className = c.join(" ");
+  }
+
+  function activeStatus() {
+    if (isHeadache) return "headache";
+    if (stress >= 70) return "burnout";
+    if (isCoffee) return "coffee";
+    return null;
+  }
+
+  function refreshStatusBadge() {
+    const id = activeStatus();
+    if (!id) { statusRow.style.display = "none"; return; }
+    const info = { burnout: { icon: "🥵", text: "번아웃 — 글자가 깨져 보인다" }, headache: { icon: "🤕", text: "두통 — 시야가 흐려져 번져 보인다" }, coffee: { icon: "☕", text: "손 떨림 — 메일이 잘게 떨려 보인다" } }[id];
+    statusIcon.textContent = info.icon;
+    statusCap.textContent = info.text;
+    statusRow.style.display = "flex";
+  }
+
+  function statusText(text, part) {
+    if (stress >= 70) return corruptText(text, part === "subject" ? 0.22 : 0.18, run.index);
+    return text;
+  }
+
+  function clipForStress(text) {
+    return stress >= 80 ? text.split(" ").slice(0, 3).join(" ") + "…" : text;
+  }
+
+  function updateScorePill() {
+    scorePill.textContent = `처리 ${Math.min(run.index, run.deck.length)}/${run.deck.length}`;
+  }
+
+  function updateTimerDisplay() {
+    timerNum.textContent = "0:" + String(Math.max(0, Math.round(run.time))).padStart(2, "0");
+    const danger = run.time <= 10 && run.phase === "play";
+    timerPill.style.background = danger ? PX.red : "#fff";
+    timerPill.style.color = danger ? "#fff" : PX.ink;
+    timerPill.className = danger ? "px-timer danger" : "px-timer";
+  }
+
+  function showFloat(text) {
+    floatEl.textContent = text;
+    floatEl.hidden = false;
+    clearTimeout(run.floatTimer);
+    run.floatTimer = setTimeout(() => { floatEl.hidden = true; }, 1300);
+  }
+
+  function showEvToast(msg) {
+    evToastEl.textContent = msg;
+    evToastEl.style.display = "block";
+    clearTimeout(run.evToastTimer);
+    run.evToastTimer = setTimeout(() => { evToastEl.style.display = "none"; }, 3000);
+  }
+
+  function showFeedback(text, color) {
+    feedbackEl.textContent = text;
+    feedbackEl.style.color = color;
+    feedbackEl.style.display = "block";
+    feedbackEl.classList.remove("pop-in");
+    void feedbackEl.offsetWidth;
+    feedbackEl.classList.add("pop-in");
+    clearTimeout(run.feedbackTimer);
+    run.feedbackTimer = setTimeout(() => { feedbackEl.style.display = "none"; }, 520);
+  }
+
+  // ── 메일 카드 렌더 ──
+  function renderMailCard(mail) {
+    mailCard.replaceChildren();
+    mailCard.style.width = run.detailOpen ? "380px" : "300px";
+
+    const top = document.createElement("div");
+    top.style.cssText = "display:flex;justify-content:space-between;font-family:Galmuri11,monospace;font-size:11px;color:#9a9a9a;margin-bottom:6px";
+    const from = document.createElement("span");
+    from.textContent = mail.from;
+    const domain = document.createElement("span");
+    domain.style.fontWeight = "700";
+    domain.textContent = mail.domain;
+    top.append(from, domain);
+
+    const subject = document.createElement("div");
+    subject.style.cssText = `font-family:Galmuri14,monospace;font-size:16px;color:${PX.ink};margin-bottom:6px`;
+    subject.textContent = statusText(mail.subject, "subject");
+    if (isHeadache) subject.style.filter = "blur(2.4px)";
+
+    const previewText = clipForStress(makeBasicPreview(mail));
+    const preview = document.createElement("div");
+    preview.style.cssText = "font-family:Galmuri11,monospace;font-size:11.5px;color:#777;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
+    preview.textContent = statusText(previewText, "body");
+    if (isHeadache) preview.style.filter = "blur(2.4px)";
+
+    const clues = document.createElement("div");
+    clues.style.cssText = "display:flex;flex-wrap:wrap;gap:5px";
+    buildBasicClues(mail).forEach((tag) => {
+      const t = document.createElement("span");
+      const color = tag.danger ? PX.red : tag.warn ? "#8b6815" : "#777";
+      const border = tag.danger ? PX.red : tag.warn ? "#caa83a" : "#d8d2c0";
+      const bg = tag.danger ? "#fff0ee" : tag.warn ? "#fff7d8" : "#f8f4e8";
+      t.style.cssText = `font-family:Galmuri9,monospace;font-size:10px;border:1.5px solid ${border};color:${color};background:${bg};padding:2px 7px`;
+      t.textContent = tag.text;
+      clues.append(t);
+    });
+
+    mailCard.append(top, subject, preview, clues);
+
+    if (run.detailOpen) {
+      const detail = document.createElement("div");
+      detail.style.cssText = "border-top:1.5px dashed #d8d2c0;margin-top:9px;padding-top:8px;display:grid;gap:5px;font-family:Galmuri11,monospace;font-size:11px;color:#666";
+      [["본문", clipForStress(mail.body)], ["첨부파일", mail.attachment || "없음"], ["링크", mail.link || "없음"], ["수신", mail.recipient || "없음"], ["발신시간", mail.time || "없음"]].forEach(([label, value]) => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:grid;grid-template-columns:60px 1fr;gap:6px";
+        const l = document.createElement("span");
+        l.style.cssText = "color:#999;font-weight:700";
+        l.textContent = label;
+        const v = document.createElement("span");
+        v.textContent = value;
+        row.append(l, v);
+        detail.append(row);
+      });
+      mailCard.append(detail);
+    }
+
+    const hint = document.createElement("span");
+    hint.style.cssText = "display:block;text-align:right;margin-top:6px;font-family:Galmuri9,monospace;font-size:10px;color:#aaa";
+    hint.textContent = run.detailOpen ? "SPACE 접기" : "SPACE 상세 확인 (-2초)";
+    mailCard.append(hint);
+  }
+
+  function showNextMail() {
+    const mail = run.deck[run.index];
+    if (!mail) { finish(); return; }
+    run.cardY = 12;
+    run.detailOpen = false;
+    mailCard.className = "mg-mail-card";
+    mailCard.style.top = run.cardY + "%";
+    renderMailCard(mail);
+    updateScorePill();
+  }
+
+  function pushSorted(mail, target) {
+    const isGood = target === "good";
+    const zone = isGood ? goodZone : spamZone;
+    const arr = isGood ? run.sortedGood : run.sortedSpam;
+    arr.push(mail);
+    const item = document.createElement("span");
+    item.style.cssText = `font-family:Galmuri9,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
+    item.textContent = mail.subject;
+    zone.list.prepend(item);
+    while (zone.list.children.length > 4) zone.list.removeChild(zone.list.lastChild);
+    zone.count.textContent = String(arr.length);
+  }
+
+  // ── 분류 ──
+  function classify(target) {
+    if (run.phase !== "play" || run.locked) return;
+    const mail = run.deck[run.index];
+    if (!mail) return;
+    run.locked = true;
+
+    if (target === "missed") {
+      run.missed++;
+      mailCard.classList.add("mg-mail-missed");
+      showFeedback("시간 초과…", "#777");
+    } else {
+      const ok = mail.type === target;
+      if (ok) run.correct++; else run.wrong++;
+      mailCard.classList.add(target === "good" ? "mg-mail-throw-left" : "mg-mail-throw-right");
+      pushSorted(mail, target);
+      showFeedback(ok ? "정확!" : "오분류!", ok ? PX.green : PX.red);
+    }
+
+    clearTimeout(run.classifyTimer);
+    run.classifyTimer = setTimeout(() => {
+      run.index++;
+      run.locked = false;
+      updateScorePill();
+      if (run.index >= run.deck.length) finish();
+      else showNextMail();
+    }, 240);
+  }
+
+  function toggleDetail() {
+    if (run.phase !== "play" || run.locked) return;
+    if (!run.detailOpen) {
+      run.time = Math.max(0, run.time - 2);
+      showFloat("상세 확인 -2초");
+      updateTimerDisplay();
+    }
+    run.detailOpen = !run.detailOpen;
+    renderMailCard(run.deck[run.index]);
+  }
+
+  // ── 낙하 애니메이션 ──
+  function tick() {
+    if (run.phase !== "play" || run.done) return;
+    const stressBoost = stress >= 80 ? 0.09 : stress >= 50 ? 0.05 : 0;
+    const bossBoost = run.bossWatching ? 0.05 : 0;
+    if (!run.locked) {
+      run.cardY += 0.24 + stressBoost + bossBoost;
+      mailCard.style.top = run.cardY + "%";
+      if (run.cardY >= 84) classify("missed");
+    }
+    run.raf = requestAnimationFrame(tick);
+  }
+
+  // ── 타이머 / 이벤트 ──
+  function startTimer() {
+    run.timerInterval = setInterval(() => {
+      if (run.done || run.phase !== "play") return;
+      run.time = Math.max(0, run.time - 1);
+      run.elapsed += 1;
+      updateTimerDisplay();
+      if (run.elapsed % 10 === 0) fireEvent(pickNextEvent());
+      if (run.time <= 0) { clearInterval(run.timerInterval); finish(); }
+    }, 1000);
+  }
+
+  function pickNextEvent() {
+    let pool = ALL_EVENTS.filter((t) => !run.usedEvents[t]);
+    if (pool.length === 0) { run.usedEvents = {}; pool = ALL_EVENTS.slice(); }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    run.usedEvents[pick] = true;
+    return pick;
+  }
+
+  function fireEvent(type) {
+    if (type === "boss") setBoss(true);
+    if (type === "kakao") {
+      kakaoEl.replaceChildren();
+      kakaoEl.append(makeKakaoWin({
+        onClose: () => { kakaoEl.replaceChildren(); kakaoEl.hidden = true; },
+        msgs: [["😤", "김팀장", "받은편지함 정리 다 됐어요?"], ["😤", "김팀장", "중요 메일 놓치면 안 돼요"], ["😤", "김팀장", "빨리 좀 확인해줘요"]],
+      }));
+      kakaoEl.hidden = false;
+      clearTimeout(run.kakaoTimer);
+      run.kakaoTimer = setTimeout(() => { kakaoEl.replaceChildren(); kakaoEl.hidden = true; }, 6000);
+    }
+    if (type === "chat") {
+      run.time = Math.max(0, run.time - 3);
+      showFloat("-3초");
+      updateTimerDisplay();
+      showEvToast("옆자리 동료: 어제 그 드라마 봤어요? 📺");
+    }
+  }
+
+  function setBoss(on) {
+    bossOverlayEl.hidden = !on;
+    run.bossWatching = on;
+    refreshFxClass();
+    if (on) {
+      bossBannerEl.style.display = "flex";
+      bossBannerEl.replaceChildren();
+      const card = document.createElement("div");
+      card.style.cssText = `width:480px;max-width:84%;background:#fff;border:3px solid ${PX.red};box-shadow:5px 5px 0 rgba(0,0,0,.22);padding:12px 18px;display:flex;flex-direction:column;gap:6px`;
+      const top = document.createElement("div");
+      top.style.cssText = "display:flex;align-items:center;gap:8px";
+      const warn = document.createElement("span");
+      warn.style.fontSize = "20px";
+      warn.textContent = "⚠️";
+      const title = document.createElement("span");
+      title.style.cssText = `font-family:Galmuri14,monospace;font-size:16px;color:${PX.red}`;
+      title.textContent = "상사가 내 자리 옆에 서 있다…";
+      top.append(warn, title);
+      const desc = document.createElement("span");
+      desc.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#4a4636";
+      desc.textContent = "아무 말 없이 모니터만 보고 있다. 메일이 더 빨리 떨어진다.";
+      card.append(top, desc);
+      bossBannerEl.append(card);
+      clearTimeout(run.bossTimer);
+      run.bossTimer = setTimeout(() => { bossBannerEl.style.display = "none"; }, 3000);
+    } else {
+      bossBannerEl.style.display = "none";
+    }
+  }
+
+  // ── 키보드 ──
+  function onKeydown(e) {
+    if (run.phase !== "play") return;
+    const key = e.key.toLowerCase();
+    if (key === "a" || key === "arrowleft") classify("good");
+    else if (key === "d" || key === "arrowright") classify("spam");
+    else if (key === " " || key === "spacebar") { e.preventDefault(); toggleDetail(); }
+  }
+
+  // ── 종료 ──
+  function finish() {
+    if (run.done || run.phase !== "play") return;
+    run.done = true;
+    run.phase = "result";
+    stopBgm();
+    cancelAnimationFrame(run.raf);
+    clearInterval(run.timerInterval);
+    const tier = run.correct >= 8 ? "success" : run.correct >= 5 ? "partial" : "fail";
+    showResult(tier, run.correct, run.deck.length, 60 - run.time);
+  }
+
+  function showResult(tier, correct, total, usedSec) {
+    const TIERS = {
+      success: { title: "받은편지함 클리어!", emoji: "🎉", bg: "#eafae8", color: PX.green, deltas: [{ label: "업무량", v: -20 }] },
+      partial: { title: "아슬아슬하게 분류했다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 8 }] },
+      fail: { title: "받은편지함이 터졌다…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -3 }, { label: "스트레스", v: 18 }, { label: "체력", v: -8 }] },
+    };
+    const t = TIERS[tier];
+    const card = document.createElement("div");
+    card.className = "pop-in";
+    const panel = document.createElement("div");
+    panel.style.cssText = `width:440px;max-width:84%;background:${t.bg};border:4px solid ${PX.ink};box-shadow:6px 6px 0 rgba(29,31,46,.35);padding:20px 26px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px`;
+    const emojiEl = document.createElement("div");
+    emojiEl.style.cssText = "font-size:46px;line-height:1";
+    emojiEl.textContent = t.emoji;
+    const titleEl = document.createElement("div");
+    titleEl.style.cssText = `font-family:Galmuri14,monospace;font-size:22px;color:${t.color}`;
+    titleEl.textContent = t.title;
+    const statsRow = document.createElement("div");
+    statsRow.style.cssText = "display:flex;gap:8px";
+    [["정확", `${correct}/${total}`, ""], ["소요", usedSec, "초"]].forEach(([lbl, v, unit]) => {
+      const s = document.createElement("span");
+      s.style.cssText = `font-family:Galmuri11,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
+      s.textContent = `${lbl} ${v}${unit}`;
+      statsRow.append(s);
+    });
+    const deltaRow = document.createElement("div");
+    deltaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;justify-content:center";
+    t.deltas.forEach((d) => {
+      const s = document.createElement("span");
+      s.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
+      s.textContent = `${d.label} ${d.v < 0 ? "▼" : "▲"}${Math.abs(d.v)}`;
+      deltaRow.append(s);
+    });
+    const nextBtn = document.createElement("div");
+    nextBtn.style.cssText = "margin-top:4px;cursor:pointer";
+    const btnInner = document.createElement("div");
+    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
+    btnInner.textContent = "다음으로 ▶";
+    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `이메일 분류 ${tier}: 정확 ${correct}/${total}`, usedSec); });
+    nextBtn.append(btnInner);
+    panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
+    card.append(panel);
+    resultOverlay.replaceChildren(card);
+    resultOverlay.style.display = "flex";
+  }
+
+  function cleanup() {
+    stopBgm();
+    cancelAnimationFrame(run.raf);
+    clearInterval(run.timerInterval);
+    window.removeEventListener("keydown", onKeydown);
+    [run.floatTimer, run.feedbackTimer, run.evToastTimer, run.evTimer, run.bossTimer, run.kakaoTimer, run.classifyTimer].forEach(clearTimeout);
+  }
+
+  // ── 초기화 ──
+  refreshFxClass();
+  refreshStatusBadge();
+  showNextMail();
+  updateTimerDisplay();
+  window.addEventListener("keydown", onKeydown);
+  playBgm("assets/audio/email_bgm.mp3");
+  startTimer();
+  run.raf = requestAnimationFrame(tick);
 }
