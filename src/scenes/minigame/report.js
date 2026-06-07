@@ -350,12 +350,13 @@ export function renderReportGame(root, state, actions, game) {
   bossOverlayEl.hidden = true;
   // 빨간펜 말풍선
   const penSpeechEl = document.createElement("div");
-  penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  // 모니터 상단 가운데에 배치(미니게임2와 동일). transform은 boss-enter 슬라이드 애니메이션과 충돌하므로 margin auto로 중앙 정렬.
+  penSpeechEl.style.cssText = `position:fixed;top:70px;left:0;right:0;margin-inline:auto;width:fit-content;max-width:min(340px,calc(100vw - 48px));z-index:47;font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);text-align:center;display:none`;
   penSpeechEl.textContent = fillBossText("{name}, 여기 좀 이상한데요? 🖋️", state.player?.name);
 
   // 팀장 코멘트형 말풍선 (addPage 등 — 빨간펜 아님)
   const bossSpeechEl = document.createElement("div");
-  bossSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:NeoDunggeunmo,monospace;font-size:15px;color:${PX.ink};background:#fff;border:2.5px solid ${PX.ink};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  bossSpeechEl.style.cssText = `position:fixed;top:70px;left:0;right:0;margin-inline:auto;width:fit-content;max-width:min(340px,calc(100vw - 48px));z-index:47;font-family:NeoDunggeunmo,monospace;font-size:15px;color:${PX.ink};background:#fff;border:2.5px solid ${PX.ink};border-radius:14px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);text-align:center;display:none`;
 
   // 중간 이벤트 토스트 — 모니터 화면(board) 안 상단에 표시
   const evToastEl = document.createElement("div");
