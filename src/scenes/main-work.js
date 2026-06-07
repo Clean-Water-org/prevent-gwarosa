@@ -186,25 +186,30 @@ export function renderMainWork(root, state, actions) {
 
   let intranetBtn;
   let messengerBtn;
+  const closeMessenger = () => {
+    _messengerState.isOpen = false;
+    if (messengerPanel.style.display === "none") {
+      messengerBtn?.classList.remove("active");
+      return;
+    }
+    messengerPanel.style.display = "none";
+    messengerBtn?.classList.remove("active");
+  };
+  const refreshMessenger = () => {
+    renderMessengerShell(messengerPanel, state, actions, closeMessenger);
+    updateMessengerTaskbarButton(messengerBtn);
+  };
   const toggleIntranet = () => {
     const willOpen = intranetPanel.style.display === "none";
     _intranetOpen = willOpen;
     intranetPanel.style.display = willOpen ? "" : "none";
     intranetBtn?.classList.toggle("active", willOpen);
     if (willOpen) {
+      // 포털을 볼 때는 메신저 창을 닫아 두어, 알림·리렌더 후 메신저가 다시 덮지 않게 한다.
+      closeMessenger();
       bringWorkspacePanelToFront(intranetPanel);
       _intranetUpdater?.();
     }
-  };
-  const refreshMessenger = () => {
-    renderMessengerShell(messengerPanel, state, actions, closeMessenger);
-    updateMessengerTaskbarButton(messengerBtn);
-  };
-  const closeMessenger = () => {
-    if (messengerPanel.style.display === "none") return;
-    messengerPanel.style.display = "none";
-    messengerBtn?.classList.remove("active");
-    _messengerState.isOpen = false;
   };
   const toggleMessenger = () => {
     const willOpen = messengerPanel.style.display === "none";
@@ -257,6 +262,11 @@ export function renderMainWork(root, state, actions) {
   if (_messengerState.isOpen) {
     messengerPanel.style.display = "";
     messengerBtn?.classList.add("active");
+  }
+  if (_intranetOpen) {
+    bringWorkspacePanelToFront(intranetPanel);
+  } else if (_messengerState.isOpen) {
+    bringWorkspacePanelToFront(messengerPanel);
   }
 
   // 회의 준비 미니게임과 동일한 오피스 룸 + CHADOL-TRON 모니터 비주얼로 통일
