@@ -950,7 +950,7 @@ export function renderMeetingGame(root, state, actions, game) {
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "다음으로 ▶";
-    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `오류 ${errors}개`); });
+    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `회의 준비 ${tier}: 오류 ${errors}개`, usedSec); });
     nextBtn.append(btnInner);
     panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
     card.append(panel);

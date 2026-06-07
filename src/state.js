@@ -1,6 +1,8 @@
 import { bosses } from "./data/bosses.js";
 import { startingInventory } from "./data/player-types.js";
 
+// 미니게임 순서·라운드 수는 flow.js(ROTATION)에서 관리한다.
+
 export function createInitialState() {
   const boss = bosses[Math.floor(Math.random() * bosses.length)];
 
@@ -132,11 +134,12 @@ function iconForDelta(delta, effects) {
   return effects.length > 1 ? "🟡" : "🔵";
 }
 
+// 엔딩 판정 (우선순위: 과로사 > 당일퇴사 > 칼퇴(즉시) > 야근(18:00))
 export function checkEnding(state) {
-  if (state.stats.health <= 0) return "overwork";
-  if (state.stats.stress >= 100) return "quit";
-  if (state.stats.workload <= 0) return "success";
-  if (state.gameMinute >= 18 * 60) return state.stats.workload <= 0 ? "success" : "overtime";
+  if (state.stats.health <= 0) return "overwork"; // 체력 0 — 게임오버 최우선
+  if (state.stats.stress >= 100) return "quit"; // 스트레스 100 — 당일퇴사
+  if (state.stats.workload <= 0) return "success"; // 업무량 0 — 즉시 칼퇴 (등급은 현재 시각 기준)
+  if (state.gameMinute >= 18 * 60) return "overtime"; // 18:00에 업무량 남음 — 야근 (위에서 success 처리됨)
   return null;
 }
 

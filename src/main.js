@@ -79,13 +79,13 @@ export function advanceGameMinute(minutes = 1) {
   }
 
   state = { ...state, gameMinute: state.gameMinute + minutes };
+  // 미니게임 진입 트리거는 main-work.js의 startMainPhaseTimer가 담당. 여기선 시간 진행 + 엔딩만.
   const ending = checkEnding(state);
   if (ending) {
     finishWith(ending);
   } else {
     saveGame(state);
   }
-
   return state.gameMinute;
 }
 

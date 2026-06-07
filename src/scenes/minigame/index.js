@@ -6,23 +6,24 @@ import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js";
 
-const RESULT_LABEL = { success: "성공", partial: "부분성공", fail: "실패" };
+// 미니게임 선택은 flow.js getCurrentMiniGame(4라운드 ROTATION) 사용. 시간은 실제 소요(usedSec).
 
+// 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
 const GAME_DELTAS = {
   email: {
-    success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 5, gameMinute: 60 },
-    fail: { workload: -3, stress: 15, health: -5, gameMinute: 60 },
+    success: { workload: -20 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -3, stress: 18, health: -8 },
   },
   meeting: {
-    success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 8, gameMinute: 60 },
-    fail: { workload: -3, stress: 20, health: -8, gameMinute: 60 },
+    success: { workload: -20 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -3, stress: 20, health: -8 },
   },
   report: {
-    success: { workload: -20, gameMinute: 60 },
-    partial: { workload: -10, stress: 8, gameMinute: 60 },
-    fail: { workload: -5, stress: 20, health: -8, gameMinute: 60 },
+    success: { workload: -20 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -5, stress: 20, health: -8 },
   },
 };
 
@@ -36,6 +37,7 @@ export function renderMiniGame(root, state, actions) {
   const gameId = game.id;
   const briefingKey = getMiniGameBriefingKey(state, gameId);
 
+  // 미니게임 진입 전 브리핑 게이트 (메인에서 못 본 경우의 폴백)
   if (state.flags?.minigameBriefingKey !== briefingKey) {
     renderMiniGameBriefing(root, state, {
       onStart: () => {
@@ -56,7 +58,6 @@ export function renderMiniGame(root, state, actions) {
         actions.go(scene);
         return;
       }
-
       actions.mutateState((draft) => {
         draft.scene = "minigame";
         draft.flags.minigameBriefingKey = null;
@@ -64,10 +65,9 @@ export function renderMiniGame(root, state, actions) {
         return draft;
       });
     },
-    applyResult: (result, detail) => {
-      const label = RESULT_LABEL[result] ?? result;
-      const message = detail ? `${game.title} ${label} (${detail})` : `${game.title} ${label}`;
-      actions.mutateState((draft) => applyMiniResult(draft, gameId, result, message));
+    // 실제 소요 시간(usedSec)을 받아 게임시간에 반영
+    applyResult: (result, message, usedSec = 60) => {
+      actions.mutateState((draft) => applyMiniResult(draft, gameId, result, message, usedSec));
     },
   };
 
@@ -82,9 +82,11 @@ export function renderMiniGame(root, state, actions) {
   }
 }
 
-function applyMiniResult(state, gameId, result, message) {
+function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   const deltas = GAME_DELTAS[gameId] || GAME_DELTAS.email;
   let next = applyDelta(state, deltas[result], message);
+  // 미니게임 실제 소요 시간만큼 게임시간 진행 (빨리 깰수록 일찍 퇴근)
+  next.gameMinute += Math.max(0, Math.min(60, Math.round(usedSec)));
 
   if (next.flags.devMode) {
     next.scene = "title";
@@ -109,7 +111,10 @@ function applyMiniResult(state, gameId, result, message) {
     next.ending = ending;
     next.scene = "ending";
   } else if (next.minigameRound >= ROTATION.length) {
-    next.ending = next.stats.workload <= 0 ? "success" : "overtime";
+    // 모든 라운드를 마쳤는데 업무량 남음 → 야근 (업무량≤0이면 위 checkEnding에서 success).
+    // 야근은 18:00 기준으로 표시.
+    next.ending = "overtime";
+    next.gameMinute = Math.max(next.gameMinute, 18 * 60);
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
     next.scene = "lunch";

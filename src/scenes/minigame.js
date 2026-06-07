@@ -150,9 +150,9 @@ export function renderEmailGame(root, state, actions, game) {
   }
 
   function applyResult(result) {
-    const message = `${game.title}: 정확 ${run.correct}/${deck.length}`;
-    if (actions.applyResult) actions.applyResult(result, message);
-    else actions.mutateState((draft) => applyMiniResult(draft, result, message));
+    // (참고) 이메일은 iframe(email.js)로 전환되어 이 경로는 미사용. usedSec 통일 형태만 유지.
+    const usedSec = 60 - run.left;
+    actions.applyResult(result, `${game.title}: 정확 ${run.correct}/${deck.length}`, usedSec);
   }
 
   function onKey(event) {
