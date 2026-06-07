@@ -112,7 +112,7 @@ function renderHudStat(icon, label, value, type) {
 }
 
 function renderCommutePanel(state, actions) {
-  const panel = el("section", { class: "commute-briefing main-work-intranet" }, [
+  const panel = el("section", { class: "commute-briefing" }, [
     renderCommuteTabs(),
     el("div", { class: "commute-panel-body-slot" }),
     renderCommuteFooter(actions),
@@ -207,10 +207,7 @@ function renderBriefingBody(state) {
   ]);
 }
 
-function renderScheduleBody(state) {
-  const playerName = state.player.name || "김대리";
-  const portrait = state.player.gender === "female" ? "female" : "male";
-
+function renderScheduleBody() {
   return el("div", { class: "commute-briefing-body commute-schedule-body" }, [
     el("section", { class: "commute-schedule-panel" }, [
       el("header", { class: "commute-schedule-head" }, [
@@ -224,27 +221,20 @@ function renderScheduleBody(state) {
         DAY_FLOW_FOOTNOTES.map((note) => el("p", { text: note })),
       ),
     ]),
-    el("aside", { class: "commute-side-panel" }, [
-      renderPlayerCard(playerName, portrait),
-      el("section", { class: "commute-boss-hint" }, [
-        el("h2", { text: "상사 힌트" }),
-        el("p", { text: state.boss?.publicHint ?? "오늘의 상사 정보를 확인하세요." }),
-      ]),
-    ]),
   ]);
 }
 
 function renderFlowStep(step) {
-  return el("li", { class: `commute-flow-step${step.label ? " has-label" : ""}` }, [
-    ...(step.label
-      ? [el("span", { class: "commute-flow-label", text: step.label })]
-      : []),
-    el("div", { class: "commute-flow-card" }, [
-      el("span", { class: "commute-flow-icon", text: step.icon }),
-      el("div", { class: "commute-flow-copy" }, [
+  return el("li", { class: "commute-flow-step" }, [
+    el("article", { class: "commute-flow-card" }, [
+      el("header", { class: "commute-flow-card-head" }, [
+        el("span", { class: "commute-flow-icon", text: step.icon }),
+        ...(step.label
+          ? [el("span", { class: "commute-flow-label", text: step.label })]
+          : []),
         el("strong", { text: step.title }),
-        el("p", { text: step.text }),
       ]),
+      el("p", { class: "commute-flow-text", text: step.text }),
     ]),
   ]);
 }
