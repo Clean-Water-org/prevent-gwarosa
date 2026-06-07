@@ -5,33 +5,18 @@ import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey, MINI_ROUNDS, buildLateRounds } from "./flow.js";
+import {
+  GAME_DELTAS,
+  MINIGAME_HEALTH_MULTIPLIER,
+  MINIGAME_WORK_MINUTES,
+} from "./result-delta.js";
 
 // 미니게임 씬 이탈 시 window 리스너·타이머 정리 (두통→엔딩 등 cleanup 없이 전환될 때).
 export { cleanupMinigameScene, setMinigameCleanup } from "./lifecycle.js";
+export { previewMiniGameResult, getMiniResultStatDeltas } from "./result-delta.js";
 
 // 미니게임 선택은 flow.js getCurrentMiniGame(state.miniOrder, 5라운드) 사용. 시간은 실제 소요(usedSec).
-
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
-const MINIGAME_WORK_MINUTES = 28;
-const MINIGAME_HEALTH_MULTIPLIER = 1;
-
-const GAME_DELTAS = {
-  email: {
-    success: { workload: -20, stress: 3 },
-    partial: { workload: -10, stress: 8, health: -3 },
-    fail: { workload: -3, stress: 16, health: -8 },
-  },
-  meeting: {
-    success: { workload: -20, stress: 4 },
-    partial: { workload: -10, stress: 10, health: -3 },
-    fail: { workload: -3, stress: 20, health: -10 },
-  },
-  report: {
-    success: { workload: -20, stress: 4 },
-    partial: { workload: -10, stress: 10, health: -3 },
-    fail: { workload: -5, stress: 20, health: -10 },
-  },
-};
 
 export function renderMiniGame(root, state, actions) {
   if (state.minigameRound >= MINI_ROUNDS && !state.flags.devMode) {

@@ -8,6 +8,12 @@ import { syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 import { MINI_TIER_LABEL } from "./flow.js";
 import { setMinigameCleanup } from "./lifecycle.js";
+import {
+  appendMiniResultDeltaRow,
+  appendMiniResultHealthSummary,
+  getMiniResultStatDeltas,
+  previewMiniGameResult,
+} from "./result-delta.js";
 
 const MAIL_START_Y = -16;
 const CARD_FALL_SPEED = 0.42;
@@ -647,11 +653,13 @@ export function renderEmailGame(root, state, actions, game) {
   function showResult(tier, correct, total, usedSec) {
     playSfx("assets/audio/gameboy-pluck.mp3"); // 결과 팝업 효과음
     const TIERS = {
-      success: { title: "받은편지함 클리어!", emoji: "🎉", bg: "#eafae8", color: PX.green, deltas: [{ label: "업무량", v: -20 }] },
-      partial: { title: "아슬아슬하게 분류했다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -18 }, { label: "스트레스", v: 8 }] },
-      fail: { title: "받은편지함이 터졌다…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -8 }, { label: "스트레스", v: 18 }, { label: "체력", v: -8 }] },
+      success: { title: "받은편지함 클리어!", emoji: "🎉", bg: "#eafae8", color: PX.green },
+      partial: { title: "아슬아슬하게 분류했다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a" },
+      fail: { title: "받은편지함이 터졌다…", emoji: "💀", bg: "#f6e3e0", color: PX.red },
     };
     const t = TIERS[tier];
+    const preview = previewMiniGameResult(state, "email", tier, usedSec);
+    const statDeltas = getMiniResultStatDeltas(preview);
     const card = document.createElement("div");
     card.className = "pop-in";
     const panel = document.createElement("div");
@@ -671,13 +679,9 @@ export function renderEmailGame(root, state, actions, game) {
       statsRow.append(s);
     });
     const deltaRow = document.createElement("div");
-    deltaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;justify-content:center";
-    t.deltas.forEach((d) => {
-      const s = document.createElement("span");
-      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
-      s.textContent = `${d.label} ${d.v < 0 ? "▼" : "▲"}${Math.abs(d.v)}`;
-      deltaRow.append(s);
-    });
+    deltaRow.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;width:100%";
+    appendMiniResultDeltaRow(deltaRow, statDeltas, PX.ink);
+    appendMiniResultHealthSummary(deltaRow, preview, PX.ink);
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:4px;cursor:pointer";
     const btnInner = document.createElement("div");
