@@ -71,7 +71,6 @@ let _intranetOpen = false;
 const INTRANET_TABS = [
   { id: "mypage", label: "마이페이지" },
   { id: "board", label: "게시판" },
-  { id: "files", label: "자료실" },
 ];
 let _hrPortalIntroSpawned = false;
 let _lastRenderedState = null;
@@ -605,7 +604,6 @@ function renderIntranetWindow(actions) {
 
     syncTabStates();
     body.classList.toggle("is-mypage", _intranetActiveTab === "mypage");
-    body.classList.toggle("is-placeholder", _intranetActiveTab === "files");
     body.replaceChildren(...renderIntranetBody(state, actions, openTaskId, (taskId) => refresh(taskId)));
     updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
   };
@@ -619,18 +617,7 @@ function renderIntranetBody(state, actions, openTaskId, onOpenTask) {
   if (_intranetActiveTab === "mypage") {
     return [renderIntranetMypage(state)];
   }
-  if (_intranetActiveTab === "files") {
-    const label = INTRANET_TABS.find((tab) => tab.id === _intranetActiveTab)?.label ?? "메뉴";
-    return [renderIntranetPlaceholder(label)];
-  }
   return renderIntranetBoardBody(actions, openTaskId, onOpenTask);
-}
-
-function renderIntranetPlaceholder(label) {
-  return el("section", { class: "main-work-notice-panel main-work-intranet-placeholder" }, [
-    el("h2", { text: label }),
-    el("p", { text: "해당 메뉴는 준비 중입니다." }),
-  ]);
 }
 
 function renderIntranetMypage(state) {
@@ -2439,16 +2426,21 @@ function selectMainEvent(state, phaseIndex) {
   if (Math.random() < bossOrderChance) return getBossMainEvent("sudden-order");
 
   if (canHiddenBreak(state) && Math.random() < 0.35) return getBossMainEvent("hidden-break");
-  if (Math.random() < 0.35) return getColleagueMainEvent("colleague-help");
+  if (Math.random() < 0.32) return getColleagueMainEvent("colleague-help");
 
   const generalPool = [
     { event: getBossMainEvent("sudden-order"), weight: 18 + (phaseIndex * 4) },
     { event: getColleagueMainEvent("colleague-dump"), weight: 24 },
     { event: getColleagueMainEvent("desk-chat"), weight: 18 },
-    { event: getColleagueMainEvent("ginseng-gift"), weight: 14 },
-    { event: getPositiveMainEvent("small-bonus"), weight: 12 },
+    { event: getColleagueMainEvent("ginseng-gift"), weight: getGinsengGiftWeight(state) },
+    { event: getPositiveMainEvent("small-bonus"), weight: 13 },
   ];
   return pickWeightedEvent(generalPool);
+}
+
+function getGinsengGiftWeight(state) {
+  const trust = state.colleagueTrust ?? 30;
+  return 20 + (trust >= 45 ? 6 : 0);
 }
 
 function selectForcedMainEvent(state) {
@@ -2690,7 +2682,7 @@ function getBossRejectSuccessRate(bossId) {
 function applyMainEventChoice(actions, event, choice, phaseIndex, options = {}) {
   let pendingEnding = null;
   actions.mutateState((draft) => {
-    const pickedItem = pickMainEventItem(choice);
+    const pickedItem = pickMainEventItem(choice, draft);
     let next = applyDelta(draft, choice.delta ?? {}, null);
     next.inventory = [...(next.inventory ?? [])];
     if (pickedItem) {
@@ -2713,10 +2705,14 @@ function applyMainEventChoice(actions, event, choice, phaseIndex, options = {}) 
   if (pendingEnding) actions.finishWith(pendingEnding);
 }
 
-function pickMainEventItem(choice) {
+function pickMainEventItem(choice, state) {
   if (choice.item) return choice.item;
   if (!Array.isArray(choice.randomItem) || choice.randomItem.length === 0) return null;
-  return choice.randomItem[Math.floor(Math.random() * choice.randomItem.length)];
+  const pool = choice.randomItem;
+  if (pool.includes("ginseng") && pool.includes("coffee") && (state?.stats?.health ?? 100) <= 50) {
+    return Math.random() < 0.7 ? "ginseng" : "coffee";
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function applyMainEventFlags(state, event, choice, phaseIndex) {

@@ -1,6 +1,8 @@
+export const CHAT_MAX_WORKLOAD_DECREASE = 5;
+
 const BOSS_REPLIES_BY_SUBTYPE = {
   request: [
-    { id: "accept", label: "가능합니다", tone: "primary", delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "팀장의 업무 요청에 수락했다." },
+    { id: "accept", label: "가능합니다", tone: "primary", delta: { workload: -5, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "팀장의 업무 요청에 수락했다." },
     { id: "hard", label: "어려울 것 같아요", tone: "neutral", bossAttentionDelta: -1, log: "팀장의 업무 요청을 어렵다고 답했다." },
   ],
   check: [
@@ -119,6 +121,10 @@ function normalizeChoiceResult(message, choiceId, reply, options = {}) {
 
   if (choiceId !== "ignore" && message.kind === "boss" && reply.bossAttentionDelta === undefined) {
     result.bossAttentionDelta = -1;
+  }
+
+  if (result.delta.workload !== undefined && result.delta.workload < 0) {
+    result.delta.workload = Math.max(result.delta.workload, -CHAT_MAX_WORKLOAD_DECREASE);
   }
 
   return result;

@@ -92,7 +92,7 @@ function makeDropZone(kind) {
   const accent = isGood ? PX.green : PX.red;
   const bg = isGood ? "#e3f7e2" : "#ffe3e0";
   const wrap = document.createElement("div");
-  wrap.style.cssText = `flex:0 0 ${DROP_ZONE_W}px;align-self:stretch;min-height:${STAGE_H}px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
+  wrap.style.cssText = `flex:0 0 ${DROP_ZONE_W}px;width:${DROP_ZONE_W}px;max-width:${DROP_ZONE_W}px;min-width:${DROP_ZONE_W}px;align-self:stretch;min-height:${STAGE_H}px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 10px;box-sizing:border-box;overflow:hidden;cursor:pointer`;
   const header = document.createElement("div");
   header.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0";
   const icon = document.createElement("span");
@@ -106,7 +106,7 @@ function makeDropZone(kind) {
   key.textContent = isGood ? "← / A" : "D / →";
   header.append(icon, title, key);
   const list = document.createElement("div");
-  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;flex:1;min-height:0;width:100%;overflow:hidden";
+  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;flex:1;min-height:0;min-width:0;width:100%;max-width:100%;overflow:hidden";
   const count = document.createElement("span");
   count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px;flex-shrink:0;align-self:center`;
   count.textContent = "0";
@@ -476,8 +476,9 @@ export function renderEmailGame(root, state, actions, game) {
     const arr = isGood ? run.sortedGood : run.sortedSpam;
     arr.push(mail);
     const item = document.createElement("span");
-    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
+    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
     item.textContent = mail.subject;
+    item.title = mail.subject;
     zone.list.prepend(item);
     while (zone.list.children.length > 4) zone.list.removeChild(zone.list.lastChild);
     zone.count.textContent = String(arr.length);
