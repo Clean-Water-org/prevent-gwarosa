@@ -1650,16 +1650,22 @@ function getMessengerRoomIcon(roomId) {
   return MESSENGER_ROOMS.find((room) => room.id === roomId)?.icon ?? "💬";
 }
 
-function findMessengerToast(messageId, root = _notifPanel) {
-  if (!root) return null;
-  return root.querySelector(`.main-work-messenger-toast[data-message-id="${messageId}"]`);
+function findMessengerToast(messageId, root = null) {
+  const selector = `.main-work-messenger-toast[data-message-id="${messageId}"]`;
+  if (root) return root.querySelector(selector);
+  return document.querySelector(selector);
+}
+
+function muteToastEnterAnimations(root = _notifPanel) {
+  root?.querySelectorAll(".main-work-messenger-toast").forEach((toast) => {
+    toast.classList.add("is-reattached");
+  });
 }
 
 function showMessengerToast(message, actions) {
   if (!message.needsReply) return;
 
-  const toastRoot = _notifPanel?.closest(".main-work-monitor-screen") ?? _notifPanel;
-  const existingToast = findMessengerToast(message.id, toastRoot) ?? findMessengerToast(message.id, _notifPanel);
+  const existingToast = findMessengerToast(message.id);
   if (existingToast) {
     existingToast._messageRef = message;
     return;
@@ -1802,6 +1808,8 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
     }
     clearAllReplyExpiryTimers();
     _preservingNotifications = Boolean(_notifPanel);
+    // 메인→메인 리렌더에서는 스냅샷 복원을 쓰지 않는다(미니게임 복귀용 스냅샷만 유지).
+    _chatSnapshot = null;
     return;
   }
 
@@ -1830,12 +1838,14 @@ function mountNotificationPanel(container) {
   if (_notifPanel?.isConnected) {
     if (_notifPanel.parentElement !== container) {
       container.append(_notifPanel);
+      muteToastEnterAnimations(_notifPanel);
     }
     return _notifPanel;
   }
 
   if (_notifPanel) {
     container.append(_notifPanel);
+    muteToastEnterAnimations(_notifPanel);
     return _notifPanel;
   }
 
@@ -1846,6 +1856,10 @@ function mountNotificationPanel(container) {
 
 function syncPendingReplyNotifications(state, actions) {
   for (const message of collectPendingReplyMessages()) {
+    if (findMessengerToast(message.id)) {
+      scheduleReplyExpiry(message, actions);
+      continue;
+    }
     showMessengerToast(message, actions);
     scheduleReplyExpiry(message, actions);
   }
@@ -1864,7 +1878,9 @@ function ensureChatSpawnLoop(state, actions) {
 function resumeNotificationPanel(container, state, actions) {
   mountNotificationPanel(container);
   resumeChatSystem();
-  syncPendingReplyNotifications(state, actions);
+  for (const message of collectPendingReplyMessages()) {
+    scheduleReplyExpiry(message, actions);
+  }
   ensureChatSpawnLoop(state, actions);
 }
 
@@ -1943,9 +1959,6 @@ function captureChatSnapshot() {
 function cleanupChatSystem() {
   if (_preservingNotifications) return;
 
-  if (_messengerState && !_chatSnapshot) {
-    _chatSnapshot = captureChatSnapshot();
-  }
   if (_notifPanel) {
     _notifPanel.remove();
     _notifPanel = null;

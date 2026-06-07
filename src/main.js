@@ -7,7 +7,7 @@ import { renderSetup } from "./scenes/setup.js";
 import { renderOnboarding } from "./scenes/onboarding.js";
 import { renderCommute } from "./scenes/commute.js";
 import { renderMainWork, cleanupMainWorkSystems, prepareMainWorkForRender } from "./scenes/main-work.js";
-import { renderMiniGame } from "./scenes/minigame/index.js";
+import { cleanupMinigameScene, renderMiniGame } from "./scenes/minigame/index.js";
 import { renderLunch } from "./scenes/lunch.js";
 import { renderEnding } from "./scenes/ending.js";
 
@@ -42,6 +42,9 @@ window.addEventListener("hashchange", () => {
 
 export function setState(patch) {
   const prevScene = state.scene;
+  const nextScene = patch.scene ?? prevScene;
+  // 엔딩 화면은 정적 — 메인 타이머 등 잔여 mutate/setState로 리렌더(깜빡임) 방지
+  if (prevScene === "ending" && nextScene === "ending") return;
   state = {
     ...state,
     ...patch,
@@ -56,7 +59,10 @@ export function setState(patch) {
 
 export function mutateState(mutator) {
   const prevScene = state.scene;
-  state = mutator(structuredClone(state));
+  const next = mutator(structuredClone(state));
+  // 엔딩 화면은 정적 — 다시하기 등 명시적 씬 전환만 허용
+  if (prevScene === "ending" && next.scene === "ending") return;
+  state = next;
   if (state.scene !== prevScene) {
     history.pushState(null, "", "#" + state.scene);
   }
@@ -138,6 +144,12 @@ function playItemSound(src) {
 }
 
 function render() {
+  if (_prevScene === "minigame" && state.scene !== "minigame") {
+    cleanupMinigameScene();
+  }
+  if (state.scene === "ending" && _prevScene !== "ending") {
+    cleanupMainWorkSystems();
+  }
   prepareMainWorkForRender(_prevScene, state.scene);
   cleanupTitleFx();
   app.innerHTML = "";

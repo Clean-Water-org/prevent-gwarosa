@@ -7,6 +7,7 @@ import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 import { MINI_TIER_LABEL } from "./flow.js";
+import { setMinigameCleanup } from "./lifecycle.js";
 
 const MAIL_START_Y = -16;
 const CARD_FALL_SPEED = 0.42;
@@ -733,4 +734,5 @@ export function renderEmailGame(root, state, actions, game) {
   run.raf = requestAnimationFrame(tick);
   requestAnimationFrame(fitMonitor);
   setTimeout(fitMonitor, 250); // 픽셀 폰트 로드 후 한 번 더 보정
+  setMinigameCleanup(cleanup);
 }
