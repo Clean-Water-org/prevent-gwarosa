@@ -282,7 +282,7 @@ export function renderMainWork(root, state, actions) {
     if (pendingStatus) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
       showStatusEventPopup(pendingStatus, state, monitorEl, actions);
-    } else if (shouldShowMeetingEvent(state)) {
+    } else if (shouldShowMeetingEvent(state) || state.flags?.devTriggerMeetingEvent) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
       showMeetingEventPopup(state, monitorEl, actions);
     } else {
@@ -1089,7 +1089,7 @@ const BOSS_ATTENTION_WARN_AT = 3;
 const BOSS_ATTENTION_INTERVIEW_AT = 6;
 
 function resolveBossMessengerChoice(message, choiceId) {
-  if (choiceId === "ignore") return { delta: {}, bossAttentionDelta: 1 };
+  if (choiceId === "ignore") return { delta: { stress: 3 }, bossAttentionDelta: 1 };
   if (message.subtype === "request") {
     if (choiceId === "accept") {
       return { delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
@@ -1126,8 +1126,10 @@ function resolveColleagueMessengerChoice(message, choiceId) {
 }
 
 function getColleagueIgnoreResult(message) {
-  if (message.subtype === "favor") return { delta: { colleagueTrust: -5 }, colleagueIgnoreDelta: 1 };
-  return { delta: {}, colleagueIgnoreDelta: 1 };
+  if (message.subtype === "favor") {
+    return { delta: { stress: 2, colleagueTrust: -5 }, colleagueIgnoreDelta: 1 };
+  }
+  return { delta: { stress: 2 }, colleagueIgnoreDelta: 1 };
 }
 
 function resolveHrMessengerChoice(message, choiceId) {
@@ -1135,7 +1137,7 @@ function resolveHrMessengerChoice(message, choiceId) {
     if (!message.portalCompleted) return { delta: {}, hrIgnoreDelta: 0 };
     return { delta: { gameMinute: -5 }, hrIgnoreDelta: -1 };
   }
-  if (choiceId === "ignore") return { delta: {}, hrIgnoreDelta: 1 };
+  if (choiceId === "ignore") return { delta: { stress: 2 }, hrIgnoreDelta: 1 };
   return { delta: {}, hrIgnoreDelta: 0 };
 }
 
@@ -1871,7 +1873,7 @@ function showMeetingEventPopup(state, container, actions) {
     const resultPopup = renderMeetingOutcomePopup(outcome, state, actions);
     _meetingEventOverlay?.replaceWith(resultPopup);
     _meetingEventOverlay = resultPopup;
-  }, 1000);
+  }, 1800);
 }
 
 function renderMeetingIntroPopup() {
@@ -1880,19 +1882,23 @@ function renderMeetingIntroPopup() {
       el("header", { class: "main-event-titlebar" }, [
         el("div", { class: "main-event-source" }, [
           el("span", { class: "main-event-diamond", text: "◆" }),
-          el("span", { text: "회의" }),
+          el("span", { text: "전체 회의" }),
         ]),
-        el("time", { class: "main-event-timer", text: "MEETING" }),
+        el("time", { class: "main-event-timer", text: "13:00" }),
       ]),
       el("section", { class: "main-event-body" }, [
         el("p", { class: "main-event-kicker", text: "회의실" }),
-        el("h2", { text: "📢 회의 진행 중" }),
+        el("h2", { text: "회의가 진행 중이다" }),
+        el("p", { class: "main-event-copy", text: "동료들이 자리에 앉았다. 프로젝터에 오늘 자료가 떴다." }),
       ]),
     ]),
   ]);
 }
 
 function getMeetingEventOutcome(state) {
+  const forced = state.flags?.devMeetingOutcome;
+  if (forced === "shame" || forced === "praise" || forced === "followup") return forced;
+
   const recent = (state.counters?.minigameResults ?? []).slice(-2).map((entry) => entry.result);
   const failCount = recent.filter((result) => result === "fail").length;
   const partialCount = recent.filter((result) => result === "partial").length;
@@ -1905,29 +1911,7 @@ function getMeetingEventOutcome(state) {
 }
 
 function renderMeetingOutcomePopup(outcome, state, actions) {
-  const event = {
-    id: `meeting-${outcome}`,
-    type: "boss",
-    speaker: state.boss?.name ?? "상사",
-    title: outcome === "shame" ? "공개 망신" : outcome === "praise" ? "공개 칭찬" : "후속 업무",
-    body: getMeetingSpeech(outcome, state),
-  };
-
-  if (outcome === "followup") {
-    event.choices = [
-      { id: "accept", label: "수락", delta: { workload: 10, stress: 5 }, message: "회의 후속 업무를 맡았다." },
-      { id: "reject", label: "거절", next: "meeting-reject" },
-    ];
-  } else {
-    event.choices = [
-      {
-        id: "confirm",
-        label: "확인",
-        delta: outcome === "shame" ? { stress: 20, health: -5 } : { stress: -15 },
-        message: outcome === "shame" ? "회의 중 공개적으로 지적을 받았다." : "회의 중 공개적으로 칭찬을 받았다.",
-      },
-    ];
-  }
+  const event = buildMeetingOutcomeEvent(outcome, state);
 
   return renderMainEventPopup(event, {
     state,
@@ -1935,17 +1919,84 @@ function renderMeetingOutcomePopup(outcome, state, actions) {
   });
 }
 
+function buildMeetingOutcomeEvent(outcome, state) {
+  const line = getMeetingBossLine(outcome, state);
+  const templates = {
+    shame: {
+      title: "분위기가 싸해졌다",
+      body: `전체 회의 중, 팀장님이 자료를 가리키며 말했다. "${line}" 회의실 공기가 순간적으로 굳었다.`,
+      kicker: "전체 회의",
+      choices: [
+        {
+          id: "confirm",
+          label: "견딘다",
+          delta: { stress: 20, health: -5 },
+          message: "전체 회의에서 자료가 공개적으로 지적됐다.",
+        },
+      ],
+    },
+    praise: {
+      title: "짧은 칭찬",
+      body: `전체 회의 중, 팀장님이 고개를 끄덕이며 말했다. "${line}"`,
+      kicker: "전체 회의",
+      choices: [
+        {
+          id: "confirm",
+          label: "고개를 끄덕인다",
+          delta: { stress: -15 },
+          message: "전체 회의에서 짧게 칭찬받았다.",
+        },
+      ],
+    },
+    followup: {
+      title: "추가 업무가 생겼다",
+      body: `회의가 끝나갈 무렵, 팀장님이 말했다. "${line}"`,
+      kicker: "전체 회의",
+      choices: [
+        {
+          id: "accept",
+          label: "맡는다",
+          delta: { workload: 10, stress: 5 },
+          message: "회의 후속 업무를 맡았다.",
+        },
+        {
+          id: "reject",
+          label: "거절한다",
+          next: "meeting-reject",
+          hint: "말을 잘못하면 결국 업무가 올 수 있다",
+        },
+      ],
+    },
+  };
+
+  const template = templates[outcome] ?? templates.followup;
+  return {
+    id: `meeting-${outcome}`,
+    type: "common",
+    speaker: "전체 회의",
+    kicker: template.kicker,
+    title: template.title,
+    body: template.body,
+    choices: template.choices,
+  };
+}
+
 function closeMeetingEventChoice(actions, state, choice) {
   _meetingEventOverlay?.remove();
   _meetingEventOverlay = null;
 
   const finalChoice = choice.next === "meeting-reject" ? getMeetingRejectChoice(state) : choice;
+  const logCause = finalChoice.reaction
+    ? `${finalChoice.message} ${finalChoice.reaction}`
+    : finalChoice.message;
   let pendingEnding = null;
   actions.mutateState((draft) => {
     let next = applyDelta(draft, finalChoice.delta ?? {}, null);
     next.flags.meetingEventDone = true;
+    next.flags.devTriggerMeetingEvent = false;
+    delete next.flags.devMeetingOutcome;
     addLogEntry(next, {
-      cause: finalChoice.message,
+      cause: logCause,
       delta: finalChoice.delta ?? {},
     });
     pendingEnding = checkEnding(next);
@@ -1956,37 +2007,45 @@ function closeMeetingEventChoice(actions, state, choice) {
 }
 
 function getMeetingRejectChoice(state) {
-  const success = Math.random() < getBossRejectSuccessRate(getBossSpeechKey(state));
+  const key = getBossSpeechKey(state);
+  const success = Math.random() < getBossRejectSuccessRate(key);
+  const reactions = {
+    "smart-busy": success ? "팀장님이 잠깐 눈치를 주더니 넘어갔다." : "팀장님이 \"그럼 당신이 하세요\"라고 말했다.",
+    "smart-lazy": success ? "팀장님이 \"그럼 다음에 부탁할게요\"라고 말했다." : "팀장님이 \"그래도 오늘 안으로 부탁해요\"라고 말했다.",
+    "clumsy-busy": success ? "팀장님이 \"음, 그럼 다른 사람한테 물어볼게요!\"라고 말했다." : "팀장님이 \"아니, 일단 해봐요!\"라고 말했다.",
+    "clumsy-lazy": success ? "팀장님이 \"그래, 알았어…\"라고 중얼거렸다." : "팀장님이 \"위에서 시킨 건데…\"라고 말했다.",
+  };
   return {
     id: "reject",
     delta: success ? {} : { workload: 10, stress: 15 },
-    message: success ? "회의 후속 업무를 피했다." : "회의 후속 업무를 떠맡게 되었다.",
+    message: success ? "후속 업무를 넘기지 않았다." : "결국 후속 업무를 맡게 됐다.",
+    reaction: reactions[key] ?? reactions["smart-busy"],
   };
 }
 
-function getMeetingSpeech(outcome, state) {
+function getMeetingBossLine(outcome, state) {
   const key = getBossSpeechKey(state);
-  const speeches = {
+  const lines = {
     shame: {
-      "smart-busy": "입사한지 몇 개월인데 이렇게 간단한것도 못해?",
-      "smart-lazy": "알아서 센스 있게 잘 처리해 봐.",
-      "clumsy-busy": "내가 하라면 해.",
-      "clumsy-lazy": "내가 언제? 기억안나는데?",
+      "smart-busy": "이 수준이면 다음 회의에 다시 설명하세요.",
+      "smart-lazy": "센스 있게 정리해 주셨어야죠. 이번엔 아쉽네요.",
+      "clumsy-busy": "느낌은 있는데, 제가 원한 방향이 아니에요!",
+      "clumsy-lazy": "음… 제가 뭐 시켰더라… 일단 보완해 주세요.",
     },
     praise: {
-      "smart-busy": "이 정도면 올려도 되겠네.",
-      "smart-lazy": "덕분에 빨리 끝났네.",
-      "clumsy-busy": "이번엔 느낌이 괜찮은데?",
-      "clumsy-lazy": "그래.",
+      "smart-busy": "이 정도 정리면 바로 넘어가도 되겠네요.",
+      "smart-lazy": "덕분에 회의가 빨리 끝났어요.",
+      "clumsy-busy": "오, 이번엔 느낌이 괜찮은데요?",
+      "clumsy-lazy": "…그래. 나쁘지 않네.",
     },
     followup: {
-      "smart-busy": "회의록 오늘 안으로.",
-      "smart-lazy": "알아서 정리해서 올려줘.",
-      "clumsy-busy": "일단 해와. 보고 방향 잡자.",
-      "clumsy-lazy": "위에서 그러래. 나도 몰라.",
+      "smart-busy": "회의록은 오늘 안으로 올려 주세요.",
+      "smart-lazy": "정리해서 공유만 해 주실래요?",
+      "clumsy-busy": "일단 정리해 오세요! 방향은 보고 다시 잡아봐요!",
+      "clumsy-lazy": "위에서 보내래요. 저도 내용은 잘…",
     },
   };
-  return speeches[outcome]?.[key] ?? speeches[outcome]?.["smart-busy"] ?? "";
+  return lines[outcome]?.[key] ?? lines[outcome]?.["smart-busy"] ?? "";
 }
 
 function getBossSpeechKey(state) {
@@ -2189,7 +2248,7 @@ function renderMainEventPopup(event, { state, onChoice }) {
         el("time", { class: "main-event-timer", text: "EVENT" }),
       ]),
       el("section", { class: "main-event-body" }, [
-        el("p", { class: "main-event-kicker", text: event.type === "boss" ? "팀장님" : event.type === "colleague" ? "동료" : "공통 이벤트" }),
+        el("p", { class: "main-event-kicker", text: event.kicker ?? (event.type === "boss" ? "팀장님" : event.type === "colleague" ? "동료" : "공통 이벤트") }),
         el("h2", { text: event.title }),
         el("p", { class: "main-event-copy", text: event.body }),
         el("div", { class: getMainEventChoiceGridClass(choices.length) }, choices.map((choice, index) =>
@@ -2226,7 +2285,7 @@ function renderMainEventChoice(choice, state, onClick, index, total = 1) {
 function renderMainEventPreview(choice, state) {
   if (choice.hint) return [el("span", { text: choice.hint })];
   if (choice.next === "reject-reason") return [el("span", { text: "거절 사유 선택" })];
-  if (choice.next === "meeting-reject") return [el("span", { text: "상사 성향에 따라 결과가 달라진다" })];
+  if (choice.next === "meeting-reject") return choice.hint ? [el("span", { text: choice.hint })] : [];
 
   const preview = deltaToEventChips(choice.delta ?? {});
   const itemId = choice.item ?? getPreviewRandomItem(choice);

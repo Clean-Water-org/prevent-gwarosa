@@ -8,6 +8,21 @@ import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../c
 
 const TRUSTED_HOSTS = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "crm.company.com", "docs.google.com", "drive.partner-office.kr"];
 const MAIL_START_Y = -16;
+const CARD_FALL_SPEED = 0.42;
+const DROP_ZONE_INNER_W = 148;
+
+const CHIP_PALETTES = [
+  { color: "#777", border: "#d8d2c0", bg: "#f8f4e8" },
+  { color: PX.red, border: PX.red, bg: "#fff0ee" },
+  { color: "#8b6815", border: "#caa83a", bg: "#fff7d8" },
+  { color: "#3a6ea5", border: "#3a6ea5", bg: "#e8f0fa" },
+  { color: "#1f8a2e", border: "#1f8a2e", bg: "#e3f7e2" },
+  { color: "#8a4a9a", border: "#8a4a9a", bg: "#f3e8f7" },
+];
+
+function pickRandomChipStyle() {
+  return CHIP_PALETTES[Math.floor(Math.random() * CHIP_PALETTES.length)];
+}
 
 function shuffled(a) {
   const r = a.slice();
@@ -102,7 +117,7 @@ function makeDropZone(kind) {
   key.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#8a8478";
   key.textContent = isGood ? "← / A" : "D / →";
   const list = document.createElement("div");
-  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;width:100%;flex:1;min-height:96px";
+  list.style.cssText = `display:flex;flex-direction:column-reverse;gap:4px;width:${DROP_ZONE_INNER_W}px;max-width:100%;align-self:stretch;flex:1;min-height:96px;overflow:hidden`;
   const count = document.createElement("span");
   count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px;margin-top:auto;flex-shrink:0`;
   count.textContent = "0";
@@ -428,9 +443,7 @@ export function renderEmailGame(root, state, actions, game) {
     clues.style.cssText = "display:flex;flex-wrap:wrap;gap:6px";
     buildBasicClues(mail).forEach((tag) => {
       const t = document.createElement("span");
-      const color = tag.danger ? PX.red : tag.warn ? "#8b6815" : "#777";
-      const border = tag.danger ? PX.red : tag.warn ? "#caa83a" : "#d8d2c0";
-      const bg = tag.danger ? "#fff0ee" : tag.warn ? "#fff7d8" : "#f8f4e8";
+      const { color, border, bg } = pickRandomChipStyle();
       t.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;border:1.5px solid ${border};color:${color};background:${bg};padding:3px 8px`;
       t.textContent = tag.text;
       clues.append(t);
@@ -484,7 +497,7 @@ export function renderEmailGame(root, state, actions, game) {
     const arr = isGood ? run.sortedGood : run.sortedSpam;
     arr.push(mail);
     const item = document.createElement("span");
-    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
+    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:${DROP_ZONE_INNER_W}px;max-width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
     item.textContent = mail.subject;
     zone.list.prepend(item);
     while (zone.list.children.length > 4) zone.list.removeChild(zone.list.lastChild);
@@ -539,9 +552,8 @@ export function renderEmailGame(root, state, actions, game) {
       return;
     }
     const stressBoost = stress >= 80 ? 0.09 : stress >= 50 ? 0.05 : 0;
-    const bossBoost = run.bossWatching ? 0.05 : 0;
     if (!run.locked) {
-      run.cardY += 0.28 + stressBoost + bossBoost;
+      run.cardY += CARD_FALL_SPEED + stressBoost;
       mailSlot.style.top = run.cardY + "%";
       if (run.cardY >= 84) classify("missed");
     }
@@ -608,7 +620,7 @@ export function renderEmailGame(root, state, actions, game) {
       top.append(warn, title);
       const desc = document.createElement("span");
       desc.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
-      desc.textContent = "아무 말 없이 모니터만 보고 있다. 메일이 더 빨리 떨어진다.";
+      desc.textContent = "아무 말 없이 모니터만 보고 있다. 긴장된다.";
       card.append(top, desc);
       bossBannerEl.append(card);
       clearTimeout(run.bossTimer);

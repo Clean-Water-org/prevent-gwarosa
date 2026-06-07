@@ -1,5 +1,6 @@
 import { el } from "../ui.js";
 import { clampStat } from "../state.js";
+import { bosses } from "../data/bosses.js";
 
 const SCENES = [
   { id: "main", label: "메인 업무" },
@@ -12,6 +13,18 @@ const MINIGAMES = [
   { id: "email", label: "이메일 분류" },
   { id: "meeting", label: "회의 준비" },
   { id: "report", label: "보고서 오탈자" },
+];
+
+const MEETING_OUTCOMES = [
+  { id: "", label: "자동 판정" },
+  { id: "shame", label: "지적" },
+  { id: "praise", label: "칭찬" },
+  { id: "followup", label: "후속 업무" },
+];
+
+const BOSS_OPTIONS = [
+  { id: "", label: "현재 상사" },
+  ...bosses.map((boss) => ({ id: boss.id, label: `${boss.name} (${boss.publicHint})` })),
 ];
 
 const PRESETS = {
@@ -28,6 +41,9 @@ const PRESETS = {
     lunchEvent: false,
     skipStatusEvents: false,
     coffeeStreak: 0,
+    triggerMeetingEvent: false,
+    meetingOutcome: "",
+    bossId: "",
   },
   headache: {
     label: "두통",
@@ -42,6 +58,9 @@ const PRESETS = {
     lunchEvent: false,
     skipStatusEvents: false,
     coffeeStreak: 0,
+    triggerMeetingEvent: false,
+    meetingOutcome: "",
+    bossId: "",
   },
   burnout: {
     label: "번아웃",
@@ -56,6 +75,9 @@ const PRESETS = {
     lunchEvent: false,
     skipStatusEvents: true,
     coffeeStreak: 0,
+    triggerMeetingEvent: false,
+    meetingOutcome: "",
+    bossId: "",
   },
   lunch: {
     label: "점심",
@@ -70,6 +92,9 @@ const PRESETS = {
     lunchEvent: true,
     skipStatusEvents: false,
     coffeeStreak: 0,
+    triggerMeetingEvent: false,
+    meetingOutcome: "",
+    bossId: "",
   },
   coffee: {
     label: "손떨림",
@@ -84,6 +109,26 @@ const PRESETS = {
     lunchEvent: false,
     skipStatusEvents: false,
     coffeeStreak: 2,
+    triggerMeetingEvent: false,
+    meetingOutcome: "",
+    bossId: "",
+  },
+  meeting: {
+    label: "회의",
+    scene: "main",
+    time: "13:00",
+    workload: 100,
+    stress: 40,
+    health: 80,
+    minigameRound: 2,
+    devGameId: "",
+    handoverGuideSeen: true,
+    lunchEvent: false,
+    skipStatusEvents: true,
+    coffeeStreak: 0,
+    triggerMeetingEvent: true,
+    meetingOutcome: "",
+    bossId: "",
   },
 };
 
@@ -142,9 +187,23 @@ export function buildDevLaunchPatch(state, config) {
     flags.devGameId = null;
   }
 
+  if (config.meetingEvent) {
+    flags.meetingEventDone = false;
+    flags.devTriggerMeetingEvent = true;
+    if (MEETING_OUTCOMES.some((item) => item.id === config.meetingOutcome) && config.meetingOutcome) {
+      flags.devMeetingOutcome = config.meetingOutcome;
+    } else {
+      delete flags.devMeetingOutcome;
+    }
+  }
+
+  const bossId = BOSS_OPTIONS.some((item) => item.id === config.bossId) ? config.bossId : "";
+  const boss = bossId ? bosses.find((entry) => entry.id === bossId) : null;
+
   return {
     ...state,
     scene,
+    boss: boss ?? state.boss,
     gameMinute: config.lunchEvent ? Math.max(gameMinute, 12 * 60) : gameMinute,
     minigameRound: config.lunchEvent ? Math.max(minigameRound, 2) : minigameRound,
     stats: {
@@ -195,6 +254,9 @@ function readForm(form) {
   const lunchEvent = form.querySelector('[name="lunchEvent"]')?.checked ?? false;
   const skipStatusEvents = form.querySelector('[name="skipStatusEvents"]')?.checked ?? false;
   const coffeeStreak = form.querySelector('[name="coffeeStreak"]')?.checked ? 2 : 0;
+  const meetingOutcome = form.querySelector('[name="meetingOutcome"]')?.value ?? "";
+  const bossId = form.querySelector('[name="bossId"]')?.value ?? "";
+  const triggerMeetingEvent = form.querySelector('[name="triggerMeetingEvent"]')?.checked ?? false;
 
   return {
     scene,
@@ -208,6 +270,9 @@ function readForm(form) {
     lunchEvent,
     skipStatusEvents,
     coffeeStreak,
+    meetingOutcome,
+    bossId,
+    triggerMeetingEvent,
   };
 }
 
@@ -223,6 +288,29 @@ function fillForm(form, preset) {
   form.querySelector('[name="lunchEvent"]').checked = preset.lunchEvent;
   form.querySelector('[name="skipStatusEvents"]').checked = preset.skipStatusEvents;
   form.querySelector('[name="coffeeStreak"]').checked = preset.coffeeStreak >= 2;
+  if (form.querySelector('[name="meetingOutcome"]')) {
+    form.querySelector('[name="meetingOutcome"]').value = preset.meetingOutcome ?? "";
+  }
+  if (form.querySelector('[name="bossId"]')) {
+    form.querySelector('[name="bossId"]').value = preset.bossId ?? "";
+  }
+  if (form.querySelector('[name="triggerMeetingEvent"]')) {
+    form.querySelector('[name="triggerMeetingEvent"]').checked = Boolean(preset.triggerMeetingEvent);
+  }
+}
+
+function launchMeetingEventPreview(state, actions, form) {
+  const config = readForm(form);
+  actions.mutateState((draft) => buildDevLaunchPatch(draft, {
+    ...config,
+    scene: "main",
+    time: "13:00",
+    minigameRound: Math.max(readNumber({ value: config.minigameRound }, 2), 2),
+    handoverGuideSeen: true,
+    lunchEvent: false,
+    skipStatusEvents: true,
+    meetingEvent: true,
+  }));
 }
 
 export function renderDevPanel(state, actions) {
@@ -291,6 +379,20 @@ export function renderDevPanel(state, actions) {
       renderCheckbox("lunchEvent", "점심 이벤트", initial.lunchEvent),
       renderCheckbox("skipStatusEvents", "상태 팝업 생략", initial.skipStatusEvents),
       renderCheckbox("coffeeStreak", "커피 연속 2회", initial.coffeeStreak >= 2),
+      renderCheckbox("triggerMeetingEvent", "회의 이벤트 즉시", false),
+    ]),
+    el("section", { class: "dev-meeting-preview" }, [
+      el("p", { class: "dev-section-label", text: "회의 이벤트 미리보기" }),
+      el("div", { class: "dev-form-grid dev-form-grid--meeting" }, [
+        renderField("결과", renderSelect("meetingOutcome", MEETING_OUTCOMES, "")),
+        renderField("상사", renderSelect("bossId", BOSS_OPTIONS, "")),
+      ]),
+      el("button", {
+        class: "dev-launch-button",
+        type: "button",
+        text: "▶ 회의 이벤트 바로 보기",
+        onClick: () => launchMeetingEventPreview(state, actions, form),
+      }),
     ]),
     el("div", { class: "dev-form-actions" }, [
       el("button", {
@@ -312,7 +414,10 @@ export function renderDevPanel(state, actions) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const config = readForm(form);
-    actions.mutateState((draft) => buildDevLaunchPatch(draft, config));
+    actions.mutateState((draft) => buildDevLaunchPatch(draft, {
+      ...config,
+      meetingEvent: config.triggerMeetingEvent,
+    }));
   });
 
   return el("details", { class: "dev-panel" }, [
