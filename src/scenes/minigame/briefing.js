@@ -53,12 +53,13 @@ export function renderMiniGameBriefing(root, state, options, game, mode = "inlin
             statuses.map((status) => el("li", { text: status })),
           ),
         ]),
-        el("div", { class: "minigame-briefing-rule" }),
+      ]),
+      el("footer", { class: "minigame-briefing-footer" }, [
         el("section", { class: "minigame-briefing-time" }, [
           el("strong", { text: "예상 업무 시간" }),
           el("span", { text: "⏱ 60초" }),
         ]),
-        el("footer", { class: "minigame-briefing-actions" }, [
+        el("div", { class: "minigame-briefing-actions" }, [
           el("button", {
             class: "primary minigame-briefing-start",
             type: "button",

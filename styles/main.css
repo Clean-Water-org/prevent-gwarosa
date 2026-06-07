@@ -4645,6 +4645,9 @@ select {
 .minigame-briefing-window {
   position: relative;
   width: min(460px, 100%);
+  max-height: min(88vh, 580px);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 4px solid #1d1f2e;
   border-radius: 8px;
@@ -4683,11 +4686,21 @@ select {
 .minigame-briefing-lights .green { background: #58b575; }
 
 .minigame-briefing-body {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
-  gap: 14px;
-  padding: 20px;
-  max-height: min(68vh, 480px);
+  gap: 11px;
+  padding: 16px 18px;
   overflow-y: auto;
+}
+
+.minigame-briefing-footer {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 9px;
+  padding: 11px 18px 13px;
+  border-top: 3px solid #1d1f2e;
+  background: #fdfcf2;
 }
 
 .minigame-briefing-heading {
@@ -4721,8 +4734,8 @@ select {
 .minigame-briefing-description {
   margin: 0;
   color: #555;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .minigame-briefing-rule {
@@ -4744,7 +4757,7 @@ select {
 
 .minigame-briefing-howto-list {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   margin: 0;
   padding: 0 0 0 18px;
   list-style: decimal;
@@ -4752,8 +4765,8 @@ select {
 
 .minigame-briefing-howto-list li {
   color: #444;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .minigame-briefing-howto > strong {
@@ -4769,7 +4782,7 @@ select {
 
 .minigame-briefing-status-list {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4778,11 +4791,11 @@ select {
 .minigame-briefing-status-list li {
   border: 2px solid #1d1f2e;
   border-radius: 5px;
-  padding: 7px 9px;
+  padding: 5px 9px;
   background: #fff7df;
   color: #3a3429;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
 .minigame-briefing-time {
