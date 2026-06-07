@@ -104,8 +104,9 @@
 }
 
 .main-work-monitor-stage-spacer {
-  flex: 0 0 min(268px, 26vw);
-  width: min(268px, 26vw);
+  /* 펼침/접힘과 무관하게 항상 collapsed 폭(220px) 차지 → 토글 시 모니터 너비 고정 */
+  flex: 0 0 min(220px, 26vw);
+  width: min(220px, 26vw);
   visibility: hidden;
   pointer-events: none;
 }
@@ -1725,8 +1726,9 @@
 .main-work-monitor-stage .main-work-recent-log {
   position: relative;
   z-index: 1;
-  flex: 0 0 min(268px, 26vw);
-  width: min(268px, 26vw);
+  /* 펼침/접힘과 무관하게 항상 collapsed 폭(220px) 차지 → 토글 시 모니터 너비 고정 */
+  flex: 0 0 min(220px, 26vw);
+  width: min(220px, 26vw);
   max-height: clamp(420px, 72vh, 620px);
 }
 
