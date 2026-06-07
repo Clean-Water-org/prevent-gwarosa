@@ -551,10 +551,9 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
         el("li", { class: "main-work-handover-item", text: note }),
       )),
       el("div", { class: "main-work-handover-rule" }),
-      el("p", { class: "main-work-handover-closing", text: "마지막으로. 아직 늦지 않았습니다." }),
       el("button", {
         class: "main-work-handover-close",
-        text: "알겠습니다 (아마도)",
+        text: "알겠습니다.",
         onClick: close,
       }),
     ]),

@@ -171,42 +171,66 @@ export const chatPool = {
       text: "오늘 많이 바쁜가 보다. 나중에 이야기하자.",
     },
   ],
-  notice: [
+notice: [
     {
       kind: "hr",
       subtype: "notice",
       from: "인사팀",
       text: "건강검진 신청 대상자 확인 부탁드립니다.",
+      choices: [
+        { id: "accept", label: "처리하기", delta: { workload: 5, gameMinute: 5 }, message: "건강검진 신청을 완료했습니다." },
+        { id: "reject", label: "못 본 척", delta: { stress: 5 }, message: "인사팀의 건강검진 공지를 못 본 척 넘겼습니다." }
+      ]
     },
     {
       kind: "hr",
       subtype: "notice",
       from: "인사팀",
       text: "복지포인트 신청 마감 전 확인 부탁드립니다.",
+      choices: [
+        { id: "accept", label: "처리하기", delta: { workload: 5, stress: -5, gameMinute: 5 }, message: "복지포인트를 신청했습니다." },
+        { id: "reject", label: "못 본 척", delta: { stress: 10 }, message: "복지포인트 마감 공지를 넘겼습니다. 나중에 후회할지도 모릅니다." }
+      ]
     },
     {
       kind: "hr",
       subtype: "notice",
       from: "인사팀",
       text: "보안교육 이수 여부 확인 부탁드립니다.",
+      choices: [
+        { id: "accept", label: "처리하기", delta: { workload: 10, gameMinute: 10 }, message: "지루한 보안교육 영상을 시청하고 이수했습니다." },
+        { id: "reject", label: "못 본 척", delta: { stress: 5 }, message: "보안교육 공지를 못 본 척했습니다. 조만간 또 독촉이 올 것입니다." }
+      ]
     },
     {
       kind: "hr",
       subtype: "notice",
       from: "인사팀",
       text: "연차 사용 계획 입력 요청드립니다.",
+      choices: [
+        { id: "accept", label: "처리하기", delta: { workload: 5, stress: -10, gameMinute: 5 }, message: "연차 계획을 입력하며 잠시 행복한 상상에 빠졌습니다." },
+        { id: "reject", label: "못 본 척", delta: { stress: 5 }, message: "연차 계획 입력을 미뤄두었습니다." }
+      ]
     },
     {
       kind: "hr",
       subtype: "notice",
       from: "인사팀",
       text: "근태 확인 항목이 있어 처리 부탁드립니다.",
+      choices: [
+        { id: "accept", label: "처리하기", delta: { workload: 5, gameMinute: 3 }, message: "누락된 근태 항목을 소명하고 처리했습니다." },
+        { id: "reject", label: "못 본 척", delta: { stress: 8 }, message: "근태 이상 공지를 못 본 척했습니다. 사유서 각일지도 모릅니다." }
+      ]
     },
     {
       kind: "hr",
       subtype: "notice",
       from: "인사팀",
       text: "사내 교육 설문 응답 부탁드립니다.",
+      choices: [
+        { id: "accept", label: "처리하기", delta: { workload: 5, gameMinute: 3 }, message: "사내 교육 설문 조사를 대충 마쳤습니다." },
+        { id: "reject", label: "못 본 척", delta: { stress: 2 }, message: "설문조사 요청을 가볍게 무시했습니다." }
+      ]
     },
   ],
 };

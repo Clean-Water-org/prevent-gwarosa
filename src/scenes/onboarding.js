@@ -22,7 +22,6 @@ export function renderOnboarding(root, state, actions) {
             item("미니게임을 성공하면 업무량을 크게 줄일 수 있습니다."),
           ]),
           el("div", { class: "handover-rule" }),
-          el("p", { class: "handover-closing", text: "마지막으로. 아직 늦지 않았습니다." }),
         ]),
         el("div", { class: "actions" }, [
           el("button", { class: "primary", text: "출근하기", onClick: () => actions.go("commute") }),
