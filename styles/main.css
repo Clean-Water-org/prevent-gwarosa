@@ -3730,7 +3730,8 @@
 }
 
 .main-event-reason-choice {
-  min-height: 56px;
+  min-height: 44px;
+  padding: 9px 14px;
   border-color: var(--ink);
   background: #fff8e3;
   text-align: left;
