@@ -135,13 +135,10 @@ function makeStatBar(label, dir, color, value) {
   const lbl = document.createElement("span");
   lbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:var(--ink)";
   lbl.textContent = label;
-  const dirEl = document.createElement("span");
-  dirEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;color:${color}`;
-  dirEl.textContent = dir;
   const valEl = document.createElement("strong");
   valEl.style.cssText = "margin-left:auto;font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink)";
   valEl.textContent = String(value);
-  head.append(lbl, dirEl, valEl);
+  head.append(lbl, valEl);
   const track = document.createElement("div");
   track.style.cssText = `height:11px;border:2px solid ${PX.ink};background:#fff;overflow:hidden`;
   const fill = document.createElement("div");
