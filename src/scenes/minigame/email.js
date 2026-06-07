@@ -647,6 +647,12 @@ export function renderEmailGame(root, state, actions, game) {
     stopBgm();
     cancelAnimationFrame(run.raf);
     clearInterval(run.timerInterval);
+    // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 정리 (까까오 PC창·상사 실루엣·배너·토스트)
+    kakaoEl.replaceChildren(); kakaoEl.hidden = true;
+    bossOverlayEl.hidden = true;
+    bossBannerEl.style.display = "none";
+    evToastEl.style.display = "none";
+    [run.kakaoTimer, run.evTimer, run.bossTimer, run.evToastTimer].forEach(clearTimeout);
     const tier = run.correct >= 8 ? "success" : run.correct >= 5 ? "partial" : "fail";
     showResult(tier, run.correct, run.deck.length, 60 - run.time);
   }
