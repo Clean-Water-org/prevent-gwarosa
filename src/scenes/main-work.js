@@ -71,13 +71,13 @@ let _intranetOpen = false;
 const INTRANET_TABS = [
   { id: "mypage", label: "마이페이지" },
   { id: "board", label: "게시판" },
-  { id: "files", label: "자료실" },
 ];
 let _hrPortalIntroSpawned = false;
 let _lastRenderedState = null;
 let _openMessengerRoom = null;
 let _replyExpireTimers = new Map();
 let _preservingNotifications = false;
+let _preservingMeetingEvent = false;
 let _logHighlightClearId = null;
 let _logHighlightTimer = null;
 let _preserveSpawnMs = null;
@@ -543,6 +543,8 @@ function renderRecentLogEntry(entry, highlightId) {
 }
 
 const INTRANET_STATIC_NOTICES = [
+  "[안내] 불필요한 야근 자제 안내",
+  "[중요] 사무실 내 간이침대 사용 수칙 안내",
   "[중요] 2분기 업무 효율화 캠페인 안내",
   "[중요] 사내 수면실 이용 제한 안내",
   "사내 보안 점검으로 인한 문서 서버 순단 예정",
@@ -602,7 +604,6 @@ function renderIntranetWindow(actions) {
 
     syncTabStates();
     body.classList.toggle("is-mypage", _intranetActiveTab === "mypage");
-    body.classList.toggle("is-placeholder", _intranetActiveTab === "files");
     body.replaceChildren(...renderIntranetBody(state, actions, openTaskId, (taskId) => refresh(taskId)));
     updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
   };
@@ -616,18 +617,7 @@ function renderIntranetBody(state, actions, openTaskId, onOpenTask) {
   if (_intranetActiveTab === "mypage") {
     return [renderIntranetMypage(state)];
   }
-  if (_intranetActiveTab === "files") {
-    const label = INTRANET_TABS.find((tab) => tab.id === _intranetActiveTab)?.label ?? "메뉴";
-    return [renderIntranetPlaceholder(label)];
-  }
   return renderIntranetBoardBody(actions, openTaskId, onOpenTask);
-}
-
-function renderIntranetPlaceholder(label) {
-  return el("section", { class: "main-work-notice-panel main-work-intranet-placeholder" }, [
-    el("h2", { text: label }),
-    el("p", { text: "해당 메뉴는 준비 중입니다." }),
-  ]);
 }
 
 function renderIntranetMypage(state) {
@@ -1738,13 +1728,22 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
 
   if (prevScene !== "main" || !_messengerState) {
     _preservingNotifications = false;
+    _preservingMeetingEvent = false;
     return;
+  }
+
+  if (nextScene !== "main") {
+    _preservingMeetingEvent = false;
   }
 
   if (nextScene === "main") {
     if (_notifPanel?.parentElement) {
       _notifPanel.remove();
       pauseChatSystem();
+    }
+    if (_meetingEventOverlay?.parentElement) {
+      _meetingEventOverlay.remove();
+      _preservingMeetingEvent = true;
     }
     _preserveSpawnMs = _spawnTimeout
       ? Math.max(0, _spawnDelayMs - (Date.now() - _spawnScheduledAt))
@@ -1979,6 +1978,7 @@ function cleanupMainEventSystem() {
 }
 
 function cleanupMeetingEventSystem() {
+  if (_preservingMeetingEvent) return;
   if (_meetingEventTimeout) {
     clearTimeout(_meetingEventTimeout);
     _meetingEventTimeout = null;
@@ -2110,7 +2110,13 @@ function shouldShowMeetingEvent(state) {
 }
 
 function showMeetingEventPopup(state, container, actions) {
-  if (_meetingEventOverlay) return;
+  if (_meetingEventOverlay) {
+    if (!_meetingEventOverlay.isConnected) {
+      container.append(_meetingEventOverlay);
+    }
+    _preservingMeetingEvent = false;
+    return;
+  }
   playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
   pauseChatSystem();
   cleanupMainClock();
@@ -2125,7 +2131,9 @@ function showMeetingEventPopup(state, container, actions) {
     _meetingEventTimeout = null;
     const outcome = getMeetingEventOutcome(state);
     const resultPopup = renderMeetingOutcomePopup(outcome, state, actions);
-    _meetingEventOverlay?.replaceWith(resultPopup);
+    if (_meetingEventOverlay?.isConnected) {
+      _meetingEventOverlay.replaceWith(resultPopup);
+    }
     _meetingEventOverlay = resultPopup;
   }, 1800);
 }
@@ -2237,6 +2245,11 @@ function buildMeetingOutcomeEvent(outcome, state) {
 }
 
 function closeMeetingEventChoice(actions, state, choice, outcome) {
+  _preservingMeetingEvent = false;
+  if (_meetingEventTimeout) {
+    clearTimeout(_meetingEventTimeout);
+    _meetingEventTimeout = null;
+  }
   _meetingEventOverlay?.remove();
   _meetingEventOverlay = null;
 
@@ -2413,16 +2426,21 @@ function selectMainEvent(state, phaseIndex) {
   if (Math.random() < bossOrderChance) return getBossMainEvent("sudden-order");
 
   if (canHiddenBreak(state) && Math.random() < 0.35) return getBossMainEvent("hidden-break");
-  if (Math.random() < 0.35) return getColleagueMainEvent("colleague-help");
+  if (Math.random() < 0.32) return getColleagueMainEvent("colleague-help");
 
   const generalPool = [
     { event: getBossMainEvent("sudden-order"), weight: 18 + (phaseIndex * 4) },
     { event: getColleagueMainEvent("colleague-dump"), weight: 24 },
     { event: getColleagueMainEvent("desk-chat"), weight: 18 },
-    { event: getColleagueMainEvent("ginseng-gift"), weight: 14 },
-    { event: getPositiveMainEvent("small-bonus"), weight: 12 },
+    { event: getColleagueMainEvent("ginseng-gift"), weight: getGinsengGiftWeight(state) },
+    { event: getPositiveMainEvent("small-bonus"), weight: 13 },
   ];
   return pickWeightedEvent(generalPool);
+}
+
+function getGinsengGiftWeight(state) {
+  const trust = state.colleagueTrust ?? 30;
+  return 20 + (trust >= 45 ? 6 : 0);
 }
 
 function selectForcedMainEvent(state) {
@@ -2664,7 +2682,7 @@ function getBossRejectSuccessRate(bossId) {
 function applyMainEventChoice(actions, event, choice, phaseIndex, options = {}) {
   let pendingEnding = null;
   actions.mutateState((draft) => {
-    const pickedItem = pickMainEventItem(choice);
+    const pickedItem = pickMainEventItem(choice, draft);
     let next = applyDelta(draft, choice.delta ?? {}, null);
     next.inventory = [...(next.inventory ?? [])];
     if (pickedItem) {
@@ -2687,10 +2705,14 @@ function applyMainEventChoice(actions, event, choice, phaseIndex, options = {}) 
   if (pendingEnding) actions.finishWith(pendingEnding);
 }
 
-function pickMainEventItem(choice) {
+function pickMainEventItem(choice, state) {
   if (choice.item) return choice.item;
   if (!Array.isArray(choice.randomItem) || choice.randomItem.length === 0) return null;
-  return choice.randomItem[Math.floor(Math.random() * choice.randomItem.length)];
+  const pool = choice.randomItem;
+  if (pool.includes("ginseng") && pool.includes("coffee") && (state?.stats?.health ?? 100) <= 50) {
+    return Math.random() < 0.7 ? "ginseng" : "coffee";
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function applyMainEventFlags(state, event, choice, phaseIndex) {

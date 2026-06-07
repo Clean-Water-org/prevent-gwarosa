@@ -60,7 +60,7 @@ function makeBasicPreview(mail) {
     if (s.includes("대출") && s.includes("승인")) return "한도 8,000만원. 지금 바로 입금 신청하세요.";
     if (s.includes("당첨") || s.includes("축하")) return "24시간 내 수령 신청하지 않으면 당첨이 취소됩니다.";
     if (s.includes("아이폰") || s.includes("에어팟") || s.includes("이벤트")) return "당첨! 본인 확인 후 수령지를 입력해주세요.";
-    if (s.includes("투자") || s.includes("삼성전자")) return "직장인 한정 선착순. 최소 투자금 100만원.";
+    if (s.includes("투자") || s.includes("삼미전자")) return "직장인 한정 선착순. 최소 투자금 100만원.";
     if (s.includes("자동매매") || s.includes("부수입")) return "월 300만원 수익 사례. 무료 체험/상담 신청.";
     if (mail.attachment && /\.(zip|exe|xlsm)$/i.test(mail.attachment)) return "첨부 파일 실행 또는 보안 확인이 필요합니다.";
     if (mail.link && mail.link !== "없음") return "링크에서 로그인 또는 인증을 완료해주세요.";
@@ -93,7 +93,7 @@ function makeDropZone(kind) {
   const accent = isGood ? PX.green : PX.red;
   const bg = isGood ? "#e3f7e2" : "#ffe3e0";
   const wrap = document.createElement("div");
-  wrap.style.cssText = `flex:0 0 ${DROP_ZONE_W}px;align-self:stretch;min-height:${STAGE_H}px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
+  wrap.style.cssText = `flex:0 0 ${DROP_ZONE_W}px;width:${DROP_ZONE_W}px;max-width:${DROP_ZONE_W}px;min-width:${DROP_ZONE_W}px;align-self:stretch;min-height:${STAGE_H}px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 10px;box-sizing:border-box;overflow:hidden;cursor:pointer`;
   const header = document.createElement("div");
   header.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0";
   const icon = document.createElement("span");
@@ -107,7 +107,7 @@ function makeDropZone(kind) {
   key.textContent = isGood ? "← / A" : "D / →";
   header.append(icon, title, key);
   const list = document.createElement("div");
-  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;flex:1;min-height:0;width:100%;overflow:hidden";
+  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;flex:1;min-height:0;min-width:0;width:100%;max-width:100%;overflow:hidden";
   const count = document.createElement("span");
   count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px;flex-shrink:0;align-self:center`;
   count.textContent = "0";
@@ -477,8 +477,9 @@ export function renderEmailGame(root, state, actions, game) {
     const arr = isGood ? run.sortedGood : run.sortedSpam;
     arr.push(mail);
     const item = document.createElement("span");
-    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
+    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
     item.textContent = mail.subject;
+    item.title = mail.subject;
     zone.list.prepend(item);
     while (zone.list.children.length > 4) zone.list.removeChild(zone.list.lastChild);
     zone.count.textContent = String(arr.length);

@@ -7,7 +7,7 @@ export const chatPool = {
       from: "팀장",
       text: "{name}, 오늘 오후까지 처리 가능하십니까?",
       replies: [
-        { id: "accept", label: "가능합니다", tone: "primary", delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "오후 마감 요청에 가능하다고 답했다." },
+        { id: "accept", label: "가능합니다", tone: "primary", delta: { workload: -5, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "오후 마감 요청에 가능하다고 답했다." },
         { id: "hard", label: "일정이 빠듯합니다", tone: "neutral", deltaFn: "bossHard", bossAttentionDelta: -1, log: "오후 마감 요청에 일정이 빠듯하다고 답했다." },
       ],
       ignore: { delta: { stress: 3 }, bossAttentionDelta: 1, log: "오후 마감 요청을 못 본 척했다." },
@@ -19,7 +19,7 @@ export const chatPool = {
       from: "팀장",
       text: "{name}, 회의 자료 공유 부탁드립니다.",
       replies: [
-        { id: "accept", label: "바로 보내겠습니다", tone: "primary", delta: { workload: -4, gameMinute: 3, health: -1 }, bossAttentionDelta: -1, log: "회의 자료를 바로 공유하겠다고 답했다." },
+        { id: "accept", label: "바로 보내겠습니다", tone: "primary", delta: { workload: -5, gameMinute: 3, health: -1 }, bossAttentionDelta: -1, log: "회의 자료를 바로 공유하겠다고 답했다." },
         { id: "hard", label: "자료 정리 중입니다", tone: "neutral", deltaFn: "bossHard", bossAttentionDelta: -1, log: "회의 자료가 아직 정리 중이라고 답했다." },
       ],
       ignore: { delta: { stress: 3 }, bossAttentionDelta: 1, log: "회의 자료 공유 요청을 못 본 척했다." },
@@ -31,7 +31,7 @@ export const chatPool = {
       from: "팀장",
       text: "{name}, 수정본 전달 부탁드립니다.",
       replies: [
-        { id: "accept", label: "곧 전달드리겠습니다", tone: "primary", delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "수정본을 곧 보내겠다고 답했다." },
+        { id: "accept", label: "곧 전달드리겠습니다", tone: "primary", delta: { workload: -5, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "수정본을 곧 보내겠다고 답했다." },
         { id: "hard", label: "검토 중입니다", tone: "neutral", deltaFn: "bossHard", bossAttentionDelta: -1, log: "수정본을 아직 검토 중이라고 답했다." },
       ],
       ignore: { delta: { stress: 3 }, bossAttentionDelta: 1, log: "수정본 전달 요청을 못 본 척했다." },
@@ -43,7 +43,7 @@ export const chatPool = {
       from: "팀장",
       text: "{name}, 거래처 메일 확인 부탁드립니다.",
       replies: [
-        { id: "accept", label: "확인하겠습니다", tone: "primary", delta: { workload: -4, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "거래처 메일을 바로 확인하겠다고 답했다." },
+        { id: "accept", label: "확인하겠습니다", tone: "primary", delta: { workload: -5, gameMinute: 2, health: -1 }, bossAttentionDelta: -1, log: "거래처 메일을 바로 확인하겠다고 답했다." },
         { id: "hard", label: "다른 건 먼저 처리 중입니다", tone: "neutral", deltaFn: "bossHard", bossAttentionDelta: -1, log: "거래처 메일 확인을 잠시 미뤘다고 답했다." },
       ],
       ignore: { delta: { stress: 3 }, bossAttentionDelta: 1, log: "거래처 메일 확인 요청을 못 본 척했다." },
