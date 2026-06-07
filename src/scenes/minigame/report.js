@@ -277,15 +277,6 @@ export function renderReportGame(root, state, actions, game) {
   gameContent.append(titlebar, menubar, hud, board);
   monitorWrapper.append(makeMonitor(gameContent));
 
-  // 난이도 칩
-  const diffChip = document.createElement("div");
-  diffChip.style.cssText = "display:flex;justify-content:center;margin-top:10px";
-  const diffChipInner = document.createElement("span");
-  diffChipInner.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
-  diffChipInner.textContent = `${diff.label} · ${diff.lines}줄 · 오답 허용 ${diff.wrongMax}회`;
-  diffChip.append(diffChipInner);
-  monitorWrapper.append(diffChip);
-
   monitorScroll.append(monitorWrapper);
   room.append(monitorScroll);
   shell.append(room);
@@ -686,6 +677,16 @@ export function renderReportGame(root, state, actions, game) {
     run.phase = "result";
     stopBgm();
     clearInterval(run.timerInterval);
+    // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 전부 정리 (까까오 PC창·상사 펜·토스트·깜빡임)
+    kakaoEl.replaceChildren(); kakaoEl.hidden = true;
+    penSpeechEl.style.display = "none";
+    darkOverlayEl.style.opacity = "0";
+    vignetteEl.style.opacity = "0";
+    bossOverlayEl.hidden = true;
+    flickerEl.style.animation = "";
+    evToastEl.style.display = "none";
+    run.penActive = false;
+    [run.penHoldTimer, run.flickTimer, run.evToastTimer, run.toastTimer].forEach(clearTimeout);
     const fc = run.found.length;
     let tier = forceTier;
     if (!tier) {
