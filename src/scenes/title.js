@@ -6,7 +6,6 @@ import {
   cleanupTitleBgmFx,
   bindBgmToggleButton,
 } from "../lib/audio.js";
-import { renderDevPanel } from "./dev-panel.js";
 
 const TITLE_BGM_SRC = "assets/audio/title-bgm.mp3";
 
@@ -212,6 +211,7 @@ export function renderTitle(root, state, actions) {
   let settingsOpen = false;
   let settingsPanel = null;
   let settingsBtn = null;
+  let settingsWrap = null;
   const menuContent = el("div", { class: "title-menu-content" });
 
   function closeSettings() {
@@ -229,7 +229,7 @@ export function renderTitle(root, state, actions) {
     settingsOpen = true;
     settingsBtn?.classList.add("is-active");
     settingsPanel = renderTitleSettingsPanel(closeSettings);
-    menuContent.append(settingsPanel);
+    settingsWrap.append(settingsPanel);
   }
 
   settingsBtn = el("button", {
@@ -238,6 +238,8 @@ export function renderTitle(root, state, actions) {
     text: "설정",
     onClick: () => { playClickSfx(); openSettings(); },
   });
+
+  settingsWrap = el("div", { class: "title-menu-settings-wrap" }, [settingsBtn]);
 
   const windowTitleEl = el("span", { text: WINDOW_TITLE_NORMAL });
   const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
@@ -278,7 +280,7 @@ export function renderTitle(root, state, actions) {
           ]),
         ]),
         el("nav", { class: "title-menu-bar" }, [
-          settingsBtn,
+          settingsWrap,
           el("strong", { text: "v0.3" }),
         ]),
         menuContent,
@@ -286,10 +288,7 @@ export function renderTitle(root, state, actions) {
     ]),
   );
 
-  menuContent.append(
-    crtCard,
-    renderDevPanel(state, actions),
-  );
+  menuContent.append(crtCard);
 
   setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, logoEl });
 }

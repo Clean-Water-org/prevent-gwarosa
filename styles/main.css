@@ -6184,29 +6184,47 @@ select {
   font-family: NeoDunggeunmo, monospace;
 }
 
+/* 우리 게임 픽셀 버튼 스타일(잉크 테두리 + 하드 그림자) */
 .title-menu-settings {
-  border: 0;
-  background: transparent;
-  padding: 8px 0;
+  margin: 5px 0;
+  border: 3px solid #1d1f2e;
+  border-radius: 5px;
+  background: #fdfcf2;
+  box-shadow: 2px 2px 0 #1d1f2e;
+  padding: 5px 12px;
   color: #1d1f2e;
-  font: inherit;
   font-family: NeoDunggeunmo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   cursor: pointer;
 }
 
-.title-menu-settings:hover,
+.title-menu-settings:hover {
+  filter: brightness(1.03);
+}
+
+/* 설정 패널 열린 상태 — 노랑 강조 + 눌린 느낌 */
 .title-menu-settings.is-active {
-  color: #3d8bff;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  background: #ffd23f;
+  box-shadow: 1px 1px 0 #1d1f2e;
+  transform: translate(1px, 1px);
+}
+
+.title-menu-settings-wrap {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
 }
 
 .title-settings-panel {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 5;
-  width: min(240px, calc(100% - 24px));
+  top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  z-index: 20;
+  width: min(260px, calc(100vw - 40px));
   border: 3px solid #1d1f2e;
   background: #fdfcf2;
   box-shadow: 4px 4px 0 rgba(29, 31, 46, 0.28);
