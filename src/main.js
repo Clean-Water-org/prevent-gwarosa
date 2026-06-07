@@ -1,4 +1,4 @@
-import { checkEnding, createInitialState } from "./state.js";
+import { applyWorkTimeCost, checkEnding, createInitialState } from "./state.js";
 import { items } from "./data/items.js";
 import { loadGame, saveGame } from "./lib/storage.js";
 import { renderTitle } from "./scenes/title.js";
@@ -78,7 +78,8 @@ export function advanceGameMinute(minutes = 1) {
     return state.gameMinute;
   }
 
-  state = { ...state, gameMinute: state.gameMinute + minutes };
+  state = { ...state, stats: { ...state.stats }, flags: { ...state.flags } };
+  applyWorkTimeCost(state, minutes);
   // 미니게임 진입 트리거는 main-work.js의 startMainPhaseTimer가 담당. 여기선 시간 진행 + 엔딩만.
   const ending = checkEnding(state);
   if (ending) {

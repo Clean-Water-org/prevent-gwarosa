@@ -64,14 +64,53 @@ export function clampStat(value) {
   return Math.max(0, Math.min(100, value));
 }
 
+const WORK_FATIGUE_INTERVAL_MINUTES = 5;
+const HIGH_STRESS_FATIGUE_THRESHOLD = 70;
+const EXTREME_STRESS_FATIGUE_THRESHOLD = 90;
+
+export function applyWorkTimeCost(state, minutes = 0) {
+  const spentMinutes = Math.max(0, Math.round(minutes));
+  if (spentMinutes <= 0) return { state, delta: {} };
+
+  state.gameMinute += spentMinutes;
+
+  const flags = { ...(state.flags ?? {}) };
+  const totalFatigueMinutes = (flags.workFatigueMinutes ?? 0) + spentMinutes;
+  const fatigueTicks = Math.floor(totalFatigueMinutes / WORK_FATIGUE_INTERVAL_MINUTES);
+  flags.workFatigueMinutes = totalFatigueMinutes % WORK_FATIGUE_INTERVAL_MINUTES;
+  state.flags = flags;
+
+  const healthCostPerTick = state.stats.stress >= EXTREME_STRESS_FATIGUE_THRESHOLD
+    ? 3
+    : state.stats.stress >= HIGH_STRESS_FATIGUE_THRESHOLD
+      ? 2
+      : 1;
+  const healthDelta = fatigueTicks > 0 ? -fatigueTicks * healthCostPerTick : 0;
+  if (healthDelta !== 0) {
+    state.stats.health = clampStat(state.stats.health + healthDelta);
+  }
+
+  return {
+    state,
+    delta: healthDelta !== 0 ? { health: healthDelta } : {},
+  };
+}
+
 export function applyDelta(state, delta, message) {
   const next = { ...state, stats: { ...state.stats } };
+  let timeDelta = 0;
   for (const [key, value] of Object.entries(delta)) {
     if (key in next.stats) next.stats[key] = clampStat(next.stats[key] + value);
     if (key === "colleagueTrust") next.colleagueTrust = clampStat(next.colleagueTrust + value);
-    if (key === "gameMinute") next.gameMinute += value;
+    if (key === "gameMinute") timeDelta += value;
   }
-  if (message) addLogEntry(next, { cause: message, delta });
+  const timeCost = timeDelta > 0
+    ? applyWorkTimeCost(next, timeDelta)
+    : { state: next, delta: {} };
+  if (timeDelta < 0) next.gameMinute += timeDelta;
+  const finalDelta = { ...delta };
+  if (timeCost.delta.health) finalDelta.health = (finalDelta.health ?? 0) + timeCost.delta.health;
+  if (message) addLogEntry(next, { cause: message, delta: finalDelta });
   return next;
 }
 
