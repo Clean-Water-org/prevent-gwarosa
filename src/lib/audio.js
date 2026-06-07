@@ -13,6 +13,8 @@ let headacheFxTimer = null;
 let titleGlitchTimer = null;
 let titleGlitchRestoreTimer = null;
 let bgmEnabled = loadSettings().bgmEnabled;
+let pendingBgm = null;
+let audioUnlocked = false;
 
 const HEADACHE_BGM_RATE = 0.72;
 const HEADACHE_BGM_WOBBLE = 0.035;
@@ -25,8 +27,54 @@ export function isBgmEnabled() {
 export function setBgmEnabled(enabled) {
   bgmEnabled = enabled;
   saveSettings({ ...loadSettings(), bgmEnabled: enabled });
-  if (!enabled) stopBgm();
+  if (!enabled) {
+    pendingBgm = null;
+    stopBgm();
+  }
 }
+
+let sfxCtx = null;
+function getSfxCtx() {
+  if (sfxCtx === null) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    sfxCtx = AC ? new AC() : false;
+  }
+  return sfxCtx || null;
+}
+
+function resumeAudioContext() {
+  const ctx = getSfxCtx();
+  if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+}
+
+/** 브라우저 자동재생 차단 후 첫 사용자 입력에서 BGM을 이어 재생한다. */
+function onFirstUserGesture() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  resumeAudioContext();
+  if (!bgmEnabled) return;
+
+  if (current && current.paused && !current.ended) {
+    current.play()
+      .then(() => { pendingBgm = null; })
+      .catch(() => {});
+    return;
+  }
+
+  if (pendingBgm) {
+    const { src, opts } = pendingBgm;
+    pendingBgm = null;
+    playBgm(src, opts);
+  }
+}
+
+function setupAudioUnlock() {
+  const handler = () => onFirstUserGesture();
+  document.addEventListener("pointerdown", handler, { once: true, capture: true });
+  document.addEventListener("keydown", handler, { once: true, capture: true });
+}
+
+setupAudioUnlock();
 
 /** BGM on/off 토글 버튼 상태·클릭을 연결한다. */
 export function bindBgmToggleButton(button, { onEnable, renderState } = {}) {
@@ -164,9 +212,15 @@ export function playBgm(src, { volume = 0.4, loop = true } = {}) {
   audio.loop = loop;
   audio.volume = volume;
   audio.playbackRate = basePlaybackRate;
-  audio.play().catch(() => {});
   current = audio;
   currentSrc = src;
+  audio.play()
+    .then(() => {
+      if (current === audio) pendingBgm = null;
+    })
+    .catch(() => {
+      pendingBgm = { src, opts: { volume, loop } };
+    });
   applyHeadacheFxToCurrent();
   return audio;
 }
@@ -234,15 +288,6 @@ export function pauseBgm() {
 export function resumeBgm() {
   if (!current || !current.paused) return;
   current.play().catch(() => {});
-}
-
-let sfxCtx = null;
-function getSfxCtx() {
-  if (sfxCtx === null) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    sfxCtx = AC ? new AC() : false;
-  }
-  return sfxCtx || null;
 }
 
 /**

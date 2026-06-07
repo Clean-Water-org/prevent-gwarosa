@@ -60,7 +60,7 @@ function makeBasicPreview(mail) {
     if (s.includes("지원금") || s.includes("생활안정")) return "지급 대상자로 선정되었습니다. 미신청 시 자동 소멸됩니다.";
     if (s.includes("대출") && s.includes("승인")) return "한도 8,000만원. 지금 바로 입금 신청하세요.";
     if (s.includes("당첨") || s.includes("축하")) return "24시간 내 수령 신청하지 않으면 당첨이 취소됩니다.";
-    if (s.includes("아이폰") || s.includes("에어팟") || s.includes("이벤트")) return "당첨! 본인 확인 후 수령지를 입력해주세요.";
+    if (s.includes("손폰") || s.includes("무선귀팟") || s.includes("별벅스")) return "당첨! 본인 확인 후 수령지를 입력해주세요.";
     if (s.includes("투자") || s.includes("삼미전자")) return "직장인 한정 선착순. 최소 투자금 100만원.";
     if (s.includes("자동매매") || s.includes("부수입")) return "월 300만원 수익 사례. 무료 체험/상담 신청.";
     if (mail.attachment && /\.(zip|exe|xlsm)$/i.test(mail.attachment)) return "첨부 파일 실행 또는 보안 확인이 필요합니다.";
