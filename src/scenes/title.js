@@ -5,6 +5,8 @@ import {
   pulseTitleBgmGlitch,
   cleanupTitleBgmFx,
   bindBgmToggleButton,
+  needsAudioUnlock,
+  onAudioUnlock,
 } from "../lib/audio.js";
 
 const TITLE_BGM_SRC = "assets/audio/title-bgm.mp3";
@@ -40,10 +42,13 @@ function buildTaglineGlitchText() {
 }
 
 let titleFxTimers = [];
+let titleAudioUnlockOff = null;
 
 export function cleanupTitleFx() {
   titleFxTimers.forEach(clearTimeout);
   titleFxTimers = [];
+  titleAudioUnlockOff?.();
+  titleAudioUnlockOff = null;
   cleanupTitleBgmFx();
 }
 
@@ -245,6 +250,19 @@ export function renderTitle(root, state, actions) {
   const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
   const questionEl = el("p", { class: "title-question", text: QUESTION_NORMAL });
   const logoEl = el("h1", { class: "title-logo", text: "과로사 방지" });
+  const audioHint = el("p", {
+    class: "title-audio-hint",
+    text: "🔇 화면을 클릭하세요",
+    "aria-live": "polite",
+  });
+
+  function syncAudioHint() {
+    if (!audioHint.isConnected) return;
+    const show = needsAudioUnlock();
+    audioHint.hidden = !show;
+    audioHint.setAttribute("aria-hidden", String(!show));
+  }
+
   const crtCard = el("div", { class: "title-crt-card" }, [
     logoEl,
     taglineEl,
@@ -263,10 +281,15 @@ export function renderTitle(root, state, actions) {
         onClick: () => { playClickSfx(); actions.go("onboarding"); },
       }),
     ]),
+    audioHint,
     el("div", { class: "px-scanline title-crt-scanline" }),
     el("div", { class: "title-crt-noise" }),
     el("div", { class: "px-glare title-crt-glare" }),
   ]);
+
+  titleAudioUnlockOff?.();
+  titleAudioUnlockOff = onAudioUnlock(syncAudioHint);
+  requestAnimationFrame(syncAudioHint);
 
   root.append(
     el("section", { class: "title-menu-screen" }, [
