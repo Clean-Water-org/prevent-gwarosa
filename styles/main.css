@@ -71,7 +71,8 @@
   justify-content: center;
   width: 100%;
   min-width: 0;
-  /* 업무 일지(모니터 우측 absolute)가 room overflow에 잘리지 않도록 */
+  /* 업무 일지(모니터 우측 absolute)가 잘리지 않게 우측 공간 확보 + 모니터가 정가운데 오도록 좌측도 대칭 */
+  padding-left: calc(min(220px, 26vw) + 12px);
   padding-right: calc(min(220px, 26vw) + 12px);
   box-sizing: border-box;
 }
@@ -3768,6 +3769,11 @@
     min-height: 0;
     padding: 12px;
     transform: none;
+  }
+
+  .main-work-monitor-stage {
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .main-work-monitor-neck,
