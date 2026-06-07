@@ -2544,6 +2544,9 @@ function selectMainEvent(state, phaseIndex) {
   if (Math.random() < bossOrderChance) return getBossMainEvent("sudden-order");
 
   if (canHiddenBreak(state) && Math.random() < 0.35) return getBossMainEvent("hidden-break");
+  if (needsGinsengReward(state) && Math.random() < getGinsengDirectChance(state)) {
+    return getColleagueMainEvent("ginseng-gift");
+  }
   if (Math.random() < 0.32) return getColleagueMainEvent("colleague-help");
 
   const generalPool = [
@@ -2551,14 +2554,39 @@ function selectMainEvent(state, phaseIndex) {
     { event: getColleagueMainEvent("colleague-dump"), weight: 24 },
     { event: getColleagueMainEvent("desk-chat"), weight: 18 },
     { event: getColleagueMainEvent("ginseng-gift"), weight: getGinsengGiftWeight(state) },
-    { event: getPositiveMainEvent("small-bonus"), weight: 13 },
+    { event: getPositiveMainEvent("small-bonus"), weight: getSmallBonusWeight(state) },
   ];
   return pickWeightedEvent(generalPool);
 }
 
+function needsGinsengReward(state) {
+  const inventory = state.inventory ?? [];
+  const ginsengUses = state.counters?.itemUses?.ginseng ?? 0;
+  return !inventory.includes("ginseng") || ginsengUses >= 1;
+}
+
+function getGinsengDirectChance(state) {
+  const health = state?.stats?.health ?? 100;
+  if (health <= 40) return 0.28;
+  if (health <= 55) return 0.2;
+  if (needsGinsengReward(state)) return 0.14;
+  return 0;
+}
+
 function getGinsengGiftWeight(state) {
   const trust = state.colleagueTrust ?? 30;
-  return 20 + (trust >= 45 ? 6 : 0);
+  const health = state?.stats?.health ?? 100;
+  let weight = 34;
+  if (trust >= 35) weight += 8;
+  if (trust >= 50) weight += 8;
+  if (health <= 65) weight += 10;
+  if (health <= 45) weight += 12;
+  if (needsGinsengReward(state)) weight += 16;
+  return weight;
+}
+
+function getSmallBonusWeight(state) {
+  return needsGinsengReward(state) ? 20 : 13;
 }
 
 function selectForcedMainEvent(state) {
@@ -2827,8 +2855,10 @@ function pickMainEventItem(choice, state) {
   if (choice.item) return choice.item;
   if (!Array.isArray(choice.randomItem) || choice.randomItem.length === 0) return null;
   const pool = choice.randomItem;
-  if (pool.includes("ginseng") && pool.includes("coffee") && (state?.stats?.health ?? 100) <= 50) {
-    return Math.random() < 0.7 ? "ginseng" : "coffee";
+  if (pool.includes("ginseng") && pool.includes("coffee")) {
+    const health = state?.stats?.health ?? 100;
+    const ginsengChance = health <= 45 ? 0.85 : health <= 60 ? 0.72 : needsGinsengReward(state) ? 0.62 : 0.5;
+    return Math.random() < ginsengChance ? "ginseng" : "coffee";
   }
   return pool[Math.floor(Math.random() * pool.length)];
 }

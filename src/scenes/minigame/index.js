@@ -12,24 +12,24 @@ export { cleanupMinigameScene, setMinigameCleanup } from "./lifecycle.js";
 // 미니게임 선택은 flow.js getCurrentMiniGame(state.miniOrder, 5라운드) 사용. 시간은 실제 소요(usedSec).
 
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
-const MINIGAME_WORK_MINUTES = 42;
-const MINIGAME_HEALTH_MULTIPLIER = 1.5;
+const MINIGAME_WORK_MINUTES = 28;
+const MINIGAME_HEALTH_MULTIPLIER = 1;
 
 const GAME_DELTAS = {
   email: {
-    success: { workload: -20, stress: 3, health: -3 },
-    partial: { workload: -10, stress: 8, health: -5 },
-    fail: { workload: -3, stress: 16, health: -10 },
+    success: { workload: -20, stress: 3 },
+    partial: { workload: -10, stress: 8, health: -3 },
+    fail: { workload: -3, stress: 16, health: -8 },
   },
   meeting: {
-    success: { workload: -20, stress: 4, health: -3 },
-    partial: { workload: -10, stress: 10, health: -5 },
-    fail: { workload: -3, stress: 20, health: -12 },
+    success: { workload: -20, stress: 4 },
+    partial: { workload: -10, stress: 10, health: -3 },
+    fail: { workload: -3, stress: 20, health: -10 },
   },
   report: {
-    success: { workload: -20, stress: 4, health: -3 },
-    partial: { workload: -10, stress: 10, health: -5 },
-    fail: { workload: -5, stress: 20, health: -12 },
+    success: { workload: -20, stress: 4 },
+    partial: { workload: -10, stress: 10, health: -3 },
+    fail: { workload: -5, stress: 20, health: -10 },
   },
 };
 

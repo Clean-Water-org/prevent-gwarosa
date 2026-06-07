@@ -1,7 +1,7 @@
 import { el } from "../ui.js";
 import { applyWorkTimeCost, addLogEntry, checkEnding, formatTime } from "../state.js";
 
-export const HEADACHE_TIME_COST_MINUTES = 60;
+export const HEADACHE_TIME_COST_MINUTES = 45;
 
 export function isHeadacheEventPending(state) {
   return state.stats.health <= 30 && !state.flags?.statusEvents?.headache;
@@ -35,7 +35,7 @@ export function animateHeadacheClockJump(clockEl, beforeMinute, afterMinute) {
 
   const float = el("span", {
     class: "headache-clock-float",
-    text: "-1시간",
+    text: `-${HEADACHE_TIME_COST_MINUTES}분`,
   });
   host.append(float);
 
@@ -57,7 +57,7 @@ export function mountHeadacheDialog(container, { onConfirm, gameMinute, clockEl 
     el("div", { class: "headache-dialog pop-in" }, [
       el("span", { class: "headache-dialog-icon", text: "🤕" }),
       el("p", { class: "headache-dialog-text", text: "너무 머리가 아파서 못하겠어..." }),
-      el("p", { class: "headache-dialog-hint", text: "플레이 시간 1시간 경과" }),
+      el("p", { class: "headache-dialog-hint", text: `플레이 시간 ${HEADACHE_TIME_COST_MINUTES}분 경과` }),
       el("button", {
         class: "headache-dialog-ok",
         type: "button",

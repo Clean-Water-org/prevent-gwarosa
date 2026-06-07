@@ -96,7 +96,7 @@ export function clampStat(value) {
   return Math.max(0, Math.min(100, value));
 }
 
-const WORK_FATIGUE_INTERVAL_MINUTES = 5;
+const WORK_FATIGUE_INTERVAL_MINUTES = 6;
 const WORK_STRESS_INTERVAL_MINUTES = 6;
 const HIGH_WORKLOAD_STRESS_THRESHOLD = 80;
 const HIGH_STRESS_FATIGUE_THRESHOLD = 70;
