@@ -1,6 +1,8 @@
 // audio.js — 간단한 BGM 매니저 (한 번에 한 곡만 재생)
 // 미니게임 진입 시 playBgm, 종료/이탈 시 stopBgm 호출.
 
+import { loadSettings, saveSettings } from "./storage.js";
+
 let current = null;
 let currentSrc = null;
 let baseVolume = 0.4;
@@ -8,10 +10,95 @@ let basePlaybackRate = 1;
 let duckTimer = null;
 let headacheFxActive = false;
 let headacheFxTimer = null;
+let titleGlitchTimer = null;
+let titleGlitchRestoreTimer = null;
+let bgmEnabled = loadSettings().bgmEnabled;
 
 const HEADACHE_BGM_RATE = 0.72;
 const HEADACHE_BGM_WOBBLE = 0.035;
 const HEADACHE_BGM_VOLUME_MUL = 0.82;
+
+export function isBgmEnabled() {
+  return bgmEnabled;
+}
+
+export function setBgmEnabled(enabled) {
+  bgmEnabled = enabled;
+  saveSettings({ ...loadSettings(), bgmEnabled: enabled });
+  if (!enabled) stopBgm();
+}
+
+/** BGM on/off 토글 버튼 상태·클릭을 연결한다. */
+export function bindBgmToggleButton(button, { onEnable, renderState } = {}) {
+  const render = renderState ?? ((on) => {
+    button.textContent = on ? "켜짐" : "꺼짐";
+  });
+
+  function sync() {
+    const on = isBgmEnabled();
+    render(on, button);
+    button.setAttribute("aria-pressed", String(on));
+    button.setAttribute("aria-label", on ? "BGM 끄기" : "BGM 켜기");
+    button.classList.toggle("is-off", !on);
+    button.title = on ? "BGM 끄기" : "BGM 켜기";
+  }
+
+  button.addEventListener("click", () => {
+    playClickSfx();
+    const next = !isBgmEnabled();
+    setBgmEnabled(next);
+    if (next && onEnable) onEnable();
+    sync();
+  });
+
+  sync();
+  return { sync };
+}
+
+function clearTitleGlitchFx() {
+  if (titleGlitchTimer) {
+    clearInterval(titleGlitchTimer);
+    titleGlitchTimer = null;
+  }
+  if (titleGlitchRestoreTimer) {
+    clearTimeout(titleGlitchRestoreTimer);
+    titleGlitchRestoreTimer = null;
+  }
+}
+
+/** 타이틀 화면 글리치와 맞춰 BGM을 잠시 왜곡한다. */
+export function pulseTitleBgmGlitch(durationMs = 600) {
+  if (!bgmEnabled || !current || headacheFxActive) return;
+
+  clearTitleGlitchFx();
+  let phase = 0;
+  const tick = () => {
+    if (!current) return;
+    phase += 0.9;
+    const wobble = Math.sin(phase) * 0.18 + (Math.random() - 0.5) * 0.12;
+    current.playbackRate = Math.max(0.62, Math.min(1.28, basePlaybackRate + wobble));
+    if (!duckTimer) {
+      current.volume = baseVolume * (0.55 + Math.random() * 0.45);
+    }
+  };
+
+  tick();
+  titleGlitchTimer = setInterval(tick, 42);
+  titleGlitchRestoreTimer = setTimeout(() => {
+    clearTitleGlitchFx();
+    if (!current) return;
+    if (headacheFxActive) {
+      applyHeadacheFxToCurrent();
+      return;
+    }
+    current.playbackRate = basePlaybackRate;
+    if (!duckTimer) current.volume = baseVolume;
+  }, durationMs);
+}
+
+export function cleanupTitleBgmFx() {
+  clearTitleGlitchFx();
+}
 
 function clearHeadacheFxTimer() {
   if (headacheFxTimer) {
@@ -62,6 +149,10 @@ export function syncBgmStatusFx({ headache = false } = {}) {
  * @param {boolean} [opts.loop=true]
  */
 export function playBgm(src, { volume = 0.4, loop = true } = {}) {
+  if (!bgmEnabled) {
+    stopBgm({ preserveStatusFx: true });
+    return null;
+  }
   baseVolume = volume;
   if (current && currentSrc === src && !current.paused && !current.ended) {
     if (!duckTimer) current.volume = volume;
@@ -83,6 +174,7 @@ export function playBgm(src, { volume = 0.4, loop = true } = {}) {
 /** 현재 재생 중인 BGM 정지. */
 export function stopBgm({ preserveStatusFx = false } = {}) {
   if (duckTimer) { clearTimeout(duckTimer); duckTimer = null; }
+  clearTitleGlitchFx();
   clearHeadacheFxTimer();
   if (!preserveStatusFx) headacheFxActive = false;
   if (current) {

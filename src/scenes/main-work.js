@@ -15,7 +15,7 @@ import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../componen
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
 import { renderLunchIntro, renderLunchResult } from "./lunch.js";
-import { playBgm, duckBgm, playSfx, playTimedSfx, playClickSfx, syncBgmStatusFx, pauseBgm, resumeBgm } from "../lib/audio.js";
+import { playBgm, duckBgm, playSfx, playTimedSfx, playClickSfx, syncBgmStatusFx, pauseBgm, resumeBgm, bindBgmToggleButton } from "../lib/audio.js";
 import {
   applyHeadacheEventToDraft,
   mountHeadacheDialog,
@@ -81,6 +81,7 @@ let _preservingMeetingEvent = false;
 let _logHighlightClearId = null;
 let _logHighlightTimer = null;
 let _preserveSpawnMs = null;
+let _spawnInFlight = false;
 
 const STATUS_EVENT_CONFIGS = {
   burnout: {
@@ -345,6 +346,7 @@ function renderMainWorkHud(state, actions) {
       : []),
     el("div", { class: "main-work-hud-controls" }, [
       renderMainWorkItemHub(state, actions),
+      renderBgmToggleButton(state),
       renderPhoneButton(),
       el("div", { class: "main-work-hud-time" }, [
         el("strong", { class: "main-work-current-time", text: formatTime(state.gameMinute) }),
@@ -365,6 +367,23 @@ function renderPhoneButton() {
   }, [
     el("span", { class: "main-work-phone-badge", text: "!" }),
   ]);
+}
+
+function renderBgmToggleButton(state) {
+  const btn = el("button", {
+    class: "main-work-bgm-button",
+    type: "button",
+  });
+  bindBgmToggleButton(btn, {
+    onEnable: () => {
+      playBgm(MAIN_BGM_SRC);
+      syncBgmStatusFx({ headache: state.stats.health <= 30 });
+    },
+    renderState: (on) => {
+      btn.textContent = on ? "♪" : "♪";
+    },
+  });
+  return btn;
 }
 
 function renderHudStat(icon, label, value, type) {
@@ -863,6 +882,22 @@ function getMainMonitorScreen(root) {
   return root.querySelector(".main-work-monitor-screen") ?? root;
 }
 
+function findGuideLayer(screen) {
+  const root = screen?.classList?.contains("main-work-screen")
+    ? screen
+    : screen?.closest?.(".main-work-screen") ?? screen;
+  return root?.querySelector?.(".main-work-guide-layer") ?? null;
+}
+
+/** 튜토리얼 가이드 레이어(fixed, z-index 9998)가 인수인계서 클릭을 가로막지 않게 한다. */
+function releaseHandoverGuidePointerBlock(screen) {
+  const guideLayer = findGuideLayer(screen);
+  if (!guideLayer) return;
+  guideLayer.style.pointerEvents = "none";
+  guideLayer.querySelector(".narration-popup")?.style.setProperty("pointer-events", "auto");
+  guideLayer.querySelector(".main-work-fake-cursor")?.style.setProperty("visibility", "hidden");
+}
+
 function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartChats = null, options = {}) {
   const monitorScreen = getMainMonitorScreen(screen);
   const existing = monitorScreen.querySelector(".main-work-handover-overlay");
@@ -914,6 +949,7 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
   ]);
 
   monitorScreen.append(overlay);
+  releaseHandoverGuidePointerBlock(screen);
   if (options.autoCloseMs) {
     autoCloseTimer = window.setTimeout(close, options.autoCloseMs);
   }
@@ -1081,6 +1117,11 @@ function resetMessengerState(state) {
   _preservingNotifications = false;
   _preserveSpawnMs = null;
   _chatSnapshot = null;
+  _spawnInFlight = false;
+  if (_spawnTimeout) {
+    clearTimeout(_spawnTimeout);
+    _spawnTimeout = null;
+  }
   _messengerState = createMessengerState(state.flags?.runId ?? "default");
   _hrPortalIntroSpawned = false;
 }
@@ -1609,14 +1650,21 @@ function getMessengerRoomIcon(roomId) {
   return MESSENGER_ROOMS.find((room) => room.id === roomId)?.icon ?? "💬";
 }
 
-function showMessengerToast(message, actions) {
-  if (!_notifPanel || !message.needsReply) return;
+function findMessengerToast(messageId, root = _notifPanel) {
+  if (!root) return null;
+  return root.querySelector(`.main-work-messenger-toast[data-message-id="${messageId}"]`);
+}
 
-  const existingToast = _notifPanel.querySelector(`.main-work-messenger-toast[data-message-id="${message.id}"]`);
+function showMessengerToast(message, actions) {
+  if (!message.needsReply) return;
+
+  const toastRoot = _notifPanel?.closest(".main-work-monitor-screen") ?? _notifPanel;
+  const existingToast = findMessengerToast(message.id, toastRoot) ?? findMessengerToast(message.id, _notifPanel);
   if (existingToast) {
     existingToast._messageRef = message;
     return;
   }
+  if (!_notifPanel) return;
 
   const existing = _notifPanel.querySelectorAll(".main-work-messenger-toast");
   if (existing.length >= MAX_MESSENGER_TOASTS) existing[0].remove();
@@ -1775,10 +1823,19 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
 }
 
 function mountNotificationPanel(container) {
+  container.querySelectorAll(".chat-notif-panel").forEach((panel) => {
+    if (panel !== _notifPanel) panel.remove();
+  });
+
   if (_notifPanel?.isConnected) {
     if (_notifPanel.parentElement !== container) {
       container.append(_notifPanel);
     }
+    return _notifPanel;
+  }
+
+  if (_notifPanel) {
+    container.append(_notifPanel);
     return _notifPanel;
   }
 
@@ -1814,13 +1871,16 @@ function resumeNotificationPanel(container, state, actions) {
 function tryReattachPreservedNotifications(container, state, actions) {
   if (!_preservingNotifications || !_notifPanel) return false;
 
-  container.append(_notifPanel);
+  mountNotificationPanel(container);
   resumeChatSystem();
+  _chatSnapshot = null;
   for (const message of collectPendingReplyMessages()) {
     scheduleReplyExpiry(message, actions);
   }
   if (_preserveSpawnMs != null) {
     scheduleSpawn(state, actions, _preserveSpawnMs);
+  } else if (!_spawnTimeout) {
+    ensureChatSpawnLoop(state, actions);
   }
   _preserveSpawnMs = null;
   _preservingNotifications = false;
@@ -3022,9 +3082,15 @@ function scheduleSpawn(state, actions, delayMs) {
   _spawnScheduledAt = Date.now();
   _spawnDelayMs = delayMs;
   _spawnTimeout = setTimeout(() => {
-    if (!_notifPanel) return;
-    spawnOneNotification(state, actions);
-    scheduleNextSpawn(state, actions);
+    _spawnTimeout = null;
+    if (!_notifPanel || _spawnInFlight) return;
+    _spawnInFlight = true;
+    try {
+      spawnOneNotification(state, actions);
+      scheduleNextSpawn(state, actions);
+    } finally {
+      _spawnInFlight = false;
+    }
   }, delayMs);
 }
 

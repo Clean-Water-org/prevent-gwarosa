@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="DAEHAN TECH">
+  <rect width="32" height="32" fill="#1d1f2e"/>
+  <rect x="9" y="8" width="16" height="22" fill="#1d1f2e"/>
+  <rect x="8" y="7" width="16" height="22" fill="#ffd23f"/>
+  <rect x="10" y="4" width="12" height="4" fill="#f0b82f"/>
+  <rect x="12" y="2" width="8" height="3" fill="#ffd23f"/>
+  <rect x="11" y="10" width="4" height="3" fill="#4d8fe8"/>
+  <rect x="17" y="10" width="4" height="3" fill="#4d8fe8"/>
+  <rect x="11" y="15" width="4" height="3" fill="#efe7d2"/>
+  <rect x="17" y="15" width="4" height="3" fill="#4d8fe8"/>
+  <rect x="11" y="20" width="4" height="3" fill="#4d8fe8"/>
+  <rect x="17" y="20" width="4" height="3" fill="#efe7d2"/>
+  <rect x="13" y="24" width="6" height="5" fill="#1d1f2e"/>
+  <rect x="14" y="25" width="4" height="4" fill="#58b958"/>
+</svg>

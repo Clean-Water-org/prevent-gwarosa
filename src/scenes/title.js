@@ -1,5 +1,14 @@
 ﻿import { el } from "../ui.js";
-import { playClickSfx } from "../lib/audio.js";
+import {
+  playBgm,
+  playClickSfx,
+  pulseTitleBgmGlitch,
+  cleanupTitleBgmFx,
+  bindBgmToggleButton,
+} from "../lib/audio.js";
+import { renderDevPanel } from "./dev-panel.js";
+
+const TITLE_BGM_SRC = "assets/audio/title-bgm.mp3";
 
 const WINDOW_TITLE_NORMAL = "🏢 overwork_prevention.exe — 출근 준비";
 const WINDOW_TITLE_ALTS = [
@@ -36,6 +45,7 @@ let titleFxTimers = [];
 export function cleanupTitleFx() {
   titleFxTimers.forEach(clearTimeout);
   titleFxTimers = [];
+  cleanupTitleBgmFx();
 }
 
 function scheduleTitleFx(fn, delayMs) {
@@ -61,6 +71,7 @@ function pickRandom(items) {
 function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, logoEl }) {
   function fireWindowTitleGlitch() {
     if (!windowTitleEl.isConnected) return;
+    pulseTitleBgmGlitch(520);
     windowTitleEl.textContent = pickRandom(WINDOW_TITLE_ALTS);
     scheduleTitleFx(() => {
       if (windowTitleEl.isConnected) windowTitleEl.textContent = WINDOW_TITLE_NORMAL;
@@ -69,6 +80,7 @@ function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, log
 
   function fireTaglineGlitch() {
     if (!taglineEl.isConnected) return;
+    pulseTitleBgmGlitch(780);
     taglineEl.textContent = buildTaglineGlitchText();
     taglineEl.classList.add("title-tagline-glitch");
     scheduleTitleFx(() => {
@@ -80,6 +92,7 @@ function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, log
 
   function fireQuestionGlitch() {
     if (!questionEl.isConnected) return;
+    pulseTitleBgmGlitch(480);
     questionEl.textContent = pickRandom(QUESTION_ALTS);
     questionEl.classList.add("title-question-glitch");
     scheduleTitleFx(() => {
@@ -91,6 +104,7 @@ function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, log
 
   function fireCrtRoll() {
     if (!crtCard.isConnected) return;
+    pulseTitleBgmGlitch(160);
     crtCard.classList.add("title-crt-roll");
     scheduleTitleFx(() => {
       if (crtCard.isConnected) crtCard.classList.remove("title-crt-roll");
@@ -99,6 +113,7 @@ function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, log
 
   function fireTextJitter() {
     if (!logoEl.isConnected) return;
+    pulseTitleBgmGlitch(220);
     logoEl.classList.add("title-jitter-frame");
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -163,8 +178,66 @@ function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, log
   loopTextJitter();
 }
 
+function renderTitleSettingsPanel(onClose) {
+  const bgmToggle = el("button", {
+    class: "title-settings-toggle",
+    type: "button",
+  });
+  bindBgmToggleButton(bgmToggle, {
+    onEnable: () => playBgm(TITLE_BGM_SRC, { volume: 0.42 }),
+  });
+
+  return el("div", { class: "title-settings-panel", role: "dialog", "aria-label": "설정" }, [
+    el("header", { class: "title-settings-head" }, [
+      el("strong", { text: "설정" }),
+      el("button", {
+        class: "title-settings-close",
+        type: "button",
+        text: "✕",
+        "aria-label": "닫기",
+        onClick: () => { playClickSfx(); onClose(); },
+      }),
+    ]),
+    el("div", { class: "title-settings-row" }, [
+      el("span", { text: "BGM" }),
+      bgmToggle,
+    ]),
+  ]);
+}
+
 export function renderTitle(root, state, actions) {
   cleanupTitleFx();
+  playBgm(TITLE_BGM_SRC, { volume: 0.42 });
+
+  let settingsOpen = false;
+  let settingsPanel = null;
+  let settingsBtn = null;
+  const menuContent = el("div", { class: "title-menu-content" });
+
+  function closeSettings() {
+    settingsOpen = false;
+    settingsPanel?.remove();
+    settingsPanel = null;
+    settingsBtn?.classList.remove("is-active");
+  }
+
+  function openSettings() {
+    if (settingsOpen) {
+      closeSettings();
+      return;
+    }
+    settingsOpen = true;
+    settingsBtn?.classList.add("is-active");
+    settingsPanel = renderTitleSettingsPanel(closeSettings);
+    menuContent.append(settingsPanel);
+  }
+
+  settingsBtn = el("button", {
+    class: "title-menu-settings",
+    type: "button",
+    text: "설정",
+    onClick: () => { playClickSfx(); openSettings(); },
+  });
 
   const windowTitleEl = el("span", { text: WINDOW_TITLE_NORMAL });
   const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
@@ -205,14 +278,17 @@ export function renderTitle(root, state, actions) {
           ]),
         ]),
         el("nav", { class: "title-menu-bar" }, [
-          el("span", { text: "설정" }),
+          settingsBtn,
           el("strong", { text: "v0.3" }),
         ]),
-        el("div", { class: "title-menu-content" }, [
-          crtCard,
-        ]),
+        menuContent,
       ]),
     ]),
+  );
+
+  menuContent.append(
+    crtCard,
+    renderDevPanel(state, actions),
   );
 
   setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, logoEl });

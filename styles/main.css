@@ -390,6 +390,7 @@
 
 .main-work-item-toggle,
 .main-work-phone-button,
+.main-work-bgm-button,
 .main-work-gear {
   height: 38px;
   border: 2px solid var(--ink);
@@ -460,6 +461,39 @@
 .main-work-phone-button:focus-visible {
   background: #ffe9a8;
   color: var(--ink);
+}
+
+.main-work-bgm-button {
+  position: relative;
+  width: 42px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.main-work-bgm-button:hover,
+.main-work-bgm-button:focus-visible {
+  background: #ffe9a8;
+}
+
+.main-work-bgm-button.is-off {
+  opacity: 0.45;
+  filter: grayscale(0.35);
+}
+
+.main-work-bgm-button.is-off::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  top: 50%;
+  height: 2px;
+  background: var(--ink);
+  transform: rotate(-38deg);
+  pointer-events: none;
 }
 
 .main-work-phone-badge {
@@ -2983,7 +3017,7 @@
   color: #6b7287;
 }
 
-.main-work-handover-close {
+.main-work-screen button.main-work-handover-close {
   display: block;
   width: 100%;
   min-height: 36px;
@@ -2999,9 +3033,19 @@
   cursor: pointer;
 }
 
-.main-work-handover-close:disabled {
+.main-work-screen button.main-work-handover-close:hover,
+.main-work-screen button.main-work-handover-close:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 4px 5px 0 var(--ink);
+  background: #ffe89a;
+}
+
+.main-work-screen button.main-work-handover-close:disabled {
   opacity: 0.55;
   cursor: default;
+  transform: none;
+  box-shadow: 3px 3px 0 var(--ink);
+  background: #fff3c4;
 }
 
 /* Commute briefing — 메인 업무화면과 동일한 모니터·오피스 셸 안에서 표시 */
@@ -6138,6 +6182,96 @@ select {
 .title-menu-bar strong {
   margin-left: auto;
   font-family: NeoDunggeunmo, monospace;
+}
+
+.title-menu-settings {
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  color: #1d1f2e;
+  font: inherit;
+  font-family: NeoDunggeunmo, monospace;
+  cursor: pointer;
+}
+
+.title-menu-settings:hover,
+.title-menu-settings.is-active {
+  color: #3d8bff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.title-settings-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  width: min(240px, calc(100% - 24px));
+  border: 3px solid #1d1f2e;
+  background: #fdfcf2;
+  box-shadow: 4px 4px 0 rgba(29, 31, 46, 0.28);
+  text-align: left;
+}
+
+.title-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 3px solid #1d1f2e;
+  background: #efe7d2;
+}
+
+.title-settings-head strong {
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 13px;
+  color: #1d1f2e;
+}
+
+.title-settings-close {
+  border: 2px solid #1d1f2e;
+  background: #fff;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.title-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 14px;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 13px;
+  color: #1d1f2e;
+}
+
+.title-settings-toggle {
+  min-width: 64px;
+  border: 3px solid #1d1f2e;
+  background: #ffd23f;
+  padding: 6px 10px;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 12px;
+  color: #1d1f2e;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #1d1f2e;
+}
+
+.title-settings-toggle.is-off {
+  background: #d8d2c0;
+  color: #666;
+}
+
+.title-settings-toggle:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #1d1f2e;
 }
 
 .title-menu-content {
