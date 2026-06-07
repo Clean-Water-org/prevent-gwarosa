@@ -33,9 +33,8 @@ export function renderLunchResult(state, actions, options = {}) {
   const queue = state.flags?.lunchQueue?.length ? state.flags.lunchQueue : getLunchQueue(state);
   const onAfternoonStart = options.onAfternoonStart ?? (() => {
     actions.mutateState((draft) => {
-      draft.gameMinute = Math.max(draft.gameMinute, 13 * 60);
       draft.scene = "main";
-      draft.flags = { ...draft.flags };
+      draft.flags = { ...draft.flags, lunchCutscenePending: true };
       delete draft.flags.lunchPhase;
       delete draft.flags.lunchQueue;
       delete draft.flags.lunchIndex;
@@ -58,6 +57,7 @@ export function renderLunchResult(state, actions, options = {}) {
       el("div", { class: "actions" }, [
         el("button", {
           class: "primary",
+          type: "button",
           text: "오후 업무 시작",
           onClick: onAfternoonStart,
         }),

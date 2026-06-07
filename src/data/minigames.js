@@ -60,6 +60,7 @@ export const emailDeck = [
   { from: "연말정산 담당자", domain: "tax-company.net", subject: "연말정산 증빙자료 보완 요청", body: "환급 처리를 위해 주민등록번호와 계좌 정보를 입력하세요.", attachment: "없음", link: "tax-company.net/refund", recipient: "개별 발송", time: "23:40", difficulty: "normal", type: "spam" },
   { from: "재무팀", domain: "company-payments.com", subject: "법인카드 정산 누락 안내", body: "정산 누락자 명단입니다. 파일 열람 시 콘텐츠 사용을 눌러주세요.", attachment: "정산대상자.xlsm", link: "없음", recipient: "개별 발송", time: "06:35", difficulty: "hard", type: "spam" },
   { from: "IT지원팀", domain: "cornpany-helpdesk.com", subject: "사내 계정 용량 초과 안내", body: "수신 중단을 막으려면 사내 계정으로 다시 로그인하세요.", attachment: "없음", link: "cornpany-helpdesk.com/storage", recipient: "개별 발송", time: "02:44", difficulty: "hard", type: "spam" },
+  { from: "IT운영팀", domain: "cornpany.com", subject: "VPN 인증 방식 변경 안내", body: "다음 주부터 VPN 접속 시 OTP 인증이 추가됩니다. 사전 등록을 위해 첨부 모듈을 실행해주세요.", attachment: "OTP_Setup.exe", link: "없음", recipient: "VPN 사용자", time: "13:17", difficulty: "hard", type: "spam" },
   { from: "김부장", domain: "cornpany.com", subject: "급한 건입니다", body: "회의 중이라 전화가 어렵습니다. 송금 먼저 부탁드립니다.", attachment: "송금정보.zip", link: "없음", recipient: "개발팀", time: "11:42", difficulty: "evil", type: "spam" },
   { from: "CFO", domain: "company-finance.co", subject: "송금 건 확인", body: "오늘 중 처리해야 합니다. ERP 대신 첨부 파일 기준으로 진행해주세요.", attachment: "긴급송금요청.zip", link: "없음", recipient: "재무팀", time: "16:10", difficulty: "evil", type: "spam" },
 ];
