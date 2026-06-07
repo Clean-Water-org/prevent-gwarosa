@@ -4,7 +4,7 @@ import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 import { playBgm, stopBgm } from "../../lib/audio.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
-const CARD_W = 120, CARD_H = 150;
+const CARD_W = 120, CARD_H = 168;
 
 // ── 픽셀아트 슬라이드 비주얼 ──────────────────────────────────────
 function makeSlideContent(kind) {
@@ -115,6 +115,23 @@ function makeProgressChips(done, total, warn) {
   return wrap;
 }
 
+// 네이티브 드래그 이미지가 가끔 카드 배경·테두리를 놓치고 글자만 잔상으로 남는 문제 방지:
+// 카드 전체를 복제해 드래그 이미지로 명시 지정한다 (transform/transition 제거한 깔끔한 스냅샷).
+function setCardDragImage(e, card) {
+  if (!e.dataTransfer || typeof e.dataTransfer.setDragImage !== "function") return;
+  const ghost = card.cloneNode(true);
+  ghost.style.transition = "none";
+  ghost.style.transform = "none";
+  ghost.style.margin = "0";
+  ghost.style.position = "fixed";
+  ghost.style.top = "-1000px";
+  ghost.style.left = "-1000px";
+  ghost.style.pointerEvents = "none";
+  document.body.appendChild(ghost);
+  e.dataTransfer.setDragImage(ghost, card.offsetWidth / 2, card.offsetHeight / 2);
+  setTimeout(() => ghost.remove(), 0);
+}
+
 // ── 슬라이드 카드 ──────────────────────────────────────────────────
 function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleBlur, w }) {
   const wrong = mark === "wrong", ok = mark === "ok";
@@ -125,7 +142,7 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
   const transform = wrong ? "rotate(-2deg)" : undefined;
 
   const card = document.createElement("div");
-  card.style.cssText = `width:${width}px;height:${height}px;background:${locked?"#fbe3dd":PX.white};border:${wrong||ok||locked?3:2.5}px solid ${bc};box-shadow:${shadow};display:flex;flex-direction:column;box-sizing:border-box;position:relative;cursor:${canDrag?"grab":"default"};image-rendering:pixelated;transition:transform .08s`;
+  card.style.cssText = `width:${width}px;height:${height}px;flex:0 0 auto;background:${locked?"#fbe3dd":PX.white};border:${wrong||ok||locked?3:2.5}px solid ${bc};box-shadow:${shadow};display:flex;flex-direction:column;box-sizing:border-box;position:relative;cursor:${canDrag?"grab":"default"};image-rendering:pixelated;transition:transform .08s`;
   if (transform) card.style.transform = transform;
   if (canDrag) card.setAttribute("draggable", "true");
 
@@ -174,7 +191,7 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
     head.append(num);
   }
   const titleEl = document.createElement("span");
-  titleEl.style.cssText = `font-family:Galmuri11,monospace;font-size:12.5px;color:${PX.ink};white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
+  titleEl.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all`;
   if (titleBlur) titleEl.style.filter = "blur(2.6px)";
   titleEl.textContent = slide.title;
   head.append(titleEl);
@@ -316,7 +333,7 @@ export function renderMeetingGame(root, state, actions, game) {
 
   function byId(id) { return mg.all.find((s) => String(s.id)===String(id)); }
   function slotOf(i) { return mg.all.find((s) => place[s.id]===i) || null; }
-  function cw() { return mg.order.length >= 7 ? 110 : 124; }
+  function cw() { return mg.order.length >= 7 ? 90 : 106; }
 
   // ── HUD 참조 (ProgressChips 업데이트용) ──
   let progressChipsWrap = null;
@@ -444,12 +461,12 @@ export function renderMeetingGame(root, state, actions, game) {
   trayLbl.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#8a7d52;margin-bottom:7px";
 
   const trayList = document.createElement("div");
-  trayList.style.cssText = `display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:${cw()*(CARD_H/CARD_W)}px;align-items:center`;
+  trayList.style.cssText = `display:flex;flex-wrap:nowrap;gap:10px;justify-content:safe center;min-height:${cw()*(CARD_H/CARD_W)}px;align-items:center;overflow-x:auto;padding:15px 12px 6px`;
 
   trayEl.append(trayLbl, trayList);
 
   const trashEl = document.createElement("div");
-  trashEl.style.cssText = `width:130px;flex:0 0 auto;border:3px dashed #b06b4a;background:#f5e7df;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px`;
+  trashEl.style.cssText = `width:100px;flex:0 0 auto;border:3px dashed #b06b4a;background:#f5e7df;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px`;
   trashEl.addEventListener("dragover", (e) => { e.preventDefault(); setTrashOver(true); });
   trashEl.addEventListener("dragleave", () => setTrashOver(false));
   trashEl.addEventListener("drop", () => { setTrashOver(false); doDropTarget("trash"); });
@@ -624,7 +641,7 @@ export function renderMeetingGame(root, state, actions, game) {
         titleBlur: state.stats.health<=30,
         w,
       });
-      card.addEventListener("dragstart", (e) => { e.stopPropagation(); run.dragId=s.id; updateSnapHints(); });
+      card.addEventListener("dragstart", (e) => { e.stopPropagation(); setCardDragImage(e, card); run.dragId=s.id; updateSnapHints(); });
       card.addEventListener("dragend", () => { run.dragId=null; updateSnapHints(); });
       wrapper.append(card);
     } else {
@@ -670,7 +687,7 @@ export function renderMeetingGame(root, state, actions, game) {
           titleBlur: state.stats.health<=30,
           w,
         });
-        card.addEventListener("dragstart", (e) => { e.stopPropagation(); run.dragId=id; });
+        card.addEventListener("dragstart", (e) => { e.stopPropagation(); setCardDragImage(e, card); run.dragId=id; });
         card.addEventListener("dragend", () => { run.dragId=null; });
         trayList.append(card);
       });
@@ -929,8 +946,8 @@ export function renderMeetingGame(root, state, actions, game) {
   function showResult(tier, errors, trapsLeft, usedSec) {
     const TIERS = {
       success:{ title:"회의 준비 완료!", emoji:"🎉", bg:"#eafae8", color:PX.green, deltas:[{label:"업무량",v:-25}] },
-      partial:{ title:"아슬아슬하게 마쳤다…", emoji:"😮‍💨", bg:"#fff3df", color:"#c98a2a", deltas:[{label:"업무량",v:-10},{label:"스트레스",v:8}] },
-      fail:   { title:"회의 준비 망했다…", emoji:"💀", bg:"#f6e3e0", color:PX.red, deltas:[{label:"업무량",v:-3},{label:"스트레스",v:20},{label:"체력",v:-8}] },
+      partial:{ title:"아슬아슬하게 마쳤다…", emoji:"😮‍💨", bg:"#fff3df", color:"#c98a2a", deltas:[{label:"업무량",v:-18},{label:"스트레스",v:8}] },
+      fail:   { title:"회의 준비 망했다…", emoji:"💀", bg:"#f6e3e0", color:PX.red, deltas:[{label:"업무량",v:-8},{label:"스트레스",v:20},{label:"체력",v:-8}] },
     };
     const t=TIERS[tier];
     const card = document.createElement("div");

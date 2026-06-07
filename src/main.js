@@ -1,6 +1,7 @@
 import { applyWorkTimeCost, checkEnding, createInitialState } from "./state.js";
 import { items } from "./data/items.js";
 import { loadGame, saveGame } from "./lib/storage.js";
+import { duckBgm } from "./lib/audio.js";
 import { renderTitle } from "./scenes/title.js";
 import { renderSetup } from "./scenes/setup.js";
 import { renderOnboarding } from "./scenes/onboarding.js";
@@ -107,8 +108,10 @@ export function useItem(index) {
 }
 
 function playItemSound(src) {
+  // 효과음이 잘 들리도록 BGM을 잠시 낮춘다(덕킹) — 채팅 알림음과 동일 처리.
+  duckBgm();
   const audio = new Audio(src);
-  audio.volume = 0.72;
+  audio.volume = 1.0;
   audio.play().catch(() => {});
 }
 

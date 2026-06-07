@@ -110,8 +110,8 @@ function buildReport(repIdx, lineCount) {
 
 const TIERS = {
   success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -25 }] },
-  partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 8 }] },
-  fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -5 }, { label: "스트레스", v: 20 }, { label: "체력", v: -8 }] },
+  partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -18 }, { label: "스트레스", v: 8 }] },
+  fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 20 }, { label: "체력", v: -8 }] },
 };
 
 // 직전에 출제한 보고서를 기억해 매번 다른 주제가 나오도록 (연속 중복 회피)
@@ -296,6 +296,10 @@ export function renderReportGame(root, state, actions, game) {
   penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:Galmuri14,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   penSpeechEl.textContent = "여기 좀 이상한데? 🖋️";
 
+  // 팀장 코멘트형 말풍선 (addPage 등 — 빨간펜 아님)
+  const bossSpeechEl = document.createElement("div");
+  bossSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:Galmuri14,monospace;font-size:15px;color:${PX.ink};background:#fff;border:2.5px solid ${PX.ink};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+
   // 중간 이벤트 토스트 — 모니터 화면(board) 안 상단에 표시
   const evToastEl = document.createElement("div");
   evToastEl.style.cssText = `position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:18;font-family:Galmuri14,monospace;font-size:13.5px;padding:8px 16px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:3px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
@@ -306,7 +310,7 @@ export function renderReportGame(root, state, actions, game) {
   flickerEl.style.cssText = "position:fixed;inset:0;z-index:49;pointer-events:none;background:#fff;opacity:0";
   const kakaoEl = document.createElement("div");
   kakaoEl.hidden = true;
-  shell.append(darkOverlayEl, vignetteEl, bossOverlayEl, penSpeechEl, flickerEl, kakaoEl);
+  shell.append(darkOverlayEl, vignetteEl, bossOverlayEl, penSpeechEl, bossSpeechEl, flickerEl, kakaoEl);
 
   // 본문 영역 내부의 '저장 중...' 인디케이터
   const savingEl = document.createElement("div");
@@ -543,6 +547,37 @@ export function renderReportGame(root, state, actions, game) {
     return true;
   }
 
+  // 상사 코멘트형 등장 (빨간펜 아님 — 실루엣 + 말풍선만). 발동 시 true.
+  function bossSay(message) {
+    if (run.phase !== "play" || run.penActive || run.ending) return false;
+    bossSpeechEl.textContent = message;
+    darkOverlayEl.style.opacity = "1";
+    vignetteEl.style.opacity = "1";
+    bossOverlayEl.hidden = false;
+    bossOverlayEl.classList.remove("boss-leave");
+    bossOverlayEl.classList.add("boss-enter");
+    bossSpeechEl.style.display = "block";
+    bossSpeechEl.classList.remove("boss-leave");
+    bossSpeechEl.classList.add("boss-enter");
+    clearTimeout(run.bossSayTimer);
+    run.bossSayTimer = setTimeout(() => {
+      darkOverlayEl.style.opacity = "0";
+      vignetteEl.style.opacity = "0";
+      bossOverlayEl.classList.remove("boss-enter");
+      bossOverlayEl.classList.add("boss-leave");
+      bossSpeechEl.classList.remove("boss-enter");
+      bossSpeechEl.classList.add("boss-leave");
+      clearTimeout(run.bossSayOutTimer);
+      run.bossSayOutTimer = setTimeout(() => {
+        bossOverlayEl.hidden = true;
+        bossOverlayEl.classList.remove("boss-leave");
+        bossSpeechEl.style.display = "none";
+        bossSpeechEl.classList.remove("boss-leave");
+      }, 500);
+    }, 3000);
+    return true;
+  }
+
   // ── 중간 이벤트 (6종) ──────────────────────────────────────────
   const ALL_EVENTS = ["wrongFix", "spell", "addPage", "saveFail", "kakao", "flicker"];
 
@@ -595,7 +630,8 @@ export function renderReportGame(root, state, actions, game) {
       total = report.typoKeys.length;
       updateBody();
       updateFoundPill();
-      showEvToast("📄 팀장님: 이 내용도 추가해주세요");
+      // 상사 실루엣 + 말풍선으로 안내 (겹치면 토스트로 폴백)
+      if (!bossSay("📄 팀장님: 이 내용도 추가해주세요")) showEvToast("📄 팀장님: 이 내용도 추가해주세요");
     } else if (type === "saveFail") {
       savingEl.style.display = "block";
       clearTimeout(run.saveTimer);
@@ -680,13 +716,14 @@ export function renderReportGame(root, state, actions, game) {
     // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 전부 정리 (까까오 PC창·상사 펜·토스트·깜빡임)
     kakaoEl.replaceChildren(); kakaoEl.hidden = true;
     penSpeechEl.style.display = "none";
+    bossSpeechEl.style.display = "none";
     darkOverlayEl.style.opacity = "0";
     vignetteEl.style.opacity = "0";
     bossOverlayEl.hidden = true;
     flickerEl.style.animation = "";
     evToastEl.style.display = "none";
     run.penActive = false;
-    [run.penHoldTimer, run.flickTimer, run.evToastTimer, run.toastTimer].forEach(clearTimeout);
+    [run.penHoldTimer, run.penOutTimer, run.flickTimer, run.evToastTimer, run.toastTimer, run.bossSayTimer, run.bossSayOutTimer].forEach(clearTimeout);
     const fc = run.found.length;
     let tier = forceTier;
     if (!tier) {
