@@ -8,7 +8,6 @@ import {
   positiveMainEvents,
 } from "../data/events.js";
 import { items } from "../data/items.js";
-import { BOSS_TYPE_GUIDE } from "../data/bosses.js";
 import { PLAYER_TYPES } from "../data/player-types.js";
 import { PORTAL_TASKS } from "../data/portal-tasks.js";
 import { personalizeBossChat, personalizeBossEventBody, fillBossText } from "../lib/boss-text.js";
@@ -47,6 +46,18 @@ let _meetingEventTimeout = null;
 let _meetingEventOverlay = null;
 let _statusEventOverlay = null;
 let _lunchOverlay = null;
+let _lunchCutsceneRunId = null;
+
+const LUNCH_AFTERNOON_CUTSCENE = {
+  prelude: [],
+  preludeMs: 0,
+  steps: [
+    { text: "12:59", ms: 0, step: "time" },
+    { text: "13:00", ms: 1000, step: "time" },
+    { text: "오후 업무 시작", ms: 2000, step: "label" },
+  ],
+  totalMs: 3400,
+};
 let _chatSnapshot = null;
 let _spawnScheduledAt = 0;
 let _spawnDelayMs = 0;
@@ -55,10 +66,10 @@ let _messengerState = null;
 let _messengerUpdater = null;
 let _intranetUpdater = null;
 let _intranetActiveTab = "board";
+let _intranetOpen = false;
 
 const INTRANET_TABS = [
   { id: "mypage", label: "마이페이지" },
-  { id: "approval", label: "전자결재" },
   { id: "board", label: "게시판" },
   { id: "files", label: "자료실" },
 ];
@@ -168,7 +179,7 @@ export function renderMainWork(root, state, actions) {
   const intranetPanel = el("div", { class: "main-work-intranet-slot" }, [
     renderIntranetWindow(actions),
   ]);
-  intranetPanel.style.display = "none";
+  intranetPanel.style.display = _intranetOpen ? "" : "none";
   const messengerPanel = el("div", { class: "main-work-messenger-slot" });
   messengerPanel.style.display = "none";
 
@@ -176,6 +187,7 @@ export function renderMainWork(root, state, actions) {
   let messengerBtn;
   const toggleIntranet = () => {
     const willOpen = intranetPanel.style.display === "none";
+    _intranetOpen = willOpen;
     intranetPanel.style.display = willOpen ? "" : "none";
     intranetBtn?.classList.toggle("active", willOpen);
     if (willOpen) {
@@ -240,6 +252,7 @@ export function renderMainWork(root, state, actions) {
   ]);
   refreshMessenger();
   updateIntranetTaskbarButton(intranetBtn);
+  intranetBtn?.classList.toggle("active", _intranetOpen);
   if (_messengerState.isOpen) {
     messengerPanel.style.display = "";
     messengerBtn?.classList.add("active");
@@ -268,7 +281,7 @@ export function renderMainWork(root, state, actions) {
 
   if (state.flags?.pendingMinigameBriefing) {
     const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
-    tryReattachPreservedNotifications(monitorScreen, state, actions);
+    ensureNotificationPanelMounted(monitorScreen, state, actions);
     const game = getCurrentMiniGame(state);
     renderMiniGameBriefing(monitorScreen, state, {
       onStart: () => {
@@ -284,9 +297,14 @@ export function renderMainWork(root, state, actions) {
     return;
   }
 
+  if (state.flags?.lunchCutscenePending) {
+    beginLunchAfternoonCutscene(screen, state, actions);
+    return;
+  }
+
   if (state.flags?.lunchPhase) {
     const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
-    tryReattachPreservedNotifications(monitorEl, state, actions);
+    ensureNotificationPanelMounted(monitorEl, state, actions);
     showLunchOnMain(screen, monitorEl, state, actions);
     return;
   }
@@ -300,11 +318,11 @@ export function renderMainWork(root, state, actions) {
     const pendingStatus = getPendingStatusEvent(state);
     if (pendingStatus) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
-      tryReattachPreservedNotifications(monitorEl, state, actions);
+      ensureNotificationPanelMounted(monitorEl, state, actions);
       showStatusEventPopup(pendingStatus, state, monitorEl, actions);
     } else if (shouldShowMeetingEvent(state) || state.flags?.devTriggerMeetingEvent) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
-      tryReattachPreservedNotifications(monitorEl, state, actions);
+      ensureNotificationPanelMounted(monitorEl, state, actions);
       showMeetingEventPopup(state, monitorEl, actions);
     } else {
       startChats();
@@ -526,6 +544,7 @@ function renderRecentLogEntry(entry, highlightId) {
 
 const INTRANET_STATIC_NOTICES = [
   "[중요] 2분기 업무 효율화 캠페인 안내",
+  "[중요] 사내 수면실 이용 제한 안내",
   "사내 보안 점검으로 인한 문서 서버 순단 예정",
   "복지포인트 신청 마감: 금일 18:00",
   "회의실 예약 시스템 업데이트 안내",
@@ -540,27 +559,50 @@ function renderIntranetWindow(actions) {
     el("div", { class: "main-work-intranet-body" }),
   ]);
 
-  const refresh = (openTaskId = null) => {
-    const state = _lastRenderedState;
-    const tabMenu = shell.querySelector(".main-work-tab-menu");
-    const body = shell.querySelector(".main-work-intranet-body");
-    if (!tabMenu || !body) return;
+  const tabMenu = shell.querySelector(".main-work-tab-menu");
+  let openTaskId = null;
 
-    tabMenu.replaceChildren(...INTRANET_TABS.map((tab) => el("button", {
+  for (const tab of INTRANET_TABS) {
+    tabMenu.append(el("button", {
       class: `main-work-intranet-tab${_intranetActiveTab === tab.id ? " is-active" : ""}`,
       type: "button",
       role: "tab",
       "aria-selected": _intranetActiveTab === tab.id ? "true" : "false",
+      "data-tab": tab.id,
       text: tab.label,
-      onClick: () => {
-        if (_intranetActiveTab === tab.id) return;
-        _intranetActiveTab = tab.id;
-        refresh(openTaskId);
-      },
-    })));
+    }));
+  }
 
+  tabMenu.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-tab]");
+    if (!button) return;
+    const tabId = button.dataset.tab;
+    if (!tabId || _intranetActiveTab === tabId) return;
+    _intranetActiveTab = tabId;
+    refresh();
+  });
+
+  const syncTabStates = () => {
+    tabMenu.querySelectorAll("[data-tab]").forEach((button) => {
+      const active = button.dataset.tab === _intranetActiveTab;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  };
+
+  const refresh = (nextOpenTaskId = openTaskId) => {
+    openTaskId = nextOpenTaskId ?? null;
+    const state = _lastRenderedState;
+    const body = shell.querySelector(".main-work-intranet-body");
+    if (!body) return;
+
+    if (!INTRANET_TABS.some((tab) => tab.id === _intranetActiveTab)) {
+      _intranetActiveTab = "board";
+    }
+
+    syncTabStates();
     body.classList.toggle("is-mypage", _intranetActiveTab === "mypage");
-    body.classList.toggle("is-placeholder", _intranetActiveTab === "approval" || _intranetActiveTab === "files");
+    body.classList.toggle("is-placeholder", _intranetActiveTab === "files");
     body.replaceChildren(...renderIntranetBody(state, actions, openTaskId, (taskId) => refresh(taskId)));
     updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
   };
@@ -574,7 +616,7 @@ function renderIntranetBody(state, actions, openTaskId, onOpenTask) {
   if (_intranetActiveTab === "mypage") {
     return [renderIntranetMypage(state)];
   }
-  if (_intranetActiveTab === "approval" || _intranetActiveTab === "files") {
+  if (_intranetActiveTab === "files") {
     const label = INTRANET_TABS.find((tab) => tab.id === _intranetActiveTab)?.label ?? "메뉴";
     return [renderIntranetPlaceholder(label)];
   }
@@ -596,79 +638,30 @@ function renderIntranetMypage(state) {
   const typeDef = PLAYER_TYPES[player.type] || PLAYER_TYPES.coffee;
   const typeItem = items[typeDef.item];
   const bossHint = state?.boss?.publicHint ?? "오늘의 상사 정보를 확인하세요.";
-  const bossGuide = BOSS_TYPE_GUIDE.types.find((entry) => entry.id === state?.boss?.id);
   const startItemLabel = typeDef.item === "coffee" ? "커피 ☕" : "담배 🚬";
 
   return el("section", { class: "main-work-mypage" }, [
-    el("header", { class: "main-work-mypage-head" }, [
-      el("h2", { text: "내 정보" }),
-      el("span", { text: "출근부에 입력한 설정을 다시 확인할 수 있습니다." }),
-    ]),
-    el("div", { class: "main-work-mypage-grid" }, [
-      el("aside", { class: "main-work-mypage-side" }, [
-        el("article", { class: "commute-player-card" }, [
-          el("div", { class: "commute-player-photo" }, [
-            el("img", {
-              class: "commute-player-portrait",
-              src: `assets/portraits/${portrait}.svg`,
-              alt: "증명사진",
-            }),
-          ]),
-          el("strong", { text: "오늘의 직장인" }),
-          el("b", { text: `사원 ${playerName}` }),
-          el("span", { text: "DAEHAN TECH 사원" }),
-        ]),
-        el("section", { class: "commute-boss-hint" }, [
-          el("header", { class: "commute-boss-hint-head" }, [
-            el("h2", { text: "상사 힌트" }),
-          ]),
-          el("p", { text: bossHint }),
-          ...(bossGuide ? [
-            el("p", { class: "main-work-mypage-boss-tip", text: `${bossGuide.label} · ${bossGuide.tip}` }),
-          ] : []),
-          el("p", { class: "main-work-mypage-boss-foot", text: BOSS_TYPE_GUIDE.footer }),
-        ]),
+    el("article", { class: "main-work-mypage-profile" }, [
+      el("div", { class: "main-work-mypage-photo" }, [
+        el("img", {
+          src: `assets/portraits/${portrait}.svg`,
+          alt: "증명사진",
+        }),
       ]),
-      el("section", { class: "main-work-mypage-main" }, [
-        el("section", { class: "main-work-mypage-section" }, [
-          el("h3", { text: "기본 정보" }),
-          el("dl", { class: "main-work-mypage-facts" }, [
-            renderMypageFact("이름", playerName),
-            renderMypageFact("성별", genderLabel),
-            renderMypageFact("오늘의 컨디션", `${typeDef.emoji} ${typeDef.name} (${typeDef.hint})`),
-          ]),
-        ]),
-        el("section", { class: "main-work-mypage-section" }, [
-          el("h3", { text: `${typeDef.name} 가이드` }),
-          el("div", { class: "main-work-mypage-guide" },
-            typeDef.rows.map((row) => renderMypageGuideRow(row)),
-          ),
-        ]),
-        el("section", { class: "main-work-mypage-section main-work-mypage-items" }, [
-          el("h3", { text: "🎒 아이템 안내" }),
-          el("p", { text: "슬롯 3칸 · 메인화면에서만 사용 가능" }),
-          el("p", { text: `시작 2칸 · ${startItemLabel} + 유튜브 쇼츠 📱` }),
-          el("p", { text: `기본 아이템 효과 · ${typeItem?.icon ?? ""} ${typeItem?.effect ?? typeDef.rows[1]?.v ?? ""}` }),
-          el("p", { text: "보상 1칸 · 동료 이벤트로 획득 (예: 홍삼스틱 🧴)" }),
-        ]),
+      el("div", { class: "main-work-mypage-profile-copy" }, [
+        el("strong", { text: `사원 ${playerName}` }),
+        el("span", { text: `${genderLabel} · ${typeDef.emoji} ${typeDef.name}` }),
       ]),
     ]),
-  ]);
-}
-
-function renderMypageFact(label, value) {
-  return el("div", { class: "main-work-mypage-fact" }, [
-    el("dt", { text: label }),
-    el("dd", { text: value }),
-  ]);
-}
-
-function renderMypageGuideRow(row) {
-  const isWarn = row.ic === "⚠️";
-  return el("div", { class: `main-work-mypage-guide-row${isWarn ? " is-warn" : ""}` }, [
-    el("span", { class: "main-work-mypage-guide-icon", text: row.ic }),
-    el("span", { class: "main-work-mypage-guide-key", text: row.k }),
-    el("span", { class: "main-work-mypage-guide-val", text: row.v }),
+    el("section", { class: "main-work-mypage-card" }, [
+      el("h3", { text: "상사 힌트" }),
+      el("p", { text: bossHint }),
+    ]),
+    el("section", { class: "main-work-mypage-card" }, [
+      el("h3", { text: "오늘의 설정" }),
+      el("p", { text: `${typeDef.name} · ${typeItem?.effect ?? ""}` }),
+      el("p", { text: `시작 아이템 · ${startItemLabel} + 쇼츠 📱` }),
+    ]),
   ]);
 }
 
@@ -1014,26 +1007,7 @@ function showLunchOnMain(screen, monitorEl, state, actions) {
   if (state.flags.lunchPhase === "result") {
     const result = renderLunchResult(state, actions, {
       onAfternoonStart: () => {
-        cleanupLunchOverlay();
-        playClockCutscene(screen, () => {
-          actions.mutateState((draft) => {
-            draft.gameMinute = Math.max(draft.gameMinute, 13 * 60);
-            draft.flags = { ...draft.flags };
-            delete draft.flags.lunchPhase;
-            delete draft.flags.lunchQueue;
-            delete draft.flags.lunchIndex;
-            return draft;
-          });
-        }, {
-          prelude: [],
-          preludeMs: 0,
-          steps: [
-            { text: "12:59", ms: 0, step: "time" },
-            { text: "13:00", ms: 1000, step: "time" },
-            { text: "오후 업무 시작", ms: 2000, step: "label" },
-          ],
-          totalMs: 3400,
-        });
+        actions.mutateState((draft) => beginLunchAfternoonTransition(draft));
       },
     });
     _lunchOverlay = result;
@@ -1041,9 +1015,36 @@ function showLunchOnMain(screen, monitorEl, state, actions) {
   }
 }
 
+function beginLunchAfternoonTransition(draft) {
+  draft.flags = { ...draft.flags, lunchCutscenePending: true };
+  delete draft.flags.lunchPhase;
+  delete draft.flags.lunchQueue;
+  delete draft.flags.lunchIndex;
+  return draft;
+}
+
+function beginLunchAfternoonCutscene(screen, state, actions) {
+  const runId = state.flags?.runId ?? "default";
+  if (_lunchCutsceneRunId === runId) return;
+  _lunchCutsceneRunId = runId;
+
+  playClockCutscene(screen, () => {
+    _lunchCutsceneRunId = null;
+    actions.mutateState((draft) => {
+      draft.gameMinute = Math.max(draft.gameMinute, 13 * 60);
+      draft.flags = { ...draft.flags };
+      delete draft.flags.lunchCutscenePending;
+      return draft;
+    });
+  }, LUNCH_AFTERNOON_CUTSCENE);
+}
+
 function cleanupLunchOverlay() {
   _lunchOverlay?.remove();
   _lunchOverlay = null;
+  document.querySelector("#app")?.querySelectorAll(".lunch-result-overlay, .lunch-narration-layer").forEach((node) => {
+    node.remove();
+  });
 }
 
 function renderSchedule(time, text) {
@@ -1621,7 +1622,11 @@ function getMessengerRoomIcon(roomId) {
 function showMessengerToast(message, actions) {
   if (!_notifPanel || !message.needsReply) return;
 
-  _notifPanel.querySelector(`.main-work-messenger-toast[data-message-id="${message.id}"]`)?.remove();
+  const existingToast = _notifPanel.querySelector(`.main-work-messenger-toast[data-message-id="${message.id}"]`);
+  if (existingToast) {
+    existingToast._messageRef = message;
+    return;
+  }
 
   const existing = _notifPanel.querySelectorAll(".main-work-messenger-toast");
   if (existing.length >= MAX_MESSENGER_TOASTS) existing[0].remove();
@@ -1727,6 +1732,10 @@ function expirePendingReply(messageId, actions) {
 
 // app.innerHTML="" 직전에 호출. 메인→메인 리렌더면 알림 DOM을 보존하고, 메인→타씬이면 스냅샷을 남긴다.
 export function prepareMainWorkForRender(prevScene, nextScene) {
+  if (nextScene !== "main") {
+    _lunchCutsceneRunId = null;
+  }
+
   if (prevScene !== "main" || !_messengerState) {
     _preservingNotifications = false;
     return;
@@ -1766,6 +1775,43 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
   _preserveSpawnMs = null;
 }
 
+function mountNotificationPanel(container) {
+  if (_notifPanel?.isConnected) {
+    if (_notifPanel.parentElement !== container) {
+      container.append(_notifPanel);
+    }
+    return _notifPanel;
+  }
+
+  _notifPanel = el("div", { class: "chat-notif-panel main-work-messenger-runtime" });
+  container.append(_notifPanel);
+  return _notifPanel;
+}
+
+function syncPendingReplyNotifications(state, actions) {
+  for (const message of collectPendingReplyMessages()) {
+    showMessengerToast(message, actions);
+    scheduleReplyExpiry(message, actions);
+  }
+}
+
+function ensureChatSpawnLoop(state, actions) {
+  if (_spawnTimeout || _chatSnapshot) return;
+  const pending = collectPendingReplyMessages();
+  scheduleSpawn(
+    state,
+    actions,
+    pending.length > 0 ? CHAT_SPAWN_INTERVAL_MS : CHAT_SPAWN_FIRST_MS,
+  );
+}
+
+function resumeNotificationPanel(container, state, actions) {
+  mountNotificationPanel(container);
+  resumeChatSystem();
+  syncPendingReplyNotifications(state, actions);
+  ensureChatSpawnLoop(state, actions);
+}
+
 function tryReattachPreservedNotifications(container, state, actions) {
   if (!_preservingNotifications || !_notifPanel) return false;
 
@@ -1779,6 +1825,13 @@ function tryReattachPreservedNotifications(container, state, actions) {
   }
   _preserveSpawnMs = null;
   _preservingNotifications = false;
+  return true;
+}
+
+function ensureNotificationPanelMounted(container, state, actions) {
+  if (tryReattachPreservedNotifications(container, state, actions)) return true;
+  if (!_notifPanel?.isConnected) return false;
+  resumeNotificationPanel(container, state, actions);
   return true;
 }
 
@@ -2902,10 +2955,9 @@ function toTaskbarTime(gameMinute) {
 
 function startChatNotifications(state, actions, container) {
   ensureMessengerState(state);
-  if (tryReattachPreservedNotifications(container, state, actions)) return;
+  if (ensureNotificationPanelMounted(container, state, actions)) return;
 
-  _notifPanel = el("div", { class: "chat-notif-panel main-work-messenger-runtime" });
-  container.append(_notifPanel);
+  mountNotificationPanel(container);
 
   if (_chatSnapshot) {
     restoreChatSnapshot(state, actions);
@@ -2913,18 +2965,8 @@ function startChatNotifications(state, actions, container) {
   }
 
   _localWorkload = state.stats.workload;
-
-  const pendingReplies = collectPendingReplyMessages();
-  if (pendingReplies.length > 0) {
-    for (const message of pendingReplies) {
-      showMessengerToast(message, actions);
-      scheduleReplyExpiry(message, actions);
-    }
-    scheduleSpawn(state, actions, CHAT_SPAWN_INTERVAL_MS);
-    return;
-  }
-
-  scheduleSpawn(state, actions, CHAT_SPAWN_FIRST_MS);
+  syncPendingReplyNotifications(state, actions);
+  ensureChatSpawnLoop(state, actions);
 }
 
 // 미니게임 등으로 화면을 떠났다가 돌아왔을 때, 멈춰뒀던 채팅 패널을 그대로 복원한다.
@@ -2951,6 +2993,10 @@ function restoreChatSnapshot(state, actions) {
 }
 
 function scheduleSpawn(state, actions, delayMs) {
+  if (_spawnTimeout) {
+    clearTimeout(_spawnTimeout);
+    _spawnTimeout = null;
+  }
   _spawnScheduledAt = Date.now();
   _spawnDelayMs = delayMs;
   _spawnTimeout = setTimeout(() => {

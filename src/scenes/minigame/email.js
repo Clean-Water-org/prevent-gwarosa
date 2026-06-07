@@ -9,7 +9,8 @@ import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../c
 
 const MAIL_START_Y = -16;
 const CARD_FALL_SPEED = 0.42;
-const DROP_ZONE_INNER_W = 148;
+const DROP_ZONE_W = 168;
+const STAGE_H = 440;
 
 function shuffled(a) {
   const r = a.slice();
@@ -21,7 +22,7 @@ function pickFrom(pool, count) {
   return shuffled(pool).slice(0, count);
 }
 
-function buildRoundDeck() {
+function buildRoundDeck(stress = 0) {
   const byType = (type, difficulty) => emailDeck.filter((m) => m.type === type && m.difficulty === difficulty);
   const byTypeHard = (type) => emailDeck.filter((m) => m.type === type && ["hard", "evil"].includes(m.difficulty));
 
@@ -30,10 +31,23 @@ function buildRoundDeck() {
     ...pickFrom(byType("good", "normal"), 2),
     ...pickFrom(byTypeHard("good"), 1),
   ];
-  const spam = [
-    ...pickFrom(byType("spam", "easy"), 4),
-    ...pickFrom(byType("spam", "normal"), 1),
-  ];
+  const spam = stress >= 80
+    ? [
+        ...pickFrom(byType("spam", "easy"), 2),
+        ...pickFrom(byType("spam", "normal"), 1),
+        ...pickFrom(byType("spam", "hard"), 1),
+        ...pickFrom(byType("spam", "evil"), 1),
+      ]
+    : stress >= 50
+      ? [
+          ...pickFrom(byType("spam", "easy"), 3),
+          ...pickFrom(byType("spam", "normal"), 1),
+          ...pickFrom(byType("spam", "hard"), 1),
+        ]
+      : [
+          ...pickFrom(byType("spam", "easy"), 4),
+          ...pickFrom(byType("spam", "normal"), 1),
+        ];
   return shuffled([...good, ...spam]);
 }
 
@@ -78,7 +92,9 @@ function makeDropZone(kind) {
   const accent = isGood ? PX.green : PX.red;
   const bg = isGood ? "#e3f7e2" : "#ffe3e0";
   const wrap = document.createElement("div");
-  wrap.style.cssText = `flex:0 0 168px;height:100%;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
+  wrap.style.cssText = `flex:0 0 ${DROP_ZONE_W}px;align-self:stretch;min-height:${STAGE_H}px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
+  const header = document.createElement("div");
+  header.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0";
   const icon = document.createElement("span");
   icon.style.fontSize = "30px";
   icon.textContent = isGood ? "📥" : "🗑️";
@@ -88,12 +104,13 @@ function makeDropZone(kind) {
   const key = document.createElement("span");
   key.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#8a8478";
   key.textContent = isGood ? "← / A" : "D / →";
+  header.append(icon, title, key);
   const list = document.createElement("div");
-  list.style.cssText = `display:flex;flex-direction:column-reverse;gap:4px;width:${DROP_ZONE_INNER_W}px;max-width:100%;align-self:stretch;flex:1;min-height:96px;overflow:hidden`;
+  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;flex:1;min-height:0;width:100%;overflow:hidden";
   const count = document.createElement("span");
-  count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px;margin-top:auto;flex-shrink:0`;
+  count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px;flex-shrink:0;align-self:center`;
   count.textContent = "0";
-  wrap.append(icon, title, key, list, count);
+  wrap.append(header, list, count);
   return { wrap, list, count, accent, kind };
 }
 
@@ -145,7 +162,7 @@ export function renderEmailGame(root, state, actions, game) {
 
   const run = {
     phase: "play", time: 60, done: false,
-    deck: buildRoundDeck(), index: 0,
+    deck: buildRoundDeck(stress), index: 0,
     correct: 0, wrong: 0, missed: 0,
     locked: false, detailOpen: false, cardY: MAIL_START_Y,
     sortedGood: [], sortedSpam: [],
@@ -263,7 +280,7 @@ export function renderEmailGame(root, state, actions, game) {
   spamZone.wrap.addEventListener("click", () => classify("spam"));
 
   const stage = document.createElement("div");
-  stage.style.cssText = `position:relative;flex:1;min-width:0;height:440px;background:#fbfaf5;border:3px solid ${PX.ink};overflow:hidden;box-sizing:border-box`;
+  stage.style.cssText = `position:relative;flex:1;min-width:0;height:${STAGE_H}px;background:#fbfaf5;border:3px solid ${PX.ink};overflow:hidden;box-sizing:border-box`;
 
   const mailSlot = document.createElement("div");
   mailSlot.className = "mg-mail-slot";
@@ -459,7 +476,7 @@ export function renderEmailGame(root, state, actions, game) {
     const arr = isGood ? run.sortedGood : run.sortedSpam;
     arr.push(mail);
     const item = document.createElement("span");
-    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:${DROP_ZONE_INNER_W}px;max-width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
+    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0`;
     item.textContent = mail.subject;
     zone.list.prepend(item);
     while (zone.list.children.length > 4) zone.list.removeChild(zone.list.lastChild);
