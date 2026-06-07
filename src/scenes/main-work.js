@@ -11,9 +11,10 @@ import { items } from "../data/items.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
-import { playBgm, duckBgm } from "../lib/audio.js";
+import { playBgm, duckBgm, playSfx, playClickSfx } from "../lib/audio.js";
 
 const MAIN_BGM_SRC = "assets/audio/so-happy-with-my-8-bit-game.mp3";
+const EVENT_SFX = "assets/audio/new-event-notification.mp3";
 
 let _notifPanel = null;
 let _spawnTimeout = null;
@@ -1347,6 +1348,7 @@ function showStatusEventPopup(type, state, container, actions) {
   if (_statusEventOverlay) return;
   const config = STATUS_EVENT_CONFIGS[type];
   if (!config) return;
+  playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
 
   const openedAt = Date.now();
 
@@ -1415,6 +1417,7 @@ function shouldShowMeetingEvent(state) {
 
 function showMeetingEventPopup(state, container, actions) {
   if (_meetingEventOverlay) return;
+  playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
   pauseChatSystem();
   cleanupMainClock();
   cleanupMainPhaseTimer();
@@ -1736,6 +1739,7 @@ function markMainEventPause(plan, state) {
 }
 
 function renderMainEventPopup(event, { state, onChoice }) {
+  playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
   const choices = event.choices ?? [];
   return el("div", { class: "main-event-overlay" }, [
     el("article", { class: `main-event-card main-event-${event.type}`, role: "dialog", "aria-modal": "true" }, [
@@ -1763,7 +1767,7 @@ function renderMainEventChoice(choice, state, onClick, index) {
   return el("button", {
     class: `main-event-choice main-event-choice-${tone}`,
     type: "button",
-    onClick,
+    onClick: () => { playClickSfx(); onClick(); },
   }, [
     el("strong", { text: choice.label }),
     el("span", { class: "main-event-preview" }, renderMainEventPreview(choice, state)),
