@@ -38,7 +38,7 @@ export function renderMiniGame(root, state, actions) {
   const briefingKey = getMiniGameBriefingKey(state, gameId);
 
   // 미니게임 진입 전 브리핑 게이트 (메인에서 못 본 경우의 폴백)
-  if (state.flags?.minigameBriefingKey !== briefingKey) {
+  if (state.flags?.minigameBriefingKey !== briefingKey && !state.flags?.devMode) {
     renderMiniGameBriefing(root, state, {
       onStart: () => {
         actions.mutateState((draft) => {
@@ -121,8 +121,9 @@ function applyMiniResult(state, gameId, result, message, usedSec = 60) {
     next.gameMinute = Math.max(next.gameMinute, 18 * 60);
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
-    next.scene = "lunch";
+    next.scene = "main";
     next.gameMinute = Math.max(next.gameMinute, 12 * 60);
+    next.flags = { ...next.flags, lunchPhase: "intro" };
   } else {
     next.scene = "main";
   }

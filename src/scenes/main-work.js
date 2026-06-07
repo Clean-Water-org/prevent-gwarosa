@@ -8,10 +8,17 @@ import {
   positiveMainEvents,
 } from "../data/events.js";
 import { items } from "../data/items.js";
+import { PORTAL_TASKS } from "../data/portal-tasks.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
-import { playBgm, duckBgm, playSfx, playClickSfx } from "../lib/audio.js";
+import { renderLunchIntro, renderLunchResult } from "./lunch.js";
+import { playBgm, duckBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../lib/audio.js";
+import {
+  applyHeadacheEventToDraft,
+  mountHeadacheDialog,
+} from "../lib/headache-event.js";
+import { formatHeadacheDisplayText } from "../lib/headache-fx.js";
 
 const MAIN_BGM_SRC = "assets/audio/so-happy-with-my-8-bit-game.mp3";
 const EVENT_SFX = "assets/audio/new-event-notification.mp3";
@@ -21,7 +28,7 @@ let _spawnTimeout = null;
 let _localWorkload = 0;
 let _clockInterval = null;
 let _phaseTimeout = null;
-let _phoneTimeout = null;
+const _phoneTimeouts = new Set();
 let _phoneOverlay = null;
 let _phoneRingAudio = null;
 let _mainEventTimeout = null;
@@ -29,12 +36,15 @@ let _mainEventOverlay = null;
 let _meetingEventTimeout = null;
 let _meetingEventOverlay = null;
 let _statusEventOverlay = null;
+let _lunchOverlay = null;
 let _chatSnapshot = null;
 let _spawnScheduledAt = 0;
 let _spawnDelayMs = 0;
 let _currentGameMinute = 9 * 60;
 let _messengerState = null;
 let _messengerUpdater = null;
+let _intranetUpdater = null;
+let _hrPortalIntroSpawned = false;
 let _lastRenderedState = null;
 let _openMessengerRoom = null;
 let _replyExpireTimers = new Map();
@@ -54,10 +64,10 @@ const STATUS_EVENT_CONFIGS = {
     title: "두통",
     kicker: "체력 부족",
     lines: [
-      "관자놀이가 지끈거린다. 화면을 잠깐 놓쳤다.",
-      "근무 시간이 10분 사라졌다.",
+      "너무 머리가 아파서 못하겠어...",
+      "플레이 시간 1시간이 흘렀다.",
     ],
-    logCause: "두통이 왔다. 잠깐 쉬어야 했다.",
+    logCause: "두통이 와서 잠시 쉬었다. 시간이 크게 흘렀다.",
     timerLabel: "두통",
   },
 };
@@ -65,9 +75,13 @@ const STATUS_EVENT_CONFIGS = {
 const MAIN_CLOCK_TICK_MS = 1000;
 const CHAT_NOTIFICATION_SOUND_SRC = "assets/audio/messenger-notification.mp3";
 const CHAT_REPLY_TIMER_SEC = { boss: 10, colleague: 15, hr: 15 };
+const CHAT_SPAWN_FIRST_MS = 2000;
+const CHAT_SPAWN_INTERVAL_MS = 18000;
+const CHAT_SPAWN_INTERVAL_BUSY_MS = 10000;
 const MAX_MESSENGER_TOASTS = 5;
 const MAIN_PHASE_DURATIONS_SEC = [35, 35, 40, 40];
-const PHONE_CHANCE_BY_PHASE = [0.75, 0.75, 0.75, 0.75];
+const PHONE_CHANCE_BY_PHASE = [0.95, 0.95, 0.95, 0.95];
+const PHONE_CALLS_PER_PHASE = 2;
 const PHONE_RING_SECONDS = 12;
 const MAIN_EVENT_CHANCE = 0.75;
 const MAIN_EVENT_DELAY_MS = 4500;
@@ -110,6 +124,7 @@ export function renderMainWork(root, state, actions) {
   stopHandoverGuide?.();
   // 메인화면 BGM — 같은 곡이 이미 재생 중이면 idempotent (리렌더 시 끊김 없음)
   playBgm(MAIN_BGM_SRC);
+  syncBgmStatusFx({ headache: state.stats.health <= 30 });
 
   const startChats = () => {
     const monitorEl = screen.querySelector(".main-work-monitor-screen");
@@ -119,7 +134,7 @@ export function renderMainWork(root, state, actions) {
     startMainEventSystem(screen, state, actions);
   };
 
-  const intranetPanel = renderIntranetWindow();
+  const intranetPanel = renderIntranetWindow(actions);
   intranetPanel.style.display = "none";
   const messengerPanel = el("div", { class: "main-work-messenger-slot" });
   messengerPanel.style.display = "none";
@@ -130,6 +145,7 @@ export function renderMainWork(root, state, actions) {
     const willOpen = intranetPanel.style.display === "none";
     intranetPanel.style.display = willOpen ? "" : "none";
     intranetBtn?.classList.toggle("active", willOpen);
+    if (willOpen) _intranetUpdater?.();
   };
   const refreshMessenger = () => {
     renderMessengerShell(messengerPanel, state, actions, closeMessenger);
@@ -167,7 +183,9 @@ export function renderMainWork(root, state, actions) {
 
   const firstTime = !state.flags?.handoverGuideSeen;
 
-  const monitorScreen = el("div", { class: "main-work-monitor-screen" }, [
+  const monitorScreen = el("div", {
+    class: `main-work-monitor-screen${state.stats.health <= 30 ? " fx-headache" : ""}`,
+  }, [
     renderMainWorkHud(state, actions),
     el("main", { class: "main-work-center" }, [
       renderDesktopDocuments(() => screen, firstTime, actions, startChats),
@@ -184,6 +202,7 @@ export function renderMainWork(root, state, actions) {
     ),
   ]);
   refreshMessenger();
+  updateIntranetTaskbarButton(intranetBtn);
   if (_messengerState.isOpen) {
     messengerPanel.style.display = "";
     messengerBtn?.classList.add("active");
@@ -222,6 +241,12 @@ export function renderMainWork(root, state, actions) {
         });
       },
     }, game, "overlay");
+    return;
+  }
+
+  if (state.flags?.lunchPhase) {
+    const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
+    showLunchOnMain(screen, monitorEl, state, actions);
     return;
   }
 
@@ -410,8 +435,15 @@ function renderRecentLogEntry(entry) {
   ]);
 }
 
-function renderIntranetWindow() {
-  return el("section", { class: "main-work-intranet" }, [
+const INTRANET_STATIC_NOTICES = [
+  "[중요] 2분기 업무 효율화 캠페인 안내",
+  "사내 보안 점검으로 인한 문서 서버 순단 예정",
+  "복지포인트 신청 마감: 금일 18:00",
+  "회의실 예약 시스템 업데이트 안내",
+];
+
+function renderIntranetWindow(actions) {
+  const shell = el("section", { class: "main-work-intranet" }, [
     el("header", { class: "main-work-intranet-tabs" }, [
       el("strong", { class: "main-work-intranet-logo", text: "DAEHAN INTRANET" }),
       el("nav", { class: "main-work-tab-menu" }, [
@@ -421,30 +453,143 @@ function renderIntranetWindow() {
         el("span", { text: "자료실" }),
       ]),
     ]),
-    el("div", { class: "main-work-intranet-body" }, [
-      el("section", { class: "main-work-notice-panel" }, [
-        el("div", { class: "main-work-notice-head" }, [
-          el("h2", { text: "공지사항" }),
-          el("span", { class: "main-work-notice-badge", text: "사내포털" }),
-        ]),
-        el("ul", {}, [
-          el("li", { text: "[중요] 2분기 업무 효율화 캠페인 안내" }),
-          el("li", { text: "사내 보안 점검으로 인한 문서 서버 순단 예정" }),
-          el("li", { text: "복지포인트 신청 마감: 금일 18:00" }),
-          el("li", { text: "회의실 예약 시스템 업데이트 안내" }),
-        ]),
-      ]),
-      el("section", { class: "main-work-schedule-panel" }, [
-        el("h2", { text: "오늘의 일정" }),
-        el("div", { class: "main-work-schedule-list" }, [
-          renderSchedule("09:30", "주간 업무 공유"),
-          renderSchedule("11:00", "전자결재 검토"),
-          renderSchedule("15:00", "전체 회의"),
-          renderSchedule("17:30", "보고서 초안 제출"),
-        ]),
+    el("div", { class: "main-work-intranet-body" }),
+  ]);
+
+  const refresh = (openTaskId = null) => {
+    const body = shell.querySelector(".main-work-intranet-body");
+    if (!body) return;
+    body.replaceChildren(...renderIntranetBody(actions, openTaskId, (taskId) => refresh(taskId)));
+    updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
+  };
+
+  _intranetUpdater = () => refresh();
+  refresh();
+  return shell;
+}
+
+function renderIntranetBody(actions, openTaskId, onOpenTask) {
+  const pendingTasks = getPendingPortalTasks();
+  const openTask = openTaskId ? PORTAL_TASKS[openTaskId] : null;
+
+  const noticeItems = [
+    ...pendingTasks.map((task) => el("li", {}, [
+      el("button", {
+        class: `main-work-portal-task${openTaskId === task.id ? " is-active" : ""}`,
+        type: "button",
+        text: task.listTitle,
+        onClick: () => onOpenTask(task.id),
+      }),
+    ])),
+    ...INTRANET_STATIC_NOTICES.map((text) => el("li", { text })),
+  ];
+
+  const noticePanel = el("section", { class: "main-work-notice-panel" }, [
+    el("div", { class: "main-work-notice-head" }, [
+      el("h2", { text: "공지사항" }),
+      el("span", {
+        class: `main-work-notice-badge${pendingTasks.length ? " has-pending" : ""}`,
+        text: pendingTasks.length ? `미처리 ${pendingTasks.length}` : "사내포털",
+      }),
+    ]),
+    el("ul", {}, noticeItems),
+    ...(openTask ? [renderPortalTaskDetail(openTask, actions, () => onOpenTask(null))] : []),
+  ]);
+
+  return [
+    noticePanel,
+    el("section", { class: "main-work-schedule-panel" }, [
+      el("h2", { text: "오늘의 일정" }),
+      el("div", { class: "main-work-schedule-list" }, [
+        renderSchedule("09:30", "주간 업무 공유"),
+        renderSchedule("11:00", "전자결재 검토"),
+        renderSchedule("13:00", "전체 회의"),
+        renderSchedule("17:30", "보고서 초안 제출"),
       ]),
     ]),
+  ];
+}
+
+function renderPortalTaskDetail(task, actions, onClose) {
+  return el("section", { class: "main-work-portal-detail" }, [
+    el("header", { class: "main-work-portal-detail-head" }, [
+      el("strong", { text: task.detailTitle }),
+      el("button", {
+        class: "main-work-portal-detail-close",
+        type: "button",
+        text: "닫기",
+        onClick: onClose,
+      }),
+    ]),
+    el("div", { class: "main-work-portal-detail-body" }, task.lines.map((line) =>
+      el("p", { text: line }),
+    )),
+    el("button", {
+      class: "main-work-portal-detail-confirm",
+      type: "button",
+      text: task.confirmLabel,
+      onClick: () => completePortalTask(task.id, actions, onClose),
+    }),
   ]);
+}
+
+function getPendingPortalTasks() {
+  const tasks = [];
+  const seen = new Set();
+  const hrMessages = _messengerState?.rooms?.hr?.messages ?? [];
+  for (const message of hrMessages) {
+    if (!message.portalTaskId || !message.needsReply || message.status || message.portalCompleted) continue;
+    const task = PORTAL_TASKS[message.portalTaskId];
+    if (!task || seen.has(task.id)) continue;
+    seen.add(task.id);
+    tasks.push(task);
+  }
+  return tasks;
+}
+
+function getActivePortalTaskIds() {
+  const ids = new Set();
+  const hrMessages = _messengerState?.rooms?.hr?.messages ?? [];
+  for (const message of hrMessages) {
+    if (message.portalTaskId && message.needsReply && !message.status) {
+      ids.add(message.portalTaskId);
+    }
+  }
+  return ids;
+}
+
+function completePortalTask(taskId, actions, onClose) {
+  let updated = false;
+  for (const room of Object.values(_messengerState?.rooms ?? {})) {
+    for (const message of room.messages) {
+      if (message.portalTaskId === taskId && !message.portalCompleted) {
+        message.portalCompleted = true;
+        updated = true;
+      }
+    }
+  }
+  if (!updated) return;
+
+  actions.mutateState((draft) => {
+    const next = applyDelta(draft, { gameMinute: 2 }, null);
+    addLogEntry(next, {
+      cause: `${PORTAL_TASKS[taskId]?.detailTitle ?? "포털 공지"}를 확인했다.`,
+      delta: { gameMinute: 2 },
+    });
+    return next;
+  });
+
+  onClose?.();
+  _intranetUpdater?.();
+  _messengerUpdater?.();
+  updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
+}
+
+function updateIntranetTaskbarButton(button) {
+  if (!button) return;
+  const pending = getPendingPortalTasks().length;
+  button.textContent = pending ? `사내포털 (${pending})` : "사내포털";
+  button.classList.toggle("has-pending-portal", pending > 0);
 }
 
 function renderDesktopDocuments(getScreen, firstTime, actions, onStartChats) {
@@ -590,31 +735,92 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
   };
 }
 
-function playClockCutscene(screen, onDone) {
+function playClockCutscene(screen, onDone, options = {}) {
   const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
-  const narration = renderNarrationPopup(["..."], { typingSpeed: 480, showPrompt: false });
-  screen.append(narration.node);
-
+  const prelude = options.prelude ?? ["..."];
+  const preludeMs = options.preludeMs ?? 3200;
+  const clockSteps = options.steps ?? [
+    { text: "08:58", ms: 0, step: "time" },
+    { text: "08:59", ms: 1000, step: "time" },
+    { text: "09:00", ms: 2000, step: "time" },
+    { text: "업무 시작", ms: 3200, step: "label" },
+  ];
+  const totalMs = options.totalMs ?? 4400;
   const timers = [];
-  timers.push(setTimeout(() => {
-    narration.stop();
-    narration.node.remove();
 
+  const startClock = () => {
     const display = el("div", { class: "main-work-clock-display" });
     const overlay = el("div", { class: "main-work-clock-cutscene" }, [display]);
     monitorScreen.append(overlay);
 
-    const clockSteps = [
-      { text: "08:58", ms: 0,    step: "time" },
-      { text: "08:59", ms: 1000, step: "time" },
-      { text: "09:00", ms: 2000, step: "time" },
-      { text: "업무 시작", ms: 3200, step: "label" },
-    ];
     for (const { text, ms, step } of clockSteps) {
       timers.push(setTimeout(() => { display.textContent = text; display.dataset.step = step; }, ms));
     }
-    timers.push(setTimeout(onDone, 4400));
-  }, 3200));
+    timers.push(setTimeout(() => {
+      overlay.remove();
+      onDone?.();
+    }, totalMs));
+  };
+
+  if (preludeMs <= 0 || prelude.length === 0) {
+    startClock();
+    return;
+  }
+
+  const narration = renderNarrationPopup(prelude, { typingSpeed: 480, showPrompt: false });
+  screen.append(narration.node);
+  timers.push(setTimeout(() => {
+    narration.stop();
+    narration.node.remove();
+    startClock();
+  }, preludeMs));
+}
+
+function showLunchOnMain(screen, monitorEl, state, actions) {
+  cleanupLunchOverlay();
+
+  if (state.flags.lunchPhase === "intro") {
+    const intro = renderLunchIntro(state, {
+      mutateState: (mutator) => actions.mutateState(mutator),
+    });
+    _lunchOverlay = intro;
+    screen.append(intro);
+    return;
+  }
+
+  if (state.flags.lunchPhase === "result") {
+    const result = renderLunchResult(state, actions, {
+      onAfternoonStart: () => {
+        cleanupLunchOverlay();
+        playClockCutscene(screen, () => {
+          actions.mutateState((draft) => {
+            draft.gameMinute = Math.max(draft.gameMinute, 13 * 60);
+            draft.flags = { ...draft.flags };
+            delete draft.flags.lunchPhase;
+            delete draft.flags.lunchQueue;
+            delete draft.flags.lunchIndex;
+            return draft;
+          });
+        }, {
+          prelude: [],
+          preludeMs: 0,
+          steps: [
+            { text: "12:59", ms: 0, step: "time" },
+            { text: "13:00", ms: 1000, step: "time" },
+            { text: "오후 업무 시작", ms: 2000, step: "label" },
+          ],
+          totalMs: 3400,
+        });
+      },
+    });
+    _lunchOverlay = result;
+    monitorEl.append(result);
+  }
+}
+
+function cleanupLunchOverlay() {
+  _lunchOverlay?.remove();
+  _lunchOverlay = null;
 }
 
 function renderSchedule(time, text) {
@@ -626,7 +832,7 @@ function renderSchedule(time, text) {
 
 function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn, onMessengerClick, registerMessengerBtn) {
   const intranetBtn = el("span", {
-    class: "main-work-task-icon",
+    class: "main-work-task-icon main-work-task-intranet",
     text: "사내포털",
     onClick: onIntranetClick,
   });
@@ -657,6 +863,7 @@ function ensureMessengerState(state) {
 
 function resetMessengerState(state) {
   _messengerState = createMessengerState(state.flags?.runId ?? "default");
+  _hrPortalIntroSpawned = false;
 }
 
 function createMessengerState(runId) {
@@ -691,7 +898,7 @@ function renderMessengerShell(container, state, actions, onClose) {
         el("div", { class: "main-work-messenger-room-head", text: "채팅방" }),
         ...MESSENGER_ROOMS.map((room) => renderMessengerRoomButton(room, activeRoom.id, state, actions, onClose)),
       ]),
-      renderMessengerThread(activeRoom, actions),
+      renderMessengerThread(activeRoom, state, actions),
     ]),
   ]);
 
@@ -721,7 +928,7 @@ function renderMessengerRoomButton(room, activeRoomId, state, actions, onClose) 
   ]);
 }
 
-function renderMessengerThread(room, actions) {
+function renderMessengerThread(room, state, actions) {
   const messages = room.messages ?? [];
   return el("section", { class: "main-work-messenger-thread" }, [
     el("header", { class: "main-work-messenger-thread-head" }, [
@@ -732,12 +939,16 @@ function renderMessengerThread(room, actions) {
       el("span", { class: "main-work-messenger-presence", text: room.id === "hr" ? "인사 알림" : "업무 중" }),
     ]),
     el("div", { class: "main-work-messenger-thread-log" }, messages.length
-      ? messages.map((message) => renderMessengerMessage(message, actions))
+      ? messages.map((message) => renderMessengerMessage(message, state, actions))
       : [el("p", { class: "main-work-messenger-empty", text: "아직 도착한 메시지가 없습니다." })]),
   ]);
 }
 
-function renderMessengerMessage(message, actions) {
+function renderMessengerMessage(message, state, actions) {
+  const headache = state.stats.health <= 30;
+  const displayText = headache
+    ? formatHeadacheDisplayText(message.text, { part: "body", seed: message.id, enabled: true })
+    : message.text;
   const replies = getMessengerReplyLabels(message);
   const hasIgnoreChoice = replies.some((reply) => reply.id === "ignore");
   const expired = isMessageReplyExpired(message);
@@ -758,7 +969,10 @@ function renderMessengerMessage(message, actions) {
       el("strong", { text: message.from }),
       el("time", { text: formatTime(message.minute) }),
     ]),
-    el("p", { text: message.text }),
+    el("p", { text: displayText }),
+    ...(message.kind === "hr" && !message.portalCompleted && canReply
+      ? [el("p", { class: "main-work-messenger-portal-hint", text: "사내포털에서 먼저 확인하세요." })]
+      : []),
     ...(canReply
       ? [el("div", { class: "main-work-messenger-replies" }, [
         ...replies.map((reply) => el("button", {
@@ -794,21 +1008,21 @@ function getMessengerReplyLabels(message) {
   if (message.kind === "boss" && message.subtype === "request") {
     return [
       { id: "accept", label: "가능합니다", tone: "primary" },
-      { id: "hard", label: "조금 어려울 것 같습니다", tone: "neutral" },
+      { id: "hard", label: "어려울 것 같아요", tone: "neutral" },
       { id: "ignore", label: "못 본 척", tone: "soft" },
     ];
   }
   if (message.kind === "boss" && message.subtype === "check") {
     return [
-      { id: "nearly", label: "거의 끝났습니다", tone: "primary" },
-      { id: "check", label: "확인해보겠습니다", tone: "neutral" },
+      { id: "nearly", label: "거의 끝났어요", tone: "primary" },
+      { id: "check", label: "확인해볼게요", tone: "neutral" },
       { id: "ignore", label: "못 본 척", tone: "soft" },
     ];
   }
   if (message.kind === "boss" && message.subtype === "praise") {
     return [
       { id: "thanks", label: "감사합니다", tone: "primary" },
-      { id: "effort", label: "더 노력하겠습니다", tone: "neutral" },
+      { id: "effort", label: "더 노력할게요", tone: "neutral" },
       { id: "ignore", label: "못 본 척", tone: "soft" },
     ];
   }
@@ -818,7 +1032,12 @@ function getMessengerReplyLabels(message) {
       { id: "later", label: "나중에", tone: "neutral" },
     ];
   }
-  if (message.kind === "hr") return [{ id: "process", label: "처리하기", tone: "primary" }];
+  if (message.kind === "hr") {
+    if (message.portalCompleted) {
+      return [{ id: "confirm", label: "확인했습니다", tone: "primary" }];
+    }
+    return [];
+  }
   return [];
 }
 
@@ -827,7 +1046,11 @@ function handleMessengerChoice(messageId, choiceId, actions) {
   if (!message || message.status) return;
   clearReplyExpiryTimer(messageId);
   dismissMessengerToast(messageId);
-  message.status = choiceId === "process" ? "processed" : choiceId === "later" ? "later" : choiceId === "ignore" ? "ignored" : "replied";
+  message.status = choiceId === "later"
+    ? "later"
+    : choiceId === "ignore"
+      ? "ignored"
+      : "replied";
   message.unread = false;
   const result = resolveMessengerChoice(message, choiceId);
   applyMessengerResult(result, actions, message, choiceId);
@@ -838,7 +1061,7 @@ function handleMessengerChoice(messageId, choiceId, actions) {
 function resolveMessengerChoice(message, choiceId) {
   if (message.kind === "boss") return resolveBossMessengerChoice(message, choiceId);
   if (message.kind === "colleague") return resolveColleagueMessengerChoice(message, choiceId);
-  if (message.kind === "hr") return resolveHrMessengerChoice(choiceId);
+  if (message.kind === "hr") return resolveHrMessengerChoice(message, choiceId);
   return { delta: {}, bossAttentionDelta: 0, colleagueIgnoreDelta: 0, hrIgnoreDelta: 0 };
 }
 
@@ -884,8 +1107,11 @@ function getColleagueIgnoreResult(message) {
   return { delta: {}, colleagueIgnoreDelta: 1 };
 }
 
-function resolveHrMessengerChoice(choiceId) {
-  if (choiceId === "process") return { delta: { gameMinute: -5 }, hrIgnoreDelta: -1 };
+function resolveHrMessengerChoice(message, choiceId) {
+  if (choiceId === "confirm") {
+    if (!message.portalCompleted) return { delta: {}, hrIgnoreDelta: 0 };
+    return { delta: { gameMinute: -5 }, hrIgnoreDelta: -1 };
+  }
   if (choiceId === "ignore") return { delta: {}, hrIgnoreDelta: 1 };
   return { delta: {}, hrIgnoreDelta: 0 };
 }
@@ -1082,6 +1308,7 @@ function addMessengerMessage(chat, actions, options = {}) {
       || (chat.kind === "colleague" && chat.subtype !== "away")
       || chat.kind === "hr",
     status: null,
+    portalCompleted: chat.kind === "hr" ? false : undefined,
     spawnedAt: Date.now(),
     timerSec: 0,
   };
@@ -1092,6 +1319,10 @@ function addMessengerMessage(chat, actions, options = {}) {
   if (messenger.isOpen && messenger.activeRoomId === roomId) message.unread = false;
   updateMessengerChrome();
   _messengerUpdater?.();
+  if (message.kind === "hr") {
+    _intranetUpdater?.();
+    updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
+  }
   if (!options.silent) {
     playChatNotificationSound();
     if (message.needsReply) {
@@ -1229,6 +1460,7 @@ export function cleanupMainWorkSystems() {
   cleanupMainEventSystem();
   cleanupMeetingEventSystem();
   cleanupStatusEventSystem();
+  cleanupLunchOverlay();
 }
 
 function cleanupStatusEventSystem() {
@@ -1257,7 +1489,7 @@ function captureChatSnapshot() {
 
   const nextSpawnRemainingMs = _spawnTimeout
     ? Math.max(0, _spawnDelayMs - (now - _spawnScheduledAt))
-    : 3000;
+    : CHAT_SPAWN_FIRST_MS;
 
   return {
     pendingReplies,
@@ -1300,10 +1532,8 @@ function cleanupMainPhaseTimer() {
 }
 
 function cleanupPhoneSystem() {
-  if (_phoneTimeout) {
-    clearTimeout(_phoneTimeout);
-    _phoneTimeout = null;
-  }
+  for (const timeout of _phoneTimeouts) clearTimeout(timeout);
+  _phoneTimeouts.clear();
   if (_phoneOverlay) {
     _phoneOverlay.remove();
     _phoneOverlay = null;
@@ -1343,6 +1573,10 @@ function getPendingStatusEvent(state) {
 
 function showStatusEventPopup(type, state, container, actions) {
   if (_statusEventOverlay) return;
+  if (type === "headache") {
+    showHeadacheStatusPopup(state, container, actions);
+    return;
+  }
   const config = STATUS_EVENT_CONFIGS[type];
   if (!config) return;
   playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
@@ -1405,6 +1639,34 @@ function showStatusEventPopup(type, state, container, actions) {
   ]);
 
   container.append(_statusEventOverlay);
+}
+
+function showHeadacheStatusPopup(state, container, actions) {
+  const openedAt = Date.now();
+  const clockEl = container.querySelector(".main-work-current-time");
+
+  _statusEventOverlay = mountHeadacheDialog(container, {
+    gameMinute: state.gameMinute,
+    clockEl,
+    onConfirm: () => {
+      const phaseIndex = getMainPhaseIndex(state);
+      const phaseKey = getMainPhaseKey(state, phaseIndex);
+      const startedAt = mainPhaseStarts.get(phaseKey);
+      if (startedAt) mainPhaseStarts.set(phaseKey, startedAt + (Date.now() - openedAt));
+
+      let pendingEnding = null;
+      let afterMinute = state.gameMinute;
+      actions.mutateState((draft) => {
+        pendingEnding = applyHeadacheEventToDraft(draft);
+        afterMinute = draft.gameMinute;
+        return draft;
+      });
+
+      if (pendingEnding) actions.finishWith(pendingEnding);
+      _statusEventOverlay = null;
+      return { afterMinute };
+    },
+  });
 }
 
 function shouldShowMeetingEvent(state) {
@@ -1824,10 +2086,9 @@ function renderRejectReasonPopup(event, state, closeWithChoice) {
         el("span", { class: "main-event-diamond", text: "◆" }),
         el("span", { text: "거절 사유 선택" }),
       ]),
-      el("time", { class: "main-event-timer", text: "판단" }),
     ]),
     el("section", { class: "main-event-body" }, [
-      el("p", { class: "main-event-kicker", text: state.boss?.name ?? "상사" }),
+      el("p", { class: "main-event-hint", text: "상사 성향에 따라 결과가 달라진다" }),
       el("h2", { text: event.title }),
       el("p", { class: "main-event-copy", text: "어떤 말로 거절할까?" }),
       el("div", { class: "main-event-choice-grid main-event-reason-grid" }, reasons.map((reason) =>
@@ -1845,9 +2106,6 @@ function renderRejectReasonPopup(event, state, closeWithChoice) {
           },
         }, [
           el("strong", { text: reason }),
-          el("span", { class: "main-event-preview" }, [
-            el("span", { text: "상사 성향에 따라 결과가 달라진다" }),
-          ]),
         ]),
       )),
     ]),
@@ -1917,36 +2175,47 @@ function startPhoneSystem(screen, state, actions) {
   const durationSec = MAIN_PHASE_DURATIONS_SEC[phaseIndex];
   if (!durationSec) return;
 
-  const plan = getPhonePlan(state, phaseIndex, durationSec);
-  if (!plan.willRing || plan.status === "done") return;
+  const plans = getPhonePlans(state, phaseIndex, durationSec);
+  for (const plan of plans) {
+    if (plan.status === "done") continue;
 
-  if (plan.status === "ringing") {
-    restoreRingingPhone(screen, state, actions, plan);
-    return;
+    if (plan.status === "ringing") {
+      restoreRingingPhone(screen, state, actions, plan);
+      continue;
+    }
+
+    const delayMs = Math.max(0, plan.ringAt - Date.now());
+    const timeout = setTimeout(() => ringPhone(screen, state, actions, plan), delayMs);
+    _phoneTimeouts.add(timeout);
+    plan.timeoutId = timeout;
   }
-
-  const delayMs = Math.max(0, plan.ringAt - Date.now());
-  _phoneTimeout = setTimeout(() => ringPhone(screen, state, actions, plan), delayMs);
 }
 
-function getPhonePlan(state, phaseIndex, durationSec) {
+function getPhonePlans(state, phaseIndex, durationSec) {
   const key = getMainPhaseKey(state, phaseIndex);
-  let plan = phonePlans.get(key);
-  if (plan) return plan;
+  const existing = phonePlans.get(key);
+  if (existing) return existing;
 
-  const minSec = durationSec * 0.3;
-  const maxSec = durationSec * 0.8;
-  const delaySec = minSec + Math.random() * (maxSec - minSec);
-  const call = phoneCallPool[Math.floor(Math.random() * phoneCallPool.length)];
-  plan = {
-    phaseIndex,
-    willRing: Math.random() < PHONE_CHANCE_BY_PHASE[phaseIndex],
-    ringAt: Date.now() + delaySec * 1000,
-    status: "waiting",
-    call,
-  };
-  phonePlans.set(key, plan);
-  return plan;
+  const plans = [];
+  for (let slot = 0; slot < PHONE_CALLS_PER_PHASE; slot += 1) {
+    if (Math.random() >= PHONE_CHANCE_BY_PHASE[phaseIndex]) continue;
+
+    const slotStart = (durationSec / PHONE_CALLS_PER_PHASE) * slot;
+    const slotLen = durationSec / PHONE_CALLS_PER_PHASE;
+    const minSec = slotStart + slotLen * 0.12;
+    const maxSec = slotStart + slotLen * 0.72;
+    const delaySec = minSec + Math.random() * Math.max(0.5, maxSec - minSec);
+    const call = phoneCallPool[Math.floor(Math.random() * phoneCallPool.length)];
+    plans.push({
+      phaseIndex,
+      ringAt: Date.now() + delaySec * 1000,
+      status: "waiting",
+      call,
+    });
+  }
+
+  phonePlans.set(key, plans);
+  return plans;
 }
 
 function ringPhone(screen, state, actions, plan) {
@@ -2142,8 +2411,7 @@ function startChatNotifications(state, actions, container) {
 
   _localWorkload = state.stats.workload;
 
-  // 첫 메시지는 3초 후 즉시 등장, 이후 정상 간격
-  scheduleSpawn(state, actions, 3000);
+  scheduleSpawn(state, actions, CHAT_SPAWN_FIRST_MS);
 }
 
 // 미니게임 등으로 화면을 떠났다가 돌아왔을 때, 멈춰뒀던 채팅 패널을 그대로 복원한다.
@@ -2177,24 +2445,43 @@ function scheduleSpawn(state, actions, delayMs) {
 }
 
 function scheduleNextSpawn(state, actions) {
-  const delay = _localWorkload >= 70 ? 15000 : 30000;
+  const delay = _localWorkload >= 70 ? CHAT_SPAWN_INTERVAL_BUSY_MS : CHAT_SPAWN_INTERVAL_MS;
   scheduleSpawn(state, actions, delay);
 }
 
 function spawnOneNotification(state, actions) {
+  if (!_hrPortalIntroSpawned) {
+    _hrPortalIntroSpawned = true;
+    const healthCheck = chatPool.notice.find((message) => message.portalTaskId === "health-check");
+    if (healthCheck) {
+      addMessengerMessage({ ...healthCheck }, actions);
+      return;
+    }
+  }
+
   const chat = pickOneChat(state);
   if (!chat) return;
 
   addMessengerMessage(chat, actions);
 }
 
+function getAvailableNoticePool() {
+  const activeTaskIds = getActivePortalTaskIds();
+  return chatPool.notice.filter((message) => {
+    if (!message.portalTaskId) return false;
+    return !activeTaskIds.has(message.portalTaskId);
+  });
+}
+
 function pickOneChat(state) {
   const trust = state.colleagueTrust ?? 30;
   const colleagueIgnoreCount = state.counters?.colleagueIgnoreCount ?? 0;
-  if (colleagueIgnoreCount >= 5) {
+  const colleagueGone = state.flags?.colleagueAwayMessageSent || colleagueIgnoreCount >= 3;
+  const noticePool = getAvailableNoticePool();
+  if (colleagueGone) {
     return pickWeightedChat([
       { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
-      { pool: chatPool.notice, weight: 10 },
+      { pool: noticePool, weight: 10 },
     ]);
   }
 
@@ -2206,7 +2493,7 @@ function pickOneChat(state) {
   return pickWeightedChat([
     { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
     { pool: colleagueWeightedPool, weight: 50 },
-    { pool: chatPool.notice, weight: 10 },
+    { pool: noticePool, weight: 10 },
   ]);
 }
 
@@ -2275,6 +2562,7 @@ function buildChatLogCause(chat, outcome) {
   if (chat.kind === "colleague" && chat.subtype === "smalltalk") return "동료와 짧게 메시지를 주고받았다.";
   if (chat.kind === "colleague" && chat.subtype === "info") return "동료가 공유한 정보를 확인했다.";
   if (chat.kind === "colleague" && chat.subtype === "offer") return "동료의 도움 제안에 답장했다.";
+  if (chat.kind === "hr" && outcome === "confirm") return `${sender}에 확인 완료를 답장했다.`;
   if (chat.kind === "hr" && outcome === "process") return `${sender} 공지를 처리했다.`;
   if (chat.kind === "hr") return `${sender} 공지를 확인했다.`;
   return `${sender} 메시지를 확인했다.`;

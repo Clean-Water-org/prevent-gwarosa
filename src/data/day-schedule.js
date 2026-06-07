@@ -1,4 +1,9 @@
-// 출근 브리핑 「오늘의 일정」 탭 — 흐름만 안내, 구체 시각·초 단위는 노출하지 않음
+// 출근 브리핑 「오늘의 일정」 탭 — 흐름 안내 (점심·회의만 고정 시각 표기)
+export const FIXED_SCHEDULE_TIMES = {
+  lunch: "12:00",
+  meeting: "13:00",
+};
+
 export const DAY_FLOW_STEPS = [
   {
     label: "시작",
@@ -22,7 +27,7 @@ export const DAY_FLOW_STEPS = [
     label: "",
     icon: "📋",
     title: "돌발 이벤트",
-    text: "상사 지시, 동료 부탁, 갑작스러운 회의… 예고 없이 튀어나올 수 있어요.",
+    text: "상사 지시, 동료 부탁… 예고 없이 튀어나올 수 있어요.",
   },
   {
     label: "",
@@ -34,10 +39,18 @@ export const DAY_FLOW_STEPS = [
     label: "점심",
     icon: "🍱",
     title: "점심시간",
+    time: FIXED_SCHEDULE_TIMES.lunch,
     text: "한 번 숨 고를 틈. 어떻게 쓰느냐에 따라 오후가 달라집니다.",
   },
   {
     label: "오후",
+    icon: "📢",
+    title: "전체 회의",
+    time: FIXED_SCHEDULE_TIMES.meeting,
+    text: "점심 직후 13시, 회의가 시작됩니다. 참석 후 후속 업무가 이어질 수 있어요.",
+  },
+  {
+    label: "",
     icon: "🔁",
     title: "업무 반복",
     text: "메인 업무와 미니게임이 이어집니다. 익숙해졌다고 방심하지 마세요.",
@@ -50,7 +63,5 @@ export const DAY_FLOW_STEPS = [
   },
 ];
 
-export const DAY_FLOW_FOOTNOTES = [
-  "순서와 타이밍은 플레이마다 조금씩 달라질 수 있습니다.",
-  "스트레스·체력·업무량을 방치하면 퇴근 전에 하루가 끝날 수도 있어요.",
-];
+export const SCHEDULE_WARNING =
+  "스트레스·체력·업무량을 방치하면 퇴근 전에 하루가 끝날 수도 있어요.";

@@ -1,7 +1,9 @@
 import { emailDeck } from "../../data/minigames.js";
 import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
-import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
+import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
+import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
+import { formatHeadacheDisplayText, syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
 const TRUSTED_HOSTS = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "crm.company.com", "docs.google.com", "drive.partner-office.kr"];
@@ -160,7 +162,7 @@ export function renderEmailGame(root, state, actions, game) {
     correct: 0, wrong: 0, missed: 0,
     locked: false, detailOpen: false, cardY: MAIL_START_Y,
     sortedGood: [], sortedSpam: [],
-    bossWatching: false, evJitter: false,
+    bossWatching: false, evJitter: false, paused: false,
     raf: null, timerInterval: null, elapsed: 0, usedEvents: {},
     floatTimer: null, feedbackTimer: null, evToastTimer: null, evTimer: null, bossTimer: null, kakaoTimer: null, classifyTimer: null,
   };
@@ -336,13 +338,20 @@ export function renderEmailGame(root, state, actions, game) {
   function refreshStatusBadge() {
     const id = activeStatus();
     if (!id) { statusRow.style.display = "none"; return; }
-    const info = { burnout: { icon: "🥵", text: "번아웃 — 글자가 깨져 보인다" }, headache: { icon: "🤕", text: "두통 — 시야가 흐려져 번져 보인다" }, coffee: { icon: "☕", text: "손 떨림 — 메일이 잘게 떨려 보인다" } }[id];
+    const info = { burnout: { icon: "🥵", text: "번아웃 — 글자가 깨져 보인다" }, headache: { icon: "🤕", text: "두통 — 글자가 번지고 깨져 보인다" }, coffee: { icon: "☕", text: "손 떨림 — 메일이 잘게 떨려 보인다" } }[id];
     statusIcon.textContent = info.icon;
     statusCap.textContent = info.text;
     statusRow.style.display = "flex";
   }
 
   function statusText(text, part) {
+    if (isHeadache) {
+      return formatHeadacheDisplayText(text, {
+        part: part === "subject" ? "subject" : "body",
+        seed: run.index + (part === "subject" ? 0 : 1),
+        enabled: true,
+      });
+    }
     if (stress >= 70) return corruptText(text, part === "subject" ? 0.22 : 0.18, run.index);
     return text;
   }
@@ -404,14 +413,15 @@ export function renderEmailGame(root, state, actions, game) {
 
     const subject = document.createElement("div");
     subject.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.ink};line-height:1.25;margin-bottom:8px`;
-    subject.textContent = statusText(mail.subject, "subject");
-    if (isHeadache) subject.style.filter = "blur(2.4px)";
-
     const previewText = clipForStress(makeBasicPreview(mail));
+    const subjectText = statusText(mail.subject, "subject");
+    const previewDisplay = statusText(previewText, "body");
+
+    subject.textContent = subjectText;
+
     const preview = document.createElement("div");
     preview.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13.5px;color:#777;line-height:1.45;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
-    preview.textContent = statusText(previewText, "body");
-    if (isHeadache) preview.style.filter = "blur(2.4px)";
+    preview.textContent = previewDisplay;
 
     const clues = document.createElement("div");
     clues.style.cssText = "display:flex;flex-wrap:wrap;gap:6px";
@@ -448,6 +458,12 @@ export function renderEmailGame(root, state, actions, game) {
     hint.style.cssText = "display:block;text-align:right;margin-top:8px;font-family:NeoDunggeunmo,monospace;font-size:11px;color:#aaa";
     hint.textContent = run.detailOpen ? "SPACE 접기" : "SPACE 상세 확인 (-2초)";
     mailCard.append(hint);
+
+    syncHeadacheTextLayers(mailCard, {
+      enabled: isHeadache,
+      title: mail.subject,
+      body: previewText,
+    });
   }
 
   function showNextMail() {
@@ -517,6 +533,10 @@ export function renderEmailGame(root, state, actions, game) {
   // ── 낙하 애니메이션 ──
   function tick() {
     if (run.phase !== "play" || run.done) return;
+    if (run.paused) {
+      run.raf = requestAnimationFrame(tick);
+      return;
+    }
     const stressBoost = stress >= 80 ? 0.09 : stress >= 50 ? 0.05 : 0;
     const bossBoost = run.bossWatching ? 0.05 : 0;
     if (!run.locked) {
@@ -530,7 +550,7 @@ export function renderEmailGame(root, state, actions, game) {
   // ── 타이머 / 이벤트 ──
   function startTimer() {
     run.timerInterval = setInterval(() => {
-      if (run.done || run.phase !== "play") return;
+      if (run.paused || run.done || run.phase !== "play") return;
       run.time = Math.max(0, run.time - 1);
       run.elapsed += 1;
       updateTimerDisplay();
@@ -700,6 +720,11 @@ export function renderEmailGame(root, state, actions, game) {
   window.addEventListener("keydown", onKeydown);
   window.addEventListener("resize", run.onFitResize);
   playBgm("assets/audio/email_bgm.mp3");
+  syncBgmStatusFx({ headache: isHeadache });
+  maybeShowHeadacheDialog(shell, state, actions, {
+    run,
+    clockEl: shell.querySelector(".hud .clock"),
+  });
   startTimer();
   run.raf = requestAnimationFrame(tick);
   requestAnimationFrame(fitMonitor);

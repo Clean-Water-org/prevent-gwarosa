@@ -4,7 +4,54 @@
 let current = null;
 let currentSrc = null;
 let baseVolume = 0.4;
+let basePlaybackRate = 1;
 let duckTimer = null;
+let headacheFxActive = false;
+let headacheFxTimer = null;
+
+const HEADACHE_BGM_RATE = 0.72;
+const HEADACHE_BGM_WOBBLE = 0.035;
+const HEADACHE_BGM_VOLUME_MUL = 0.82;
+
+function clearHeadacheFxTimer() {
+  if (headacheFxTimer) {
+    clearInterval(headacheFxTimer);
+    headacheFxTimer = null;
+  }
+}
+
+function applyHeadacheFxToCurrent() {
+  clearHeadacheFxTimer();
+  if (!current) return;
+
+  if (!headacheFxActive) {
+    current.playbackRate = basePlaybackRate;
+    if (!duckTimer) current.volume = baseVolume;
+    return;
+  }
+
+  let phase = 0;
+  const tick = () => {
+    if (!current || !headacheFxActive) return;
+    phase += 0.35;
+    current.playbackRate = HEADACHE_BGM_RATE + Math.sin(phase) * HEADACHE_BGM_WOBBLE;
+    if (!duckTimer) current.volume = baseVolume * HEADACHE_BGM_VOLUME_MUL;
+  };
+
+  tick();
+  headacheFxTimer = setInterval(tick, 350);
+}
+
+/**
+ * 상태이상에 맞춰 BGM 분위기를 조절한다.
+ * 두통(체력 30↓): 재생 속도를 늦추고 음량을 살짝 낮춘 뒤, 미세하게 흔들린다.
+ * @param {object} [opts]
+ * @param {boolean} [opts.headache=false]
+ */
+export function syncBgmStatusFx({ headache = false } = {}) {
+  headacheFxActive = headache;
+  applyHeadacheFxToCurrent();
+}
 
 /**
  * BGM 재생. 기존에 재생 중이던 곡은 자동으로 정지한다.
@@ -16,31 +63,51 @@ let duckTimer = null;
  */
 export function playBgm(src, { volume = 0.4, loop = true } = {}) {
   baseVolume = volume;
-  // 동일 곡이 이미 재생 중이면 그대로 유지 (메인화면처럼 잦은 리렌더 대응)
   if (current && currentSrc === src && !current.paused && !current.ended) {
     if (!duckTimer) current.volume = volume;
+    applyHeadacheFxToCurrent();
     return current;
   }
-  stopBgm();
+  stopBgm({ preserveStatusFx: true });
   const audio = new Audio(src);
   audio.loop = loop;
   audio.volume = volume;
-  // 자동재생 정책에 막히면 조용히 무시 (미니게임은 클릭으로 진입하므로 보통 정상 재생)
+  audio.playbackRate = basePlaybackRate;
   audio.play().catch(() => {});
   current = audio;
   currentSrc = src;
+  applyHeadacheFxToCurrent();
   return audio;
 }
 
 /** 현재 재생 중인 BGM 정지. */
-export function stopBgm() {
+export function stopBgm({ preserveStatusFx = false } = {}) {
   if (duckTimer) { clearTimeout(duckTimer); duckTimer = null; }
+  clearHeadacheFxTimer();
+  if (!preserveStatusFx) headacheFxActive = false;
   if (current) {
     current.pause();
     current.currentTime = 0;
     current = null;
     currentSrc = null;
   }
+}
+
+/** BGM 재생 속도 조절 (1 = 기본, 0.75 등으로 느리게). */
+export function setBgmPlaybackRate(rate = basePlaybackRate) {
+  basePlaybackRate = rate;
+  if (!current) return;
+  current.playbackRate = rate;
+}
+
+/** BGM 재생 속도를 기본값으로 복구. */
+export function restoreBgmPlaybackRate() {
+  basePlaybackRate = 1;
+  if (headacheFxActive) {
+    applyHeadacheFxToCurrent();
+    return;
+  }
+  setBgmPlaybackRate(basePlaybackRate);
 }
 
 /**
@@ -55,7 +122,12 @@ export function duckBgm({ volume = 0.12, durationMs = 900 } = {}) {
   if (duckTimer) clearTimeout(duckTimer);
   duckTimer = setTimeout(() => {
     duckTimer = null;
-    if (current) current.volume = baseVolume;
+    if (!current) return;
+    if (headacheFxActive) {
+      current.volume = baseVolume * HEADACHE_BGM_VOLUME_MUL;
+      return;
+    }
+    current.volume = baseVolume;
   }, durationMs);
 }
 
@@ -63,7 +135,7 @@ let sfxCtx = null;
 function getSfxCtx() {
   if (sfxCtx === null) {
     const AC = window.AudioContext || window.webkitAudioContext;
-    sfxCtx = AC ? new AC() : false; // false = 미지원(웹오디오 불가)
+    sfxCtx = AC ? new AC() : false;
   }
   return sfxCtx || null;
 }
@@ -87,7 +159,7 @@ export function playSfx(src, { volume = 0.6, gain = 1 } = {}) {
       try {
         const source = ctx.createMediaElementSource(audio);
         const gainNode = ctx.createGain();
-        gainNode.gain.value = volume * gain; // 1.0을 넘는 증폭 허용
+        gainNode.gain.value = volume * gain;
         source.connect(gainNode).connect(ctx.destination);
         audio.play().catch(() => {});
         return audio;
@@ -98,12 +170,10 @@ export function playSfx(src, { volume = 0.6, gain = 1 } = {}) {
   }
 
   audio.volume = Math.min(volume, 1);
-  // 자동재생 정책에 막히면 조용히 무시
   audio.play().catch(() => {});
   return audio;
 }
 
-// 공용 UI 클릭음 — 설정·타이틀 등 버튼 클릭에서 동일하게 사용.
 const CLICK_SFX_SRC = "assets/audio/computer-mouse-click.mp3";
 export function playClickSfx() {
   playSfx(CLICK_SFX_SRC, { volume: 1.0, gain: 2.5 });

@@ -280,8 +280,9 @@ function applyMiniResult(state, result, message) {
     next.ending = next.stats.workload <= 0 ? "success" : "overtime";
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
-    next.scene = "lunch";
+    next.scene = "main";
     next.gameMinute = Math.max(next.gameMinute, 12 * 60);
+    next.flags = { ...next.flags, lunchPhase: "intro" };
   } else {
     next.scene = "main";
   }

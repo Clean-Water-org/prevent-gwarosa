@@ -10,39 +10,38 @@ export function renderLunch(root, state, actions) {
       renderHud(state),
       phase === "result"
         ? renderLunchResult(state, actions)
-        : renderLunchIntro(actions),
+        : renderLunchIntro(state, actions),
     ]),
   );
 }
 
-function renderLunchIntro(actions) {
+export function renderLunchIntro(state, actions) {
   const narration = renderNarrationPopup(["12:00. 점심시간이다."], {
     typingSpeed: 42,
     lineDelay: 180,
     showPrompt: false,
     actions: [{
       text: "점심식사",
-      onClick: () => actions.mutateState((draft) => {
-        const queue = getLunchQueue(draft);
-        let next = draft;
-        for (const event of queue) {
-          next = applyDelta(next, event.delta, `점심시간: ${event.title}`);
-        }
-        next.flags = {
-          ...next.flags,
-          lunchPhase: "result",
-          lunchQueue: queue,
-        };
-        return next;
-      }),
+      onClick: () => actions.mutateState((draft) => applyLunchMeal(draft)),
     }],
   });
 
   return el("div", { class: "lunch-narration-layer" }, [narration.node]);
 }
 
-function renderLunchResult(state, actions) {
+export function renderLunchResult(state, actions, options = {}) {
   const queue = state.flags?.lunchQueue?.length ? state.flags.lunchQueue : getLunchQueue(state);
+  const onAfternoonStart = options.onAfternoonStart ?? (() => {
+    actions.mutateState((draft) => {
+      draft.gameMinute = Math.max(draft.gameMinute, 13 * 60);
+      draft.scene = "main";
+      draft.flags = { ...draft.flags };
+      delete draft.flags.lunchPhase;
+      delete draft.flags.lunchQueue;
+      delete draft.flags.lunchIndex;
+      return draft;
+    });
+  });
 
   return el("div", { class: "lunch-result-overlay" }, [
     el("article", { class: "lunch-result-card" }, [
@@ -51,7 +50,7 @@ function renderLunchResult(state, actions) {
         el("section", { class: "lunch-result-event" }, [
           el("h2", { text: event.title }),
           el("p", { text: event.text }),
-          el("div", { class: "lunch-result-stats" }, describeDelta(event.delta).map((text) =>
+          el("div", { class: "lunch-result-stats" }, describeLunchDelta(event.delta).map((text) =>
             el("span", { text }),
           )),
         ]),
@@ -60,36 +59,122 @@ function renderLunchResult(state, actions) {
         el("button", {
           class: "primary",
           text: "오후 업무 시작",
-          onClick: () => actions.mutateState((draft) => {
-            draft.gameMinute = Math.max(draft.gameMinute, 13 * 60);
-            draft.scene = "main";
-            draft.flags = { ...draft.flags };
-            delete draft.flags.lunchPhase;
-            delete draft.flags.lunchQueue;
-            delete draft.flags.lunchIndex;
-            return draft;
-          }),
+          onClick: onAfternoonStart,
         }),
       ]),
     ]),
   ]);
 }
 
-function getLunchQueue(state) {
+export function applyLunchMeal(draft) {
+  const queue = getLunchQueue(draft);
+  let next = draft;
+  for (const event of queue) {
+    next = applyDelta(next, event.delta, `점심시간: ${event.title}`);
+  }
+  next.flags = {
+    ...next.flags,
+    lunchPhase: "result",
+    lunchQueue: queue,
+  };
+  return next;
+}
+
+export function getLunchQueue(state) {
   if (state.flags?.lunchQueue?.length) return state.flags.lunchQueue;
 
-  const events = [pickOne(lunchEvents.base)];
+  const events = [pickWeightedBaseEvent(state)];
   for (const interrupt of lunchEvents.interrupt) {
-    if (Math.random() < interrupt.chance) events.push(interrupt);
+    if (Math.random() < getWorkChatChance(state)) events.push(interrupt);
   }
   return events;
 }
 
-function pickOne(events) {
-  return events[Math.floor(Math.random() * events.length)];
+function pickWeightedBaseEvent(state) {
+  const weighted = lunchEvents.base.map((event) => ({
+    event,
+    weight: getBaseEventWeight(event, state),
+  }));
+  return pickWeighted(weighted);
 }
 
-function describeDelta(delta) {
+function getBaseEventWeight(event, state) {
+  const trust = state.colleagueTrust ?? 30;
+  const bossId = state.boss?.id ?? "";
+  const bossAttention = state.counters?.bossAttention ?? 0;
+
+  switch (event.title) {
+    case "혼밥": {
+      let weight = 28;
+      if (trust < 38) weight += 8;
+      if (bossId !== "smart-busy" && bossId !== "clumsy-busy") weight += 6;
+      if (bossAttention < 2) weight += 4;
+      return weight;
+    }
+    case "동료 점심": {
+      let weight = 12;
+      if (trust >= 40) weight += (trust - 30) * 1.5;
+      if (trust >= 50) weight += 12;
+      if (trust >= 60) weight += 8;
+      return weight;
+    }
+    case "상사 점심 합류": {
+      let weight = 8;
+      if (bossId === "smart-busy" || bossId === "clumsy-busy") {
+        weight += 24;
+        if (bossAttention >= 2) weight += bossAttention * 3;
+        if (bossAttention >= 4) weight += 8;
+      } else {
+        weight += 3;
+      }
+      return weight;
+    }
+    case "점심 메뉴 갈등": {
+      let weight = 16;
+      if (trust >= 35 && trust < 55) weight += 6;
+      return weight;
+    }
+    default:
+      return 10;
+  }
+}
+
+function getWorkChatChance(state) {
+  let chance = 0.18;
+  const workload = state.stats?.workload ?? 50;
+  const bossAttention = state.counters?.bossAttention ?? 0;
+  const results = state.counters?.minigameResults ?? [];
+  const poorResults = results.filter((entry) => entry.result !== "success").length;
+  const flags = state.flags ?? {};
+
+  if (workload >= 75) chance += 0.22;
+  else if (workload >= 55) chance += 0.14;
+  else if (workload >= 40) chance += 0.06;
+
+  if (poorResults >= 2) chance += 0.16;
+  else if (poorResults >= 1) chance += 0.10;
+
+  if (bossAttention >= 4) chance += 0.18;
+  else if (bossAttention >= 2) chance += 0.12;
+
+  if (flags.forcedBossOrder || flags.nextBossOrderBoost || flags.forcedMeeting) {
+    chance += 0.08;
+  }
+
+  return Math.min(0.82, Math.max(0.08, chance));
+}
+
+function pickWeighted(entries) {
+  const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = Math.random() * total;
+  for (const entry of entries) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.event;
+  }
+  return entries[entries.length - 1].event;
+}
+
+export function describeLunchDelta(delta) {
   const labels = {
     stress: "스트레스",
     health: "체력",

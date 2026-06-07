@@ -1,7 +1,9 @@
 import { TOPICS, TRAPS, TRAP_MSGS } from "../../data/meeting-slides.js";
 import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
-import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
+import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
+import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
+import { formatHeadacheDisplayText, syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
 const CARD_W = 120, CARD_H = 168;
@@ -183,7 +185,7 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
 
   // 제목 바
   const head = document.createElement("div");
-  head.style.cssText = `display:flex;align-items:center;gap:5px;padding:3px 6px;border-bottom:2px solid ${PX.ink};background:${headBg}`;
+  head.style.cssText = `display:flex;align-items:center;gap:5px;padding:3px 6px;border-bottom:2px solid ${PX.ink};background:${headBg};position:relative;overflow:hidden`;
   if (n != null) {
     const num = document.createElement("span");
     num.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;color:#fff;background:${bc === PX.ink ? PX.ink : bc};padding:0 4px;min-width:14px;text-align:center`;
@@ -192,10 +194,14 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
   }
   const titleEl = document.createElement("span");
   titleEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;color:${PX.ink};line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all`;
-  if (titleBlur) titleEl.style.filter = "blur(2.6px)";
-  titleEl.textContent = slide.title;
+  titleEl.textContent = titleBlur
+    ? formatHeadacheDisplayText(slide.title, { part: "title", seed: n ?? slide.id ?? 0, enabled: true })
+    : slide.title;
   head.append(titleEl);
   card.append(head);
+  if (titleBlur) {
+    syncHeadacheTextLayers(head, { enabled: true, title: slide.title, body: "" });
+  }
 
   // 슬라이드 콘텐츠 비주얼
   card.append(makeSlideContent(slide.kind));
@@ -325,7 +331,7 @@ export function renderMeetingGame(root, state, actions, game) {
     dragId:null, overSlot:null,
     wrongCount:0, lockId:null, lockTimer:null,
     evJitter:false, jitterTimer:null,
-    bossWatching:false,
+    bossWatching:false, paused:false,
     marks:null, result:null, gradeTimer:null, timerInterval:null,
     usedEvents:{}, elapsed:0,
     floatTimer:null, trapTimer:null, evToastTimer:null, slipTimer:null, slowTimer:null,
@@ -787,7 +793,7 @@ export function renderMeetingGame(root, state, actions, game) {
     run.penalty = 0;           // 이벤트/오답으로 깎인 누적 초
     run.nextEventAt = 10;      // 다음 중간 이벤트 발생 경과초(실제 기준)
     run.timerInterval = setInterval(() => {
-      if (run.done||run.phase!=="play") return;
+      if (run.paused||run.done||run.phase!=="play") return;
       recomputeTime();
       updateTimerDisplay();
       // 중간 이벤트는 실제 경과 10초마다 — 틱 지연과 무관하게 정확히 발생
@@ -1000,5 +1006,10 @@ export function renderMeetingGame(root, state, actions, game) {
   updateBoard();
   updateTimerDisplay();
   playBgm("assets/audio/meeting_bgm.mp3");
+  syncBgmStatusFx({ headache: state.stats.health <= 30 });
+  maybeShowHeadacheDialog(shell, state, actions, {
+    run,
+    clockEl: shell.querySelector(".hud .clock"),
+  });
   startTimer();
 }
