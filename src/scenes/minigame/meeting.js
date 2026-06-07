@@ -496,15 +496,7 @@ export function renderMeetingGame(root, state, actions, game) {
   fxWrap.append(titlebar, menubar, hud, board);
   gameContent.append(fxWrap);
 
-  // 모드 칩
-  const modeChip = document.createElement("div");
-  modeChip.style.cssText = "display:flex;justify-content:center;margin-top:10px";
-  const modeChipInner = document.createElement("span");
-  modeChipInner.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
-  modeChipInner.textContent = `${mode}장 모드${stress>=80?" · 스트레스 80↑ 부제 축약":""}`;
-  modeChip.append(modeChipInner);
-
-  monitorWrapper.append(makeMonitor(gameContent), modeChip);
+  monitorWrapper.append(makeMonitor(gameContent));
   monitorScroll.append(monitorWrapper);
   room.append(monitorScroll);
 
@@ -910,6 +902,18 @@ export function renderMeetingGame(root, state, actions, game) {
     run.done=true; run.phase="result";
     stopBgm();
     clearInterval(run.timerInterval); clearTimeout(run.gradeTimer);
+    // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 전부 정리 (까까오 PC창·말풍선·배너·토스트)
+    kakaoEl.replaceChildren(); kakaoEl.hidden = true;
+    evSpeechEl.style.display = "none";
+    bossBannerEl.style.display = "none";
+    evToastEl.style.display = "none";
+    trapToast.style.display = "none";
+    slowToast.style.display = "none";
+    slipToast.style.display = "none";
+    jitterBar.style.display = "none";
+    run.evJitter = false; refreshFxClass();
+    setBoss(false);
+    [run.evTimer, run.bossTimer, run.jitterTimer, run.slowTimer, run.trapTimer, run.slipTimer, run.evToastTimer, run.lockTimer].forEach(clearTimeout);
     const m={}; let errors=0;
     mg.order.forEach((correctId,i) => {
       const placed=mg.order.find((x)=>place[x]===i);
@@ -924,7 +928,7 @@ export function renderMeetingGame(root, state, actions, game) {
 
   function showResult(tier, errors, trapsLeft, usedSec) {
     const TIERS = {
-      success:{ title:"회의 준비 완료!", emoji:"🎉", bg:"#eafae8", color:PX.green, deltas:[{label:"업무량",v:-20}] },
+      success:{ title:"회의 준비 완료!", emoji:"🎉", bg:"#eafae8", color:PX.green, deltas:[{label:"업무량",v:-25}] },
       partial:{ title:"아슬아슬하게 마쳤다…", emoji:"😮‍💨", bg:"#fff3df", color:"#c98a2a", deltas:[{label:"업무량",v:-10},{label:"스트레스",v:8}] },
       fail:   { title:"회의 준비 망했다…", emoji:"💀", bg:"#f6e3e0", color:PX.red, deltas:[{label:"업무량",v:-3},{label:"스트레스",v:20},{label:"체력",v:-8}] },
     };
@@ -959,7 +963,7 @@ export function renderMeetingGame(root, state, actions, game) {
     nextBtn.style.cssText = "margin-top:4px;cursor:pointer";
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
-    btnInner.textContent = "다음으로 ▶";
+    btnInner.textContent = "메인 화면으로 ▶";
     btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `회의 준비 ${tier}: 오류 ${errors}개`, usedSec); });
     nextBtn.append(btnInner);
     panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);

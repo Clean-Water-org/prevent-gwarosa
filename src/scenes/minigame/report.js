@@ -109,7 +109,7 @@ function buildReport(repIdx, lineCount) {
 }
 
 const TIERS = {
-  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -20 }] },
+  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -25 }] },
   partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 8 }] },
   fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -5 }, { label: "스트레스", v: 20 }, { label: "체력", v: -8 }] },
 };
@@ -276,15 +276,6 @@ export function renderReportGame(root, state, actions, game) {
 
   gameContent.append(titlebar, menubar, hud, board);
   monitorWrapper.append(makeMonitor(gameContent));
-
-  // 난이도 칩
-  const diffChip = document.createElement("div");
-  diffChip.style.cssText = "display:flex;justify-content:center;margin-top:10px";
-  const diffChipInner = document.createElement("span");
-  diffChipInner.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
-  diffChipInner.textContent = `${diff.label} · ${diff.lines}줄 · 오답 허용 ${diff.wrongMax}회`;
-  diffChip.append(diffChipInner);
-  monitorWrapper.append(diffChip);
 
   monitorScroll.append(monitorWrapper);
   room.append(monitorScroll);
@@ -686,6 +677,16 @@ export function renderReportGame(root, state, actions, game) {
     run.phase = "result";
     stopBgm();
     clearInterval(run.timerInterval);
+    // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 전부 정리 (까까오 PC창·상사 펜·토스트·깜빡임)
+    kakaoEl.replaceChildren(); kakaoEl.hidden = true;
+    penSpeechEl.style.display = "none";
+    darkOverlayEl.style.opacity = "0";
+    vignetteEl.style.opacity = "0";
+    bossOverlayEl.hidden = true;
+    flickerEl.style.animation = "";
+    evToastEl.style.display = "none";
+    run.penActive = false;
+    [run.penHoldTimer, run.flickTimer, run.evToastTimer, run.toastTimer].forEach(clearTimeout);
     const fc = run.found.length;
     let tier = forceTier;
     if (!tier) {
@@ -727,10 +728,6 @@ export function renderReportGame(root, state, actions, game) {
       deltaRow.append(s);
     });
 
-    const note = document.createElement("span");
-    note.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#8a8478";
-    note.textContent = "미니게임이 끝나면 항상 메인 화면으로";
-
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:2px;cursor:pointer";
     const btnInner = document.createElement("div");
@@ -739,7 +736,7 @@ export function renderReportGame(root, state, actions, game) {
     btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`, usedSec); });
     nextBtn.append(btnInner);
 
-    panel.append(emojiEl, titleEl, statsRow, deltaRow, note, nextBtn);
+    panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
     resultOverlay.replaceChildren(panel);
     resultOverlay.style.display = "flex";
   }

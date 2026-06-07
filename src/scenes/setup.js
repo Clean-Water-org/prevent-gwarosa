@@ -310,8 +310,28 @@ export function renderSetup(root, state, actions) {
   room.append(scroll);
   shell.append(room);
 
+  let toastTimer = null;
+  function showToast(msg) {
+    let toast = shell.querySelector(".setup-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.className = "setup-toast";
+      toast.style.cssText = `position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:90;font-family:Galmuri14,monospace;font-size:15px;padding:12px 24px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.25);white-space:nowrap`;
+      shell.append(toast);
+    }
+    toast.textContent = msg;
+    toast.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.style.display = "none"; }, 2500);
+  }
+
   function submit() {
-    const name = form.name.trim() || "오늘의 직장인";
+    const name = form.name.trim();
+    if (!name) {
+      showToast("⚠️ 이름을 입력해야 출근할 수 있어요!");
+      nameInput.focus();
+      return;
+    }
     actions.mutateState((draft) => {
       draft.player = { ...draft.player, name, gender: form.gender, type: form.type };
       draft.inventory = startingInventory(form.type);
