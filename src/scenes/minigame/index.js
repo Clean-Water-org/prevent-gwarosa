@@ -1,5 +1,5 @@
 import { el, renderBadges, renderHud } from "../../ui.js";
-import { applyDelta, applyWorkTimeCost, checkEnding } from "../../state.js";
+import { applyDelta, applyWorkTimeCost, checkEnding, addLogEntry, effectiveLogDelta } from "../../state.js";
 import { renderEmailGame } from "./email.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
@@ -75,10 +75,18 @@ export function renderMiniGame(root, state, actions) {
 
 function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   const deltas = GAME_DELTAS[gameId] || GAME_DELTAS.email;
-  let next = applyDelta(state, deltas[result], message);
+  const before = structuredClone(state);
+  let next = applyDelta(state, deltas[result], null);
   // 미니게임 실제 소요 + 최소 업무 블록 (빨리 깰수록 일찍 퇴근·체력 소모는 줄지만 기본 피로는 발생)
   const workMinutes = Math.max(MINIGAME_WORK_MINUTES, Math.min(60, Math.round(usedSec)));
   applyWorkTimeCost(next, workMinutes, { healthMultiplier: MINIGAME_HEALTH_MULTIPLIER });
+
+  if (message) {
+    const logDelta = effectiveLogDelta(before, next);
+    const minuteDelta = next.gameMinute - before.gameMinute;
+    if (minuteDelta !== 0) logDelta.gameMinute = minuteDelta;
+    addLogEntry(next, { cause: message, delta: logDelta });
+  }
 
   if (next.flags.devMode) {
     next.scene = "title";
