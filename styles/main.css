@@ -886,7 +886,7 @@
   top: 62px;
   right: 12px;
   bottom: 250px;
-  z-index: 120;
+  z-index: 900;
   width: min(300px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
@@ -1766,7 +1766,7 @@
 
 .main-event-overlay {
   position: absolute;
-  z-index: 24;
+  z-index: 950;
   inset: 62px 0 46px;
   display: grid;
   place-items: center;
