@@ -1570,12 +1570,12 @@
   border: 2px solid var(--ink);
   border-radius: 5px;
   padding: 0 6px;
-  box-shadow: 2px 2px 0 var(--ink);
+  box-shadow: 1px 1px 0 var(--ink);
   background: #fff8e3;
   color: var(--ink);
   font-family: NeoDunggeunmo, monospace;
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 9px;
+  font-weight: 800;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
@@ -1593,7 +1593,7 @@
 .main-work-messenger-reply:active,
 .main-work-messenger-ignore:active {
   transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 var(--ink);
+  box-shadow: none;
 }
 
 .main-work-messenger-reply.tone-primary {
