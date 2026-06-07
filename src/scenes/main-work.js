@@ -1,4 +1,4 @@
-import { el, renderNarrationPopup } from "../ui.js";
+import { el, getActiveStatusEffects, renderNarrationPopup, renderStatusBadge } from "../ui.js";
 import { formatTime, applyDelta, applyWorkTimeCost, checkEnding, normalizeLogEntry, addLogEntry } from "../state.js";
 import {
   bossMainEvents,
@@ -313,21 +313,6 @@ function renderMainWorkHud(state, actions) {
         el("span", { text: "2026.06.05 금요일" }),
       ]),
     ]),
-  ]);
-}
-
-function getActiveStatusEffects(state) {
-  const effects = [];
-  if (state.stats.stress >= 70) effects.push({ id: "burnout", label: "번아웃", icon: "⚠" });
-  if (state.stats.health <= 30) effects.push({ id: "headache", label: "두통", icon: "❤" });
-  if ((state.counters?.coffeeStreak ?? 0) >= 2) effects.push({ id: "coffee", label: "손떨림", icon: "☕" });
-  return effects;
-}
-
-function renderStatusBadge({ id, label, icon }) {
-  return el("span", { class: `main-work-status-badge main-work-status-badge-${id}` }, [
-    el("span", { class: "main-work-status-badge-icon", text: icon }),
-    el("span", { text: label }),
   ]);
 }
 

@@ -195,9 +195,17 @@
   gap: 6px;
   flex-wrap: wrap;
   flex-shrink: 0;
+  overflow: visible;
+}
+
+.main-work-hud:has(.has-status-tooltip:hover),
+.main-work-hud:has(.has-status-tooltip:focus-within) {
+  /* .main-event-overlay(950) · .lunch-result-overlay(960) 위에 툴팁 표시 */
+  z-index: 1000;
 }
 
 .main-work-status-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -211,6 +219,80 @@
   font-size: 12px;
   font-weight: 900;
   animation: status-badge-pulse 2s ease-in-out infinite;
+}
+
+.main-work-status-badge.has-status-tooltip {
+  cursor: help;
+}
+
+.main-work-status-badge.has-status-tooltip:hover,
+.main-work-status-badge.has-status-tooltip:focus-visible {
+  animation: none;
+  opacity: 1;
+}
+
+.main-work-status-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  bottom: auto;
+  transform: translate3d(-50%, 0, 0);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: max-content;
+  max-width: min(280px, 72vw);
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 var(--ink);
+  background: #fff;
+  color: var(--ink);
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  text-rendering: geometricPrecision;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+
+.main-work-status-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-bottom-color: var(--ink);
+}
+
+.main-work-status-tooltip-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.main-work-status-tooltip-line {
+  display: block;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.main-work-status-badge.has-status-tooltip:hover .main-work-status-tooltip,
+.main-work-status-badge.has-status-tooltip:focus-visible .main-work-status-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .main-work-status-badge-burnout {

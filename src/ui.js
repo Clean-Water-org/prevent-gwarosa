@@ -29,15 +29,71 @@ export function statBar(label, value, type) {
   ]);
 }
 
+const STATUS_EFFECTS = {
+  burnout: {
+    id: "burnout",
+    label: "번아웃",
+    icon: "⚠",
+    condition: "스트레스 70↑",
+    main: "멍해지며 업무 시간이 흘러갑니다.",
+    minigame: "화면이 회색으로 변하고 커서가 느려집니다.",
+  },
+  headache: {
+    id: "headache",
+    label: "두통",
+    icon: "❤",
+    condition: "체력 30↓",
+    main: "메시지가 흔들리고 화면이 불안정해집니다.",
+    minigame: "글자·화면이 흔들리고, 발동 시 시간이 크게 흐릅니다.",
+  },
+  coffee: {
+    id: "coffee",
+    label: "손떨림",
+    icon: "☕",
+    condition: "커피 연속 2회",
+    main: "손떨림으로 조작이 미세하게 흔들립니다.",
+    minigame: "손떨림으로 조작이 미세하게 흔들립니다.",
+  },
+};
+
+export function getActiveStatusEffects(state) {
+  const effects = [];
+  if (state.stats.stress >= 70) effects.push(STATUS_EFFECTS.burnout);
+  if (state.stats.health <= 30) effects.push(STATUS_EFFECTS.headache);
+  if ((state.counters?.coffeeStreak ?? 0) >= 2) effects.push(STATUS_EFFECTS.coffee);
+  return effects;
+}
+
+export function renderStatusBadge(effect) {
+  const tooltipId = `status-tip-${effect.id}`;
+  return el("span", {
+    class: `main-work-status-badge main-work-status-badge-${effect.id} has-status-tooltip`,
+    tabindex: "0",
+    "aria-describedby": tooltipId,
+  }, [
+    el("span", { class: "main-work-status-badge-icon", text: effect.icon }),
+    el("span", { text: effect.label }),
+    el("span", { class: "main-work-status-tooltip", id: tooltipId, role: "tooltip" }, [
+      el("strong", { class: "main-work-status-tooltip-title", text: `${effect.label} (${effect.condition})` }),
+      el("span", { class: "main-work-status-tooltip-line", text: `메인: ${effect.main}` }),
+      el("span", { class: "main-work-status-tooltip-line", text: `미니게임: ${effect.minigame}` }),
+    ]),
+  ]);
+}
+
 // 메인화면(.main-work-hud)과 동일한 스탯 HUD — 미니게임 상단에서 재사용.
 export function renderStatHud(state) {
   const { workload, stress, health } = state.stats;
+  const statusEffects = getActiveStatusEffects(state);
   return el("header", { class: "main-work-hud" }, [
     el("div", { class: "main-work-hud-stats" }, [
       renderHudStat("💼", "업무량", workload, "workload"),
       renderHudStat("⚠", "스트레스", stress, "stress"),
       renderHudStat("❤", "체력", health, "health"),
     ]),
+    ...(statusEffects.length > 0
+      ? [el("div", { class: "main-work-hud-status-effects" }, statusEffects.map(renderStatusBadge))]
+      : []),
   ]);
 }
 
