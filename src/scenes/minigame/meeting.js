@@ -305,6 +305,7 @@ export function renderMeetingGame(root, state, actions, game) {
 
   // ── 게임 데이터 ──
   const stress = state.stats.stress;
+  const isBurnout = stress >= 70; // 번아웃: 회색 필터(기존) + 발동 토스트 + 커서 느려짐
   const topicIdx = Math.floor(Math.random() * TOPICS.length);
   const topic = TOPICS[topicIdx];
   const mode = stress >= 50 ? 7 : 5;
@@ -542,7 +543,21 @@ export function renderMeetingGame(root, state, actions, game) {
   evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:NeoDunggeunmo,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   evToastEl.className = "banner-in";
 
-  shell.append(room, bossOverlayEl, bossBannerEl, evSpeechEl, kakaoEl, evToastEl);
+  // ── 번아웃(스트레스 70↑) — 느린 가짜 커서 + 발동 토스트 ──
+  const burnoutFakeCursorEl = document.createElement("div");
+  burnoutFakeCursorEl.style.cssText = "position:fixed;left:0;top:0;width:26px;height:26px;z-index:70;pointer-events:none;display:none;background:#1d1f2e;clip-path:polygon(0 0,0 75%,22% 57%,38% 94%,54% 88%,38% 52%,70% 52%);filter:drop-shadow(1px 1px 0 #fff) drop-shadow(-1px -1px 0 #fff) drop-shadow(1px -1px 0 #fff) drop-shadow(-1px 1px 0 #fff)";
+  const burnoutToastEl = document.createElement("div");
+  burnoutToastEl.style.cssText = "position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:55;width:360px;max-width:84%;pointer-events:none;display:none";
+  const burnoutToastInner = document.createElement("div");
+  burnoutToastInner.style.cssText = `background:#fff;border:3px solid ${PX.red};box-shadow:4px 4px 0 rgba(0,0,0,.25);padding:10px 16px;display:flex;flex-direction:column;gap:3px`;
+  const burnoutToastTitle = document.createElement("div");
+  burnoutToastTitle.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red}`;
+  const burnoutToastSub = document.createElement("div");
+  burnoutToastSub.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
+  burnoutToastInner.append(burnoutToastTitle, burnoutToastSub);
+  burnoutToastEl.append(burnoutToastInner);
+
+  shell.append(room, bossOverlayEl, bossBannerEl, evSpeechEl, kakaoEl, evToastEl, burnoutToastEl, burnoutFakeCursorEl);
   root.append(shell);
 
   // ── 헬퍼 ──────────────────────────────────────────────────────
@@ -924,6 +939,7 @@ export function renderMeetingGame(root, state, actions, game) {
     if (run.done||run.phase!=="play") return;
     run.done=true; run.phase="result";
     stopBgm();
+    stopBurnout(); // 결과 화면은 정상 커서로 — 번아웃 효과 해제
     clearInterval(run.timerInterval); clearTimeout(run.gradeTimer);
     // 결과 팝업이 가려지지 않도록 진행 중이던 이벤트 UI 전부 정리 (까까오 PC창·말풍선·배너·토스트)
     kakaoEl.replaceChildren(); kakaoEl.hidden = true;
@@ -998,8 +1014,73 @@ export function renderMeetingGame(root, state, actions, game) {
 
   function cleanup() {
     stopBgm();
+    stopBurnout();
     clearInterval(run.timerInterval);
     [run.gradeTimer,run.lockTimer,run.jitterTimer,run.slowTimer,run.floatTimer,run.trapTimer,run.evToastTimer,run.slipTimer,run.evTimer,run.bossTimer].forEach(clearTimeout);
+  }
+
+  // ── 번아웃 상태이상 — 커서 느려짐(느린 가짜 커서) ──
+  // 실제 커서는 숨기고, 이징으로 지연 추적하는 가짜 커서를 보여준다. 멈추면 실제 위치로 수렴해
+  // 드래그 잡기/내려놓기는 일시 정지 후 그대로 동작(네이티브 드래그는 실제 포인터 기준).
+  const burnout = { active: false, raf: 0, realX: 0, realY: 0, x: 0, y: 0, synthClick: false, onMove: null, onClick: null, toastTimer: null };
+
+  function showBurnoutToast(title, sub) {
+    burnoutToastTitle.textContent = title;
+    burnoutToastSub.textContent = sub;
+    burnoutToastEl.style.display = "block";
+    burnoutToastInner.className = "banner-in";
+    clearTimeout(burnout.toastTimer);
+    burnout.toastTimer = setTimeout(() => { burnoutToastEl.style.display = "none"; }, 3000);
+  }
+
+  function startBurnout() {
+    if (!isBurnout || burnout.active) return;
+    burnout.active = true;
+    burnout.realX = burnout.x = window.innerWidth / 2;
+    burnout.realY = burnout.y = window.innerHeight / 2;
+    shell.classList.add("mg2-burnout-cursor"); // 실제 커서 숨김(CSS)
+    burnoutFakeCursorEl.style.display = "block";
+    burnoutFakeCursorEl.style.transform = `translate(${burnout.x}px, ${burnout.y}px)`;
+
+    burnout.onMove = (e) => { burnout.realX = e.clientX; burnout.realY = e.clientY; };
+    window.addEventListener("mousemove", burnout.onMove, { passive: true });
+    // 네이티브 드래그 중에는 mousemove가 안 떠서 dragover로도 좌표를 갱신한다.
+    window.addEventListener("dragover", burnout.onMove, { passive: true });
+
+    // 클릭(버튼·닫기 등)은 보이는(지연된) 커서 위치로 전달해 일치시킨다. 드래그는 click을 만들지 않아 영향 없음.
+    burnout.onClick = (e) => {
+      if (!burnout.active || burnout.synthClick) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      const tgt = document.elementFromPoint(burnout.x, burnout.y);
+      if (tgt) { burnout.synthClick = true; tgt.click(); burnout.synthClick = false; }
+    };
+    window.addEventListener("click", burnout.onClick, true);
+
+    const EASE = 0.11; // 작을수록 더 느리게(지연) 따라온다
+    const tick = () => {
+      if (!burnout.active) return;
+      burnout.x += (burnout.realX - burnout.x) * EASE;
+      burnout.y += (burnout.realY - burnout.y) * EASE;
+      burnoutFakeCursorEl.style.transform = `translate(${burnout.x}px, ${burnout.y}px)`;
+      burnout.raf = requestAnimationFrame(tick);
+    };
+    burnout.raf = requestAnimationFrame(tick);
+
+    showBurnoutToast("🥵 번아웃 발동", "스트레스가 70을 넘었습니다");
+  }
+
+  function stopBurnout() {
+    if (!burnout.active) return;
+    burnout.active = false;
+    cancelAnimationFrame(burnout.raf);
+    if (burnout.onMove) { window.removeEventListener("mousemove", burnout.onMove); window.removeEventListener("dragover", burnout.onMove); }
+    if (burnout.onClick) window.removeEventListener("click", burnout.onClick, true);
+    clearTimeout(burnout.toastTimer);
+    burnoutFakeCursorEl.style.display = "none";
+    shell.classList.remove("mg2-burnout-cursor");
+    burnoutToastEl.style.display = "none";
   }
 
   // ── 초기화 ──
@@ -1012,4 +1093,5 @@ export function renderMeetingGame(root, state, actions, game) {
     clockEl: shell.querySelector(".hud .clock"),
   });
   startTimer();
+  startBurnout();
 }
