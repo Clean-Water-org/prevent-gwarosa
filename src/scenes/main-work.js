@@ -417,21 +417,30 @@ function renderRecentLogPanel(state, actions) {
     });
   }
 
+  const workStarted = Boolean(state.flags?.handoverGuideSeen);
+  // 인수인계(업무 시작) 전에는 '접기' 토글 비활성 — 누르면 재렌더로 인수인계 가이드가 중복 실행됨
+  const toggleAttrs = {
+    class: `main-work-recent-log-toggle${workStarted ? "" : " is-disabled"}`,
+    type: "button",
+    text: collapsed ? "펼치기" : "접기",
+  };
+  if (workStarted) {
+    toggleAttrs.onClick = () => actions.mutateState((draft) => {
+      draft.flags.recentLogCollapsed = !Boolean(draft.flags?.recentLogCollapsed);
+      return draft;
+    });
+  } else {
+    toggleAttrs.disabled = "true";
+    toggleAttrs.title = "업무 시작 후 사용 가능";
+  }
+
   return el("aside", {
     class: `main-work-recent-log${collapsed ? " is-collapsed" : ""}`,
     "aria-label": "업무 일지",
   }, [
     el("header", { class: "main-work-recent-log-head" }, [
       el("strong", { text: title }),
-      el("button", {
-        class: "main-work-recent-log-toggle",
-        type: "button",
-        text: collapsed ? "펼치기" : "접기",
-        onClick: () => actions.mutateState((draft) => {
-          draft.flags.recentLogCollapsed = !Boolean(draft.flags?.recentLogCollapsed);
-          return draft;
-        }),
-      }),
+      el("button", toggleAttrs),
     ]),
     ...(collapsed
       ? []

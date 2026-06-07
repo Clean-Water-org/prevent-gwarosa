@@ -1901,6 +1901,11 @@
   cursor: pointer;
 }
 
+.main-work-recent-log-toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .main-work-recent-log-toggle:hover,
 .main-work-recent-log-toggle:focus-visible {
   color: var(--ink);
@@ -2769,7 +2774,10 @@
 .commute-panel-body-slot > .commute-briefing-body {
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  /* 화면 높이가 부족하면(예: 16인치 노트북) 세로 스크롤로 잘린 내용(상사 힌트·하단 문구)을 노출.
+     충분히 높은 화면에선 내용이 다 들어가 스크롤바가 나타나지 않음(반응형). */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .commute-tab-menu .commute-tab {
