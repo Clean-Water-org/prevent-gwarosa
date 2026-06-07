@@ -1,4 +1,7 @@
 import { PLAYER_TYPES, startingInventory } from "../data/player-types.js";
+import { playSfx } from "../lib/audio.js";
+
+const CLICK_SFX = "assets/audio/computer-mouse-click.mp3";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -211,7 +214,7 @@ export function renderSetup(root, state, actions) {
     const btn = document.createElement("div");
     btn.style.cssText = `flex:1;font-family:Galmuri11,monospace;font-size:14px;color:${PX.ink};padding:7px 10px;text-align:center;cursor:pointer`;
     btn.textContent = label;
-    btn.addEventListener("click", () => { form.gender = key; updateGenderSel(); updatePhoto(); });
+    btn.addEventListener("click", () => { playSfx(CLICK_SFX); form.gender = key; updateGenderSel(); updatePhoto(); });
     genderBtns.push({ key, btn });
     genderRow.append(btn);
   });
@@ -237,7 +240,7 @@ export function renderSetup(root, state, actions) {
     ht.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#888;margin-left:auto";
     ht.textContent = d.hint;
     chip.append(em, nm, ht);
-    chip.addEventListener("click", () => { form.type = key; updateTypeSel(); updateGuide(); updateItemNote(); });
+    chip.addEventListener("click", () => { playSfx(CLICK_SFX); form.type = key; updateTypeSel(); updateGuide(); updateItemNote(); });
     typeBtns.push({ key, chip });
     typeRow.append(chip);
   });
@@ -326,6 +329,7 @@ export function renderSetup(root, state, actions) {
   }
 
   function submit() {
+    playSfx(CLICK_SFX);
     const name = form.name.trim();
     if (!name) {
       showToast("⚠️ 이름을 입력해야 출근할 수 있어요!");

@@ -1,5 +1,6 @@
 import { createInitialState, formatTime } from "../state.js";
 import { resolveEnding, STAT_BARS } from "../data/endings.js";
+import { stopBgm } from "../lib/audio.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 const STAT_COLOR = { ink: PX.ink, marker: PX.red, blue: PX.blue };
@@ -148,6 +149,7 @@ function makeStatBar(label, dir, color, value) {
 
 // ══════════════════════════════════════════════════════════════════
 export function renderEnding(root, state, actions) {
+  stopBgm();
   const card = resolveEnding(state);
   const clockText = formatTime(state.gameMinute);
   const badgeLabel = card.key === "overtime" ? `${card.badgeLabel} ${state.stats.workload}` : card.badgeLabel;

@@ -11,6 +11,9 @@ import { items } from "../data/items.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
+import { playBgm, duckBgm } from "../lib/audio.js";
+
+const MAIN_BGM_SRC = "assets/audio/so-happy-with-my-8-bit-game.mp3";
 
 let _notifPanel = null;
 let _spawnTimeout = null;
@@ -94,6 +97,8 @@ export function renderMainWork(root, state, actions) {
   }
   cleanupMainWorkSystems();
   stopHandoverGuide?.();
+  // 메인화면 BGM — 같은 곡이 이미 재생 중이면 idempotent (리렌더 시 끊김 없음)
+  playBgm(MAIN_BGM_SRC);
 
   const startChats = () => {
     const monitorEl = screen.querySelector(".main-work-monitor-screen");
@@ -1848,7 +1853,9 @@ function dismissCard(card) {
 }
 
 function playChatNotificationSound() {
+  // 알림음이 잘 들리도록 BGM을 잠시 낮춘다(덕킹).
+  duckBgm();
   const audio = new Audio(CHAT_NOTIFICATION_SOUND_SRC);
-  audio.volume = 0.7;
+  audio.volume = 1.0;
   audio.play().catch(() => {});
 }
