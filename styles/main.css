@@ -56,9 +56,12 @@
 
 .main-work-wall-note {
   position: absolute;
-  left: clamp(24px, 6vw, 84px);
-  top: clamp(28px, 6vh, 70px);
-  z-index: 1;
+  /* 가운데 정렬된 모니터의 좌측 면(상단보다 약간 아래)에 붙은 것처럼 위치.
+     left: 모니터 왼쪽 끝( (100vw - 모니터너비)/2 )에서 바깥쪽으로 빼, 오른쪽 끝만 테두리에 걸치게 한다.
+     top: 세로 중앙 정렬된 모니터 상단에서 살짝 아래로 내린다. (좁은 화면 대비 하한 8px) */
+  left: max(8px, calc((100vw - min(1000px, 96vw)) / 2 - 96px));
+  top: max(8px, calc((100vh - clamp(420px, 72vh, 620px) - 78px) / 2 + 28px));
+  z-index: 3;
   width: 104px;
   min-height: 116px;
   display: grid;
