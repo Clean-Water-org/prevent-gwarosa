@@ -28,6 +28,11 @@
     }
     button, input { font: inherit; color: inherit; }
     [hidden] { display: none !important; }
+    html[data-embedded="1"] .debug-toggle,
+    html[data-embedded="1"] .debug-panel,
+    html[data-embedded="1"] #retryBtn {
+      display: none !important;
+    }
     .app {
       position: fixed;
       inset: 0;
@@ -801,6 +806,7 @@
               <p id="resultText"></p>
               <div class="stats" id="resultStats"></div>
               <button class="btn" id="retryBtn">다시 하기</button>
+              <button class="btn" id="continueBtn" hidden>결과 반영</button>
             </div>
           </div>
 
@@ -844,6 +850,10 @@
   </main>
 
   <script>
+    const params = new URLSearchParams(location.search);
+    const embeddedMode = params.get("embedded") === "1";
+    if (embeddedMode) document.documentElement.dataset.embedded = "1";
+
     const mails = [
       { from:"총무팀", domain:"company.com", subject:"사내 공지 확인 요청", body:"오늘 오후 공용 프린터 점검으로 3층 프린터 사용이 제한됩니다.", attachment:"공지사항.pdf", link:"intranet.company.com/notice", recipient:"전 직원", time:"09:03", difficulty:"easy", type:"good" },
       { from:"인사팀", domain:"company.com", subject:"연차 사용 촉진 안내", body:"잔여 연차 확인 후 이번 주 금요일까지 사용 계획을 등록해주세요.", attachment:"연차사용계획서.xlsx", link:"intranet.company.com/hr/vacation", recipient:"전 직원", time:"09:18", difficulty:"easy", type:"good" },
@@ -935,6 +945,9 @@
       detailOpen: false
     };
 
+    if (params.has("stress")) state.stress = Math.max(0, Math.min(100, Number(params.get("stress")) || 0));
+    if (params.has("fx")) state.statusFx = params.get("fx") || "";
+
     const $ = (id) => document.getElementById(id);
     const timer = $("timer");
     const score = $("score");
@@ -942,6 +955,32 @@
     const feedback = $("feedback");
     const resultPanel = $("resultPanel");
     const startPanel = $("startPanel");
+    const BGM_SRC = "../audio/email_bgm.mp3";
+    let bgmAudio = null;
+
+    function getBgmAudio() {
+      if (!bgmAudio) {
+        bgmAudio = new Audio(BGM_SRC);
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0.4;
+      }
+      return bgmAudio;
+    }
+
+    function playBgm() {
+      const audio = getBgmAudio();
+      audio.play().catch(() => {});
+    }
+
+    function stopBgm() {
+      if (!bgmAudio) return;
+      bgmAudio.pause();
+      bgmAudio.currentTime = 0;
+    }
+
+    function unlockBgmDuringGame() {
+      if (state.running) playBgm();
+    }
 
     function shuffle(list) {
       const copy = list.slice();
@@ -972,6 +1011,7 @@
     }
 
     function startGame() {
+      playBgm();
       Object.assign(state, {
         deck: buildRoundDeck(),
         index: 0,
@@ -1188,8 +1228,17 @@
       state.running = false;
       cancelAnimationFrame(state.raf);
       const processed = state.correct + state.wrong;
+      const result = state.correct >= 8 ? "success" : state.correct >= 5 ? "partial" : "fail";
       const title = state.correct >= 8 ? "이메일 처리 완료!" : state.correct >= 5 ? "아슬아슬하게 분류했다" : "받은편지함이 터졌다";
       const effect = state.correct >= 8 ? "성공 · 업무량 -20" : state.correct >= 5 ? "부분성공 · 업무량 -10, 스트레스 +5" : "실패 · 업무량 -3, 스트레스 +15, 체력 -5";
+      stopBgm();
+      state.result = {
+        result,
+        correct: state.correct,
+        wrong: state.wrong,
+        missed: state.deck.length - processed,
+        total: state.deck.length
+      };
       $("resultTitle").textContent = title;
       $("resultText").textContent = effect;
       $("resultStats").innerHTML = [
@@ -1224,7 +1273,9 @@
       });
     }
 
+    document.addEventListener("pointerdown", unlockBgmDuringGame, { passive: true });
     document.addEventListener("keydown", (e) => {
+      unlockBgmDuringGame();
       const key = e.key.toLowerCase();
       if (key === "a" || key === "arrowleft") classify("good");
       if (key === "d" || key === "arrowright") classify("spam");
@@ -1238,6 +1289,11 @@
     $("spamZone").addEventListener("click", () => classify("spam"));
     $("startBtn").addEventListener("click", startGame);
     $("retryBtn").addEventListener("click", startGame);
+    $("continueBtn").hidden = !embeddedMode;
+    $("continueBtn").addEventListener("click", () => {
+      if (!state.result) return;
+      window.parent.postMessage({ type: "email-minigame-result", ...state.result }, "*");
+    });
     $("debugToggle").addEventListener("click", () => {
       $("debugPanel").hidden = !$("debugPanel").hidden;
     });
@@ -1262,6 +1318,7 @@
     $("restartBtn").addEventListener("click", startGame);
     $("forceEndBtn").addEventListener("click", finish);
     applyEffects();
+    if (embeddedMode) requestAnimationFrame(startGame);
   </script>
 </body>
 </html>

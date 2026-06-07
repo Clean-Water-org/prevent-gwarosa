@@ -1,28 +1,7 @@
 import { bosses } from "./data/bosses.js";
 import { startingInventory } from "./data/player-types.js";
 
-export const MINI_GAMES = ["email", "meeting", "report"];
-export const MINI_ROUNDS = 5;
-export const MAIN_PHASE_MINUTES = 35; // 메인화면 1회 체류 게임시간 (실시간 35초)
-
-// 미니게임 5라운드 순서 생성:
-//   1~3라운드 = 3종 셔플 (모두 1회 등장 · 서로 달라 연속 중복 없음)
-//   4~5라운드 = 직전 라운드와 다른 것 랜덤
-// → 3종 각각 최소 1회 보장 + 같은 미니게임 연속(예: 1→1) 금지.
-export function buildMiniOrder() {
-  const order = MINI_GAMES.slice();
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  while (order.length < MINI_ROUNDS) {
-    let pick;
-    do { pick = MINI_GAMES[Math.floor(Math.random() * MINI_GAMES.length)]; }
-    while (pick === order[order.length - 1]);
-    order.push(pick);
-  }
-  return order;
-}
+// 미니게임 순서·라운드 수는 flow.js(ROTATION)에서 관리한다.
 
 export function createInitialState() {
   const boss = bosses[Math.floor(Math.random() * bosses.length)];
@@ -31,7 +10,6 @@ export function createInitialState() {
     scene: "title",
     phaseIndex: 0,
     minigameRound: 0,
-    miniOrder: buildMiniOrder(),
     gameMinute: 8 * 60 + 58,
     ending: null,
     player: {
@@ -53,10 +31,17 @@ export function createInitialState() {
       smokeUses: 0,
       successStreak: 0,
       failures: 0,
+      mainEventCount: 0,
+      mainPhaseEventUsed: null,
     },
     flags: {
+      runId: createRunId(),
       forcedMeeting: false,
       nextBossOrderBoost: false,
+      forcedBossOrder: false,
+      hiddenBreakPenalty: false,
+      badMailInterview: false,
+      statusEvents: {},
     },
     log: [
       {
@@ -67,6 +52,10 @@ export function createInitialState() {
       },
     ],
   };
+}
+
+function createRunId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function clampStat(value) {
@@ -122,6 +111,9 @@ function describeDelta(delta) {
     .filter(([, value]) => value !== 0)
     .map(([key, value]) => {
       const label = labels[key] ?? key;
+      if (key === "gameMinute") {
+        return value > 0 ? `시간 경과 ${value}분` : `시간 단축 ${Math.abs(value)}분`;
+      }
       const suffix = key === "gameMinute" ? "분" : "";
       return `${label} ${value > 0 ? "+" : ""}${value}${suffix}`;
     });

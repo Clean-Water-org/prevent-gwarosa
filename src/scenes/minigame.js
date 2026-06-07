@@ -3,7 +3,7 @@ import { applyDelta, checkEnding } from "../state.js";
 import { el, renderBadges, renderHud } from "../ui.js";
 
 export function renderMiniGame(root, state, actions) {
-  if (state.minigameRound >= 5 && !state.flags.devMode) {
+  if (state.minigameRound >= 4 && !state.flags.devMode) {
     actions.finishWith(state.stats.workload <= 0 ? "success" : "overtime");
     return;
   }
@@ -150,7 +150,7 @@ export function renderEmailGame(root, state, actions, game) {
   }
 
   function applyResult(result) {
-    // 라우터(index.js)의 applyResult로 통일 — 실제 소요 시간(usedSec)·라운드·mainPhaseEnd 처리를 공유.
+    // (참고) 이메일은 iframe(email.js)로 전환되어 이 경로는 미사용. usedSec 통일 형태만 유지.
     const usedSec = 60 - run.left;
     actions.applyResult(result, `${game.title}: 정확 ${run.correct}/${deck.length}`, usedSec);
   }
@@ -238,7 +238,7 @@ function renderPlaceholderMiniGame(root, state, actions, game) {
       el("div", { class: "desk" }, [
         el("div", { class: "mini-layout" }, [
           el("div", { class: "mini-header" }, [
-            el("h2", { text: `${state.minigameRound + 1}/5 ${game.title}` }),
+            el("h2", { text: `${state.minigameRound + 1}/4 ${game.title}` }),
             el("strong", { text: "프로토타입 판정" }),
           ]),
           renderBadges(state),
@@ -275,6 +275,9 @@ function applyMiniResult(state, result, message) {
   const ending = checkEnding(next);
   if (ending) {
     next.ending = ending;
+    next.scene = "ending";
+  } else if (next.minigameRound >= 4) {
+    next.ending = next.stats.workload <= 0 ? "success" : "overtime";
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
     next.scene = "lunch";
