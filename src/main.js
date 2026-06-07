@@ -2,7 +2,7 @@ import { applyWorkTimeCost, checkEnding, createInitialState } from "./state.js";
 import { items } from "./data/items.js";
 import { loadGame, saveGame } from "./lib/storage.js";
 import { duckBgm } from "./lib/audio.js";
-import { renderTitle } from "./scenes/title.js";
+import { renderTitle, cleanupTitleFx } from "./scenes/title.js";
 import { renderSetup } from "./scenes/setup.js";
 import { renderOnboarding } from "./scenes/onboarding.js";
 import { renderCommute } from "./scenes/commute.js";
@@ -128,6 +128,7 @@ function playItemSound(src) {
 }
 
 function render() {
+  cleanupTitleFx();
   app.innerHTML = "";
   scenes[state.scene]?.(app, state, {
     setState,

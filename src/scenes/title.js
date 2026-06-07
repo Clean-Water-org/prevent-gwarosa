@@ -2,12 +2,203 @@
 import { playClickSfx } from "../lib/audio.js";
 import { renderDevPanel } from "./dev-panel.js";
 
+const WINDOW_TITLE_NORMAL = "🏢 overwork_prevention.exe — 출근 준비";
+const WINDOW_TITLE_ALTS = [
+  "attendance_required.exe",
+  "employee_status_unknown.exe",
+  "workstation_inactive.exe",
+  "return_to_work.exe",
+];
+
+const QUESTION_NORMAL = "출근하시겠습니까?";
+const QUESTION_ALTS = [
+  "출근하십시오.",
+  "출근하셔야 합니다.",
+  "출근하시겠습ㄴ까?",
+];
+
+const TAGLINE_NORMAL = "근무 종료까지 540분";
+const TAGLINE_BASE_MINUTES = 540;
+
+const WINDOW_TITLE_GLITCH_MS = 1400;
+const QUESTION_GLITCH_MS = 600;
+const TAGLINE_GLITCH_MS = 900;
+
+function randomOvertimeMinutes() {
+  return Math.floor(randBetween(TAGLINE_BASE_MINUTES + 8, TAGLINE_BASE_MINUTES + 380));
+}
+
+function buildTaglineGlitchText() {
+  return `예상 근무시간 ${randomOvertimeMinutes()}분`;
+}
+
+let titleFxTimers = [];
+
+export function cleanupTitleFx() {
+  titleFxTimers.forEach(clearTimeout);
+  titleFxTimers = [];
+}
+
+function scheduleTitleFx(fn, delayMs) {
+  const id = setTimeout(() => {
+    titleFxTimers = titleFxTimers.filter((timerId) => timerId !== id);
+    fn();
+  }, delayMs);
+  titleFxTimers.push(id);
+}
+
+function randBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function maybe(probability) {
+  return Math.random() < probability;
+}
+
+function pickRandom(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, logoEl }) {
+  function fireWindowTitleGlitch() {
+    if (!windowTitleEl.isConnected) return;
+    windowTitleEl.textContent = pickRandom(WINDOW_TITLE_ALTS);
+    scheduleTitleFx(() => {
+      if (windowTitleEl.isConnected) windowTitleEl.textContent = WINDOW_TITLE_NORMAL;
+    }, WINDOW_TITLE_GLITCH_MS);
+  }
+
+  function fireTaglineGlitch() {
+    if (!taglineEl.isConnected) return;
+    taglineEl.textContent = buildTaglineGlitchText();
+    taglineEl.classList.add("title-tagline-glitch");
+    scheduleTitleFx(() => {
+      if (!taglineEl.isConnected) return;
+      taglineEl.textContent = TAGLINE_NORMAL;
+      taglineEl.classList.remove("title-tagline-glitch");
+    }, TAGLINE_GLITCH_MS);
+  }
+
+  function fireQuestionGlitch() {
+    if (!questionEl.isConnected) return;
+    questionEl.textContent = pickRandom(QUESTION_ALTS);
+    questionEl.classList.add("title-question-glitch");
+    scheduleTitleFx(() => {
+      if (!questionEl.isConnected) return;
+      questionEl.textContent = QUESTION_NORMAL;
+      questionEl.classList.remove("title-question-glitch");
+    }, QUESTION_GLITCH_MS);
+  }
+
+  function fireCrtRoll() {
+    if (!crtCard.isConnected) return;
+    crtCard.classList.add("title-crt-roll");
+    scheduleTitleFx(() => {
+      if (crtCard.isConnected) crtCard.classList.remove("title-crt-roll");
+    }, 90);
+  }
+
+  function fireTextJitter() {
+    if (!logoEl.isConnected) return;
+    logoEl.classList.add("title-jitter-frame");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (logoEl.isConnected) logoEl.classList.remove("title-jitter-frame");
+      });
+    });
+  }
+
+  function runIntroGlitches() {
+    scheduleTitleFx(fireWindowTitleGlitch, 120);
+    scheduleTitleFx(fireCrtRoll, 220);
+    scheduleTitleFx(fireTaglineGlitch, 380);
+    scheduleTitleFx(fireQuestionGlitch, 620);
+    scheduleTitleFx(fireTextJitter, 840);
+  }
+
+  function loopWindowTitleGlitch() {
+    scheduleTitleFx(() => {
+      if (!windowTitleEl.isConnected) return;
+      if (maybe(0.5)) fireWindowTitleGlitch();
+      loopWindowTitleGlitch();
+    }, randBetween(2800, 5500));
+  }
+
+  function loopTaglineGlitch() {
+    scheduleTitleFx(() => {
+      if (!taglineEl.isConnected) return;
+      if (maybe(0.58)) fireTaglineGlitch();
+      loopTaglineGlitch();
+    }, randBetween(2000, 4200));
+  }
+
+  function loopQuestionGlitch() {
+    scheduleTitleFx(() => {
+      if (!questionEl.isConnected) return;
+      if (maybe(0.52)) fireQuestionGlitch();
+      loopQuestionGlitch();
+    }, randBetween(2200, 4500));
+  }
+
+  function loopCrtRoll() {
+    scheduleTitleFx(() => {
+      if (!crtCard.isConnected) return;
+      if (maybe(0.38)) fireCrtRoll();
+      loopCrtRoll();
+    }, randBetween(2800, 6000));
+  }
+
+  function loopTextJitter() {
+    scheduleTitleFx(() => {
+      if (!logoEl.isConnected) return;
+      if (maybe(0.24)) fireTextJitter();
+      loopTextJitter();
+    }, randBetween(3500, 7500));
+  }
+
+  runIntroGlitches();
+  loopWindowTitleGlitch();
+  loopTaglineGlitch();
+  loopQuestionGlitch();
+  loopCrtRoll();
+  loopTextJitter();
+}
+
 export function renderTitle(root, state, actions) {
+  cleanupTitleFx();
+
+  const windowTitleEl = el("span", { text: WINDOW_TITLE_NORMAL });
+  const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
+  const questionEl = el("p", { class: "title-question", text: QUESTION_NORMAL });
+  const logoEl = el("h1", { class: "title-logo", text: "과로사 방지" });
+  const crtCard = el("div", { class: "title-crt-card" }, [
+    logoEl,
+    taglineEl,
+    questionEl,
+    el("div", { class: "title-buttons" }, [
+      el("button", {
+        class: "title-main-button",
+        onClick: () => { playClickSfx(); actions.go("setup"); },
+      }, [
+        el("span", { class: "play-mark", text: "▶" }),
+        el("span", { text: "출근하기" }),
+      ]),
+      el("button", {
+        class: "title-help-button",
+        text: "도움말",
+        onClick: () => { playClickSfx(); actions.go("onboarding"); },
+      }),
+    ]),
+    el("div", { class: "px-scanline title-crt-scanline" }),
+    el("div", { class: "title-crt-noise" }),
+    el("div", { class: "px-glare title-crt-glare" }),
+  ]);
+
   root.append(
     el("section", { class: "title-menu-screen" }, [
       el("div", { class: "title-game-window" }, [
         el("header", { class: "title-window-bar" }, [
-          el("span", { text: "🏢 overwork_prevention.exe — 출근 준비" }),
+          windowTitleEl,
           el("div", { class: "window-buttons" }, [
             el("span", { text: "_" }),
             el("span", { text: "▢" }),
@@ -15,36 +206,16 @@ export function renderTitle(root, state, actions) {
           ]),
         ]),
         el("nav", { class: "title-menu-bar" }, [
-          el("span", { text: "파일" }),
           el("span", { text: "설정" }),
-          el("span", { text: "도움말" }),
           el("strong", { text: "v0.3" }),
         ]),
         el("div", { class: "title-menu-content" }, [
-          el("div", { class: "title-crt-card" }, [
-            el("h1", { class: "title-logo", text: "과로사 방지" }),
-            el("p", { class: "title-tagline", text: "야근 없이 칼퇴하라" }),
-            el("p", { class: "title-question", text: "출근하시겠습니까?" }),
-            el("div", { class: "title-buttons" }, [
-              el("button", {
-                class: "title-main-button",
-                onClick: () => { playClickSfx(); actions.go("setup"); },
-              }, [
-                el("span", { class: "play-mark", text: "▶" }),
-                el("span", { text: "출근하기" }),
-              ]),
-              el("button", {
-                class: "title-help-button",
-                text: "도움말",
-                onClick: () => { playClickSfx(); actions.go("onboarding"); },
-              }),
-            ]),
-            el("div", { class: "px-scanline" }),
-            el("div", { class: "px-glare" }),
-          ]),
+          crtCard,
           renderDevPanel(state, actions),
         ]),
       ]),
     ]),
   );
+
+  setupTitleGlitches({ windowTitleEl, taglineEl, questionEl, crtCard, logoEl });
 }
