@@ -1065,8 +1065,11 @@ function resolveMessengerChoice(message, choiceId) {
   return { delta: {}, bossAttentionDelta: 0, colleagueIgnoreDelta: 0, hrIgnoreDelta: 0 };
 }
 
+const BOSS_ATTENTION_WARN_AT = 2;
+const BOSS_ATTENTION_INTERVIEW_AT = 4;
+
 function resolveBossMessengerChoice(message, choiceId) {
-  if (choiceId === "ignore") return { delta: {}, bossAttentionDelta: 1 };
+  if (choiceId === "ignore") return { delta: {}, bossAttentionDelta: 2 };
   if (message.subtype === "request") {
     if (choiceId === "accept") {
       return { delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
@@ -1135,14 +1138,14 @@ function applyMessengerResult(result, actions, message, choiceId) {
     next.counters.colleagueIgnoreCount = Math.max(0, (next.counters.colleagueIgnoreCount ?? 0) + (result.colleagueIgnoreDelta ?? 0));
     next.counters.hrIgnoreCount = Math.max(0, (next.counters.hrIgnoreCount ?? 0) + (result.hrIgnoreDelta ?? 0));
 
-    if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= 3) {
+    if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= BOSS_ATTENTION_WARN_AT) {
       const warning = pickBossWarningMessage();
       addMessengerMessage(warning, actions, { silent: true, stateOverride: next });
       next = applyDelta(next, { stress: 2 }, null);
       logDelta.stress = (logDelta.stress ?? 0) + 2;
     }
 
-    if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= 6) {
+    if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= BOSS_ATTENTION_INTERVIEW_AT) {
       shouldOpenInterview = true;
     }
 
@@ -1186,9 +1189,9 @@ function openBossAttentionInterview(actions) {
     title: "팀장 면담",
     body: "팀장님이 회의실로 부릅니다. \"요즘 진행 상황 파악이 잘 안 되네요. 메신저 답장이 자주 없던데 무슨 문제 있습니까?\"",
     choices: [
-      { id: "sorry", label: "죄송합니다", delta: { stress: 3 }, message: "메신저 답장 문제로 팀장 면담을 했다." },
-      { id: "busy", label: "업무가 너무 많습니다", delta: getBossInterviewDelta("busy"), message: "팀장 면담에서 업무가 많다고 말했다." },
-      { id: "fine", label: "별 문제 없습니다", delta: getBossInterviewDelta("fine"), message: "팀장 면담에서 별 문제 없다고 답했다." },
+      getBossInterviewChoice("sorry"),
+      getBossInterviewChoice("busy"),
+      getBossInterviewChoice("fine"),
     ],
   };
 
@@ -1261,19 +1264,70 @@ function closeHrCallEvent(actions, choice) {
   if (pendingEnding) actions.finishWith(pendingEnding);
 }
 
-function getBossInterviewDelta(choiceId) {
+function getBossInterviewChoice(choiceId) {
   const key = getBossSpeechKey(_lastRenderedState ?? {});
+  const choices = {
+    sorry: {
+      id: "sorry",
+      label: "죄송합니다",
+      delta: { stress: 5, gameMinute: 15, workload: -5 },
+      hint: "분위기는 풀리지만, 회의실에서 시간을 쓴다.",
+      message: "팀장 면담에서 먼저 사과했다.",
+    },
+    busy: {
+      id: "busy",
+      label: "바빴습니다",
+      delta: { workload: -10, stress: 8 },
+      hint: "업무 조정을 노릴 수 있지만, 상사와 팽팽해질 수 있다.",
+      message: "팀장 면담에서 요즘 바빴다고 말했다.",
+    },
+    fine: {
+      id: "fine",
+      label: "별 문제 없습니다",
+      delta: { stress: 10, workload: 8, gameMinute: 10 },
+      hint: "면담은 빨리 끝나지만, 이후 눈치와 업무 압박이 커질 수 있다.",
+      message: "팀장 면담에서 별 문제 없다고 답했다.",
+    },
+  };
+  const choice = { ...choices[choiceId], delta: { ...choices[choiceId].delta } };
+
+  if (choiceId === "sorry") {
+    if (key === "smart-lazy") choice.delta.workload = -8;
+    if (key === "smart-busy") choice.delta.stress = 7;
+    if (key === "clumsy-lazy") choice.delta.stress = 3;
+  }
   if (choiceId === "busy") {
-    if (key === "smart-lazy") return { workload: -5 };
-    if (key === "smart-busy") return { stress: 5 };
-    if (key === "clumsy-busy") return { workload: 3, stress: 3 };
-    return Math.random() < 0.5 ? { workload: -3 } : { stress: 4 };
+    if (key === "smart-lazy") choice.delta.workload = -15;
+    if (key === "smart-busy") {
+      choice.delta.workload = -5;
+      choice.delta.stress = 12;
+    }
+    if (key === "clumsy-busy") {
+      choice.delta.workload = -8;
+      choice.delta.stress = 6;
+    }
+    if (key === "clumsy-lazy") {
+      choice.delta.workload = -3;
+      choice.delta.stress = 10;
+    }
+  }
+  if (choiceId === "fine") {
+    if (key === "smart-lazy") {
+      choice.delta.stress = 6;
+      choice.delta.workload = 5;
+    }
+    if (key === "smart-busy") {
+      choice.delta.stress = 15;
+      choice.delta.workload = 12;
+    }
+    if (key === "clumsy-busy") choice.delta.stress = 8;
+    if (key === "clumsy-lazy") {
+      choice.delta.stress = 5;
+      choice.delta.workload = 5;
+    }
   }
 
-  if (key === "smart-lazy") return {};
-  if (key === "smart-busy") return { stress: 10, workload: 5 };
-  if (key === "clumsy-busy") return { stress: 3 };
-  return Math.random() < 0.5 ? {} : { stress: 5, workload: 3 };
+  return choice;
 }
 
 function findMessengerMessage(messageId) {
@@ -2034,6 +2088,7 @@ function renderMainEventChoice(choice, state, onClick, index) {
 }
 
 function renderMainEventPreview(choice, state) {
+  if (choice.hint) return [el("span", { text: choice.hint })];
   if (choice.next === "reject-reason") return [el("span", { text: "거절 사유 선택" })];
   if (choice.next === "meeting-reject") return [el("span", { text: "상사 성향에 따라 결과가 달라진다" })];
 

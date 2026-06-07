@@ -659,10 +659,15 @@
 }
 
 .main-work-intranet {
+  position: absolute;
+  z-index: 12;
+  left: 124px;
+  right: 18px;
+  top: 16px;
+  bottom: 16px;
   display: grid;
   grid-template-rows: 42px minmax(0, 1fr);
   color: var(--ink);
-  margin-left: 104px;
   font-family: NeoDunggeunmo, monospace;
 }
 
@@ -711,19 +716,25 @@
 .main-work-intranet-body {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(250px, 0.8fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(160px, 0.65fr);
   gap: 12px;
   padding: 12px;
+  overflow: auto;
   background: #fff8e3;
 }
 
 .main-work-notice-panel,
 .main-work-schedule-panel {
   min-width: 0;
+  min-height: 0;
   border: 2px solid var(--ink);
   border-radius: 6px;
   padding: 12px;
   background: var(--white, #fdfcf2);
+}
+
+.main-work-notice-panel {
+  overflow: auto;
 }
 
 .main-work-notice-panel h2,
@@ -778,14 +789,16 @@
 
 .main-work-portal-task {
   width: 100%;
+  min-height: 44px;
   border: 2px solid var(--ink);
   border-radius: 5px;
-  padding: 8px 10px;
+  padding: 12px 14px;
   color: var(--ink);
   background: #ffe3e3;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
+  line-height: 1.4;
   text-align: left;
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--ink);
@@ -841,12 +854,13 @@
 
 .main-work-portal-detail-confirm {
   width: 100%;
+  min-height: 44px;
   border: 2px solid var(--ink);
   border-radius: 5px;
-  padding: 10px;
+  padding: 12px 14px;
   background: #b8f5c6;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--ink);
@@ -1549,7 +1563,7 @@
   top: auto;
   right: 12px;
   bottom: 58px;
-  z-index: 900;
+  z-index: 8;
   width: min(310px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
@@ -3348,7 +3362,10 @@
   }
 
   .main-work-intranet {
-    margin-left: 0;
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    bottom: 10px;
   }
 
   .main-work-messenger-slot {
