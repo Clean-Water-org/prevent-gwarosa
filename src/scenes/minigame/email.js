@@ -1,5 +1,5 @@
 import { emailDeck } from "../../data/minigames.js";
-import { renderHud } from "../../ui.js";
+import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
@@ -171,7 +171,7 @@ export function renderEmailGame(root, state, actions, game) {
   // ── 오피스 배경 + 소품 ──
   const shell = document.createElement("section");
   shell.style.cssText = "position:fixed;inset:0;overflow:hidden;background:#caa46a;display:grid;grid-template-rows:auto 1fr";
-  shell.append(renderHud(state));
+  shell.append(renderStatHud(state));
 
   const room = makeOfficeRoom();
   appendDefaultRoomProps(room);
@@ -678,8 +678,27 @@ export function renderEmailGame(root, state, actions, game) {
     cancelAnimationFrame(run.raf);
     clearInterval(run.timerInterval);
     window.removeEventListener("keydown", onKeydown);
+    if (run.onFitResize) window.removeEventListener("resize", run.onFitResize);
     [run.floatTimer, run.feedbackTimer, run.evToastTimer, run.evTimer, run.bossTimer, run.kakaoTimer, run.classifyTimer].forEach(clearTimeout);
   }
+
+  // ── 모니터 자동 맞춤 — 세로 오버플로 시 비율 유지로 축소(스크롤 제거) ──
+  // transform:scale 만 적용해 내부 좌표·낙하 애니메이션·게임 로직은 그대로 유지.
+  function fitMonitor() {
+    monitorWrapper.style.transform = "";
+    monitorWrapper.style.marginBottom = "";
+    const natural = monitorWrapper.offsetHeight;
+    if (!natural) return;
+    const avail = monitorScroll.clientHeight - 36; // 상하 패딩(18px*2) 보정
+    const scale = Math.min(1, avail / natural);
+    if (scale < 1) {
+      monitorWrapper.style.transformOrigin = "top center";
+      monitorWrapper.style.transform = `scale(${scale})`;
+      // 축소된 만큼 레이아웃 높이를 줄여 빈 스크롤 영역이 생기지 않게 보정.
+      monitorWrapper.style.marginBottom = `${-natural * (1 - scale)}px`;
+    }
+  }
+  run.onFitResize = () => fitMonitor();
 
   // ── 초기화 ──
   refreshFxClass();
@@ -687,7 +706,10 @@ export function renderEmailGame(root, state, actions, game) {
   showNextMail();
   updateTimerDisplay();
   window.addEventListener("keydown", onKeydown);
+  window.addEventListener("resize", run.onFitResize);
   playBgm("assets/audio/email_bgm.mp3");
   startTimer();
   run.raf = requestAnimationFrame(tick);
+  requestAnimationFrame(fitMonitor);
+  setTimeout(fitMonitor, 250); // 픽셀 폰트 로드 후 한 번 더 보정
 }

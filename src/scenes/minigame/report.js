@@ -1,5 +1,5 @@
 import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY, BOSS_RED_PEN } from "../../data/report-typos.js";
-import { el, renderHud } from "../../ui.js";
+import { el, renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
 
@@ -146,7 +146,7 @@ export function renderReportGame(root, state, actions, game) {
   // ── 오피스 배경 셸 ──
   const shell = document.createElement("section");
   shell.style.cssText = "position:fixed;inset:0;overflow:hidden;background:#caa46a;display:grid;grid-template-rows:auto 1fr";
-  shell.append(renderHud(state));
+  shell.append(renderStatHud(state));
 
   const room = document.createElement("div");
   room.style.cssText = "position:relative;overflow:hidden";

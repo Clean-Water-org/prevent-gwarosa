@@ -1,5 +1,5 @@
 import { TOPICS, TRAPS, TRAP_MSGS } from "../../data/meeting-slides.js";
-import { renderHud } from "../../ui.js";
+import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
@@ -345,7 +345,7 @@ export function renderMeetingGame(root, state, actions, game) {
   const shell = document.createElement("section");
   shell.style.cssText = "position:fixed;inset:0;overflow:hidden;background:#caa46a;display:grid;grid-template-rows:auto 1fr";
 
-  shell.append(renderHud(state));
+  shell.append(renderStatHud(state));
 
   const room = makeOfficeRoom();
   appendDefaultRoomProps(room);
@@ -480,7 +480,7 @@ export function renderMeetingGame(root, state, actions, game) {
   trashIcon.style.fontSize = "30px"; trashIcon.textContent = "🗑️";
   const trashLbl = document.createElement("span");
   trashLbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:var(--ink);text-align:center";
-  trashLbl.textContent = "발표 자료 아님";
+  trashLbl.textContent = "발표자료 아님";
   const trashCount = document.createElement("span");
   trashCount.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:10px;color:#9a7d62;text-align:center";
   trashEl.append(trashIcon, trashLbl, trashCount);

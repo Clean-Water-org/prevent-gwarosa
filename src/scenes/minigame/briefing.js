@@ -1,4 +1,4 @@
-import { el, renderHud } from "../../ui.js";
+import { el, renderStatHud } from "../../ui.js";
 import { playSfx, duckBgm } from "../../lib/audio.js";
 
 const GAME_ICONS = {
@@ -66,7 +66,7 @@ export function renderMiniGameBriefing(root, state, options, game, mode = "inlin
 
   if (mode === "standalone") {
     root.append(el("section", { class: "minigame-briefing-shell" }, [
-      renderHud(state),
+      renderStatHud(state),
       el("div", { class: "minigame-briefing-room" }, [
         el("div", { class: "minigame-briefing-monitor" }, [
           el("div", { class: "minigame-briefing-screen" }, [briefing]),

@@ -29,6 +29,29 @@ export function statBar(label, value, type) {
   ]);
 }
 
+// 메인화면(.main-work-hud)과 동일한 스탯 HUD — 미니게임 상단에서 재사용.
+export function renderStatHud(state) {
+  const { workload, stress, health } = state.stats;
+  return el("header", { class: "main-work-hud" }, [
+    el("div", { class: "main-work-hud-stats" }, [
+      renderHudStat("💼", "업무량", workload, "workload"),
+      renderHudStat("⚠", "스트레스", stress, "stress"),
+      renderHudStat("❤", "체력", health, "health"),
+    ]),
+  ]);
+}
+
+function renderHudStat(icon, label, value, type) {
+  return el("section", { class: `main-work-stat main-work-stat-${type}` }, [
+    el("div", { class: "main-work-stat-meta" }, [
+      el("span", { class: "main-work-stat-icon", text: icon }),
+      el("span", { text: label }),
+      el("strong", { text: String(value) }),
+    ]),
+    el("div", { class: "main-work-stat-bar" }, [el("i", { style: `width:${value}%` })]),
+  ]);
+}
+
 export function renderItems(state, actions) {
   return el(
     "footer",
