@@ -565,7 +565,8 @@ export function renderMeetingGame(root, state, actions, game) {
     const c=[];
     if (stress>=70) c.push("fx-gray");
     if (state.stats.health<=30) c.push("fx-shake");
-    if (state.counters.coffeeStreak>=2||run.evJitter) c.push("fx-jitter");
+    if (run.evJitter) c.push("fx-jitter");
+    if (state.counters.coffeeStreak>=2) c.push("fx-coffee-jitter"); // 커피 손떨림: 슬라이드만 약하게
     fxWrap.className = c.join(" ");
   }
 
@@ -710,6 +711,7 @@ export function renderMeetingGame(root, state, actions, game) {
         });
         card.addEventListener("dragstart", (e) => { e.stopPropagation(); setCardDragImage(e, card); run.dragId=id; });
         card.addEventListener("dragend", () => { run.dragId=null; });
+        if (id===run.slipFallId) { card.classList.add("coffee-slip-fall"); run.slipFallId=null; }
         trayList.append(card);
       });
     }
@@ -777,11 +779,26 @@ export function renderMeetingGame(root, state, actions, game) {
       if (run.marks) { run.marks=null; } return;
     }
     if (typeof target==="number") {
+      // 커피 손떨림: '첫 슬라이드 배치 시도' 시 1회 안내 — 트랩/미끄럼 여부와 무관하게 가장 먼저 실행
+      if (state.counters.coffeeStreak>=2 && !run.coffeeToastShown) {
+        run.coffeeToastShown=true;
+        showEvToast("커피를 너무 많이 마셨나봐...손이 떨려....");
+      }
       if (item.isTrap) { penalty(false); place[dragId]="tray"; updateBoard(); return; }
       if (run.evJitter) {
         place[dragId]="tray";
         slipToast.style.display="block"; clearTimeout(run.slipTimer); run.slipTimer=setTimeout(()=>{slipToast.style.display="none";},850);
         updateBoard(); return;
+      }
+      // 커피 손떨림: 1번 미끄러지고 2번째는 배치 성공 (미끄러질 땐 카드 더미로 떨어지는 연출)
+      if (state.counters.coffeeStreak>=2) {
+        run.coffeeSlipCount=(run.coffeeSlipCount||0)+1;
+        if (run.coffeeSlipCount%2!==0) {
+          place[dragId]="tray";
+          run.slipFallId=dragId;
+          slipToast.style.display="block"; clearTimeout(run.slipTimer); run.slipTimer=setTimeout(()=>{slipToast.style.display="none";},850);
+          updateBoard(); return;
+        }
       }
       if (stress>=70 || run.bossWatching) {
         const did=String(dragId);
