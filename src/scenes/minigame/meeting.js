@@ -947,7 +947,8 @@ export function renderMeetingGame(root, state, actions, game) {
       desc.textContent = "아무 말 없이 모니터만 보고 있다. 난이도가 일시적으로 상승한다.";
       card.append(top, desc);
       bossBannerEl.append(card);
-      clearTimeout(run.bossTimer); run.bossTimer=setTimeout(()=>{ bossBannerEl.style.display="none"; },3000);
+      // 3초 뒤 배너뿐 아니라 실루엣·상사주시(bossWatching)까지 함께 해제 (email.js와 동일 패턴)
+      clearTimeout(run.bossTimer); run.bossTimer=setTimeout(()=>{ setBoss(false); },3000);
     } else {
       bossBannerEl.style.display="none";
     }
