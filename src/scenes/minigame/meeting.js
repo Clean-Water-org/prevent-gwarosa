@@ -837,7 +837,7 @@ export function renderMeetingGame(root, state, actions, game) {
   }
 
   function penalty(answerTrash) {
-    run.time = Math.max(0, run.time-3);
+    run.penalty += 3; recomputeTime(); updateTimerDisplay();
     run.wrongCount++;
     showFloat("-3초");
     const msg = answerTrash ? "❌ 발표에 필요한 자료예요! 되돌립니다" : TRAP_MSGS[Math.floor(Math.random()*TRAP_MSGS.length)];
@@ -883,18 +883,28 @@ export function renderMeetingGame(root, state, actions, game) {
     }
   }
 
-  // ── 타이머 ──
+  // ── 타이머 (실제 경과시간 기준 — setInterval 드리프트 방지) ──
+  function recomputeTime() {
+    const realElapsed = Math.floor((Date.now() - run.startAt) / 1000);
+    run.time = Math.max(0, run.baseTime - realElapsed - run.penalty);
+  }
+
   function startTimer() {
+    run.startAt = Date.now();
+    run.baseTime = run.time;   // 60
+    run.penalty = 0;           // 이벤트/오답으로 깎인 누적 초
+    run.nextEventAt = 10;      // 다음 중간 이벤트 발생 경과초(실제 기준)
     run.timerInterval = setInterval(() => {
       if (run.done||run.phase!=="play") return;
-      run.time=Math.max(0,run.time-1);
-      run.elapsed+=1; // 실제 경과 초 (run.time 조작과 무관 — 10초 주기 보장)
+      recomputeTime();
       updateTimerDisplay();
-      if (run.elapsed % 10 === 0) {
+      // 중간 이벤트는 실제 경과 10초마다 — 틱 지연과 무관하게 정확히 발생
+      if ((Date.now() - run.startAt) / 1000 >= run.nextEventAt) {
         fireEvent(pickNextEvent());
+        run.nextEventAt += 10;
       }
       if (run.time<=0) { clearInterval(run.timerInterval); finish(); }
-    },1000);
+    },500);
   }
 
   function pickNextEvent() {
@@ -908,7 +918,7 @@ export function renderMeetingGame(root, state, actions, game) {
   function fireEvent(type) {
     const speakOf = { addSlide:"한 장 더 넣어주세요 📎", timeCut:"발표 시간 10분 줄였어요 ⏱️", lock:"이 슬라이드 다시 검토해보세요 🔒", signature:"잠깐... 슬라이드 순서가 이렇게 돼야하지 않나...?", chat:"어제 그 드라마 봤어요~? 📺", lunch:"오늘 점심 뭐 먹을래요? 🍱" };
 
-    if (type==="timeCut") { run.time=Math.max(0,run.time-10); showFloat("-10초"); updateTimerDisplay(); }
+    if (type==="timeCut") { run.penalty += 10; recomputeTime(); showFloat("-10초"); updateTimerDisplay(); }
     if (type==="jitter") {
       run.evJitter=true; jitterBar.style.display="block"; refreshFxClass();
       showEvToast("✋ 손이 떨린다…! 10초간 카드가 미끄러집니다");
@@ -953,7 +963,7 @@ export function renderMeetingGame(root, state, actions, game) {
         const arr=type==="signature"?placed:shuffled(placed).slice(0,2);
         const sh=shuffled(arr.map((id)=>place[id]));
         arr.forEach((id,k)=>{ place[id]=sh[k]; });
-        if (type==="signature") { run.time=Math.max(0,run.time-3); showFloat("-3초"); updateTimerDisplay(); }
+        if (type==="signature") { run.penalty += 3; recomputeTime(); showFloat("-3초"); updateTimerDisplay(); }
         else showEvToast("어? 슬라이드 순서가 바뀌었네... 😱");
         updateBoard(); checkMarksAndAutoFinish();
       }
@@ -965,13 +975,13 @@ export function renderMeetingGame(root, state, actions, game) {
     }
     if (type==="kakao") {
       kakaoEl.replaceChildren();
-      kakaoEl.append(makeKakaoWin({ title:"까까오톡 PC", onClose:()=>{ kakaoEl.replaceChildren(); kakaoEl.hidden=true; }, styleStr:`top:16%;right:8%`,
+      kakaoEl.append(makeKakaoWin({ title:"까까오톡 PC", onClose:()=>{ kakaoEl.replaceChildren(); kakaoEl.hidden=true; }, styleStr:`top:50%;left:50%;transform:translate(-50%,-50%)`,
         msgs:[["😤","김팀장","지금 어디까지 됐어요?"],["😤","김팀장","오늘 안에 끝나죠?"],["😤","김팀장","검토 빨리 부탁해요"]] }));
       kakaoEl.hidden=false;
     }
     if (type==="dinner") {
       kakaoEl.replaceChildren();
-      kakaoEl.append(makeKakaoWin({ title:"까까오톡 PC · 우리팀 단톡방", votes:true, onClose:()=>{ kakaoEl.replaceChildren(); kakaoEl.hidden=true; }, styleStr:`top:14%;left:50%;transform:translateX(-50%);width:410px`,
+      kakaoEl.append(makeKakaoWin({ title:"까까오톡 PC · 우리팀 단톡방", votes:true, onClose:()=>{ kakaoEl.replaceChildren(); kakaoEl.hidden=true; }, styleStr:`top:50%;left:50%;transform:translate(-50%,-50%);width:410px`,
         msgs:[["🙂","이대리","🍻 오늘 회식 메뉴 투표 좀!"],["😀","박사원","저는 고기 당겨요"],["😋","최주임","아무거나 다 좋아요~"]] }));
       kakaoEl.hidden=false;
     }

@@ -305,14 +305,17 @@ export function renderReportGame(root, state, actions, game) {
   penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:Galmuri14,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   penSpeechEl.textContent = "여기 좀 이상한데? 🖋️";
 
-  // 중간 이벤트용 오버레이
+  // 중간 이벤트 토스트 — 모니터 화면(board) 안 상단에 표시
   const evToastEl = document.createElement("div");
-  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:Galmuri14,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  evToastEl.style.cssText = `position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:18;font-family:Galmuri14,monospace;font-size:13.5px;padding:8px 16px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:3px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  board.append(evToastEl);
+
+  // 중간 이벤트용 풀스크린 오버레이
   const flickerEl = document.createElement("div");
   flickerEl.style.cssText = "position:fixed;inset:0;z-index:49;pointer-events:none;background:#fff;opacity:0";
   const kakaoEl = document.createElement("div");
   kakaoEl.hidden = true;
-  shell.append(darkOverlayEl, vignetteEl, bossOverlayEl, penSpeechEl, evToastEl, flickerEl, kakaoEl);
+  shell.append(darkOverlayEl, vignetteEl, bossOverlayEl, penSpeechEl, flickerEl, kakaoEl);
 
   // 본문 영역 내부의 '저장 중...' 인디케이터
   const savingEl = document.createElement("div");
@@ -468,7 +471,8 @@ export function renderReportGame(root, state, actions, game) {
       if (s.plain != null) {
         const parts = s.plain.split(/(\s+)/);
         for (let i = 0; i < parts.length; i++) {
-          if (parts[i] && !/^\s+$/.test(parts[i])) return s.key + "-w" + i;
+          // 줄번호("1.")·기호("—") 등은 건너뛰고, 실제 글자가 있는 단어만 동그라미 대상으로
+          if (parts[i] && /[가-힣A-Za-z]/.test(parts[i])) return s.key + "-w" + i;
         }
       } else if (s.trap) {
         return s.key;
@@ -615,6 +619,7 @@ export function renderReportGame(root, state, actions, game) {
       flickerEl.style.animation = "mg3pFlick 1s steps(1)";
       clearTimeout(run.flickTimer);
       run.flickTimer = setTimeout(() => { flickerEl.style.animation = ""; }, 1000);
+      showEvToast("방금 모니터가 깜빡인 것 같은데....");
     }
   }
 
