@@ -5,7 +5,7 @@ import {
   pulseTitleBgmGlitch,
   cleanupTitleBgmFx,
   bindBgmToggleButton,
-  needsAudioUnlock,
+  isAudioUnlocked,
   onAudioUnlock,
 } from "../lib/audio.js";
 
@@ -250,46 +250,65 @@ export function renderTitle(root, state, actions) {
   const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
   const questionEl = el("p", { class: "title-question", text: QUESTION_NORMAL });
   const logoEl = el("h1", { class: "title-logo", text: "과로사 방지" });
-  const audioHint = el("p", {
-    class: "title-audio-hint",
-    text: "🔇 화면을 클릭하세요",
-    "aria-live": "polite",
+  const startGate = el("button", {
+    class: "title-start-gate",
+    type: "button",
+    "aria-label": "화면을 클릭하여 시작",
+  }, [
+    el("span", { class: "title-audio-hint-mark", text: "▶" }),
+    el("span", { class: "title-audio-hint-text", text: "화면을 클릭하세요" }),
+    el("span", { class: "title-audio-hint-sub", text: "클릭 후 출근·도움말 이용 가능" }),
+  ]);
+
+  const titleLocked = !isAudioUnlocked();
+
+  const mainBtn = el("button", {
+    class: "title-main-button",
+    type: "button",
+    ...(titleLocked ? { disabled: "" } : {}),
+    onClick: () => { playClickSfx(); actions.go("setup"); },
+  }, [
+    el("span", { class: "play-mark", text: "▶" }),
+    el("span", { text: "출근하기" }),
+  ]);
+
+  const helpBtn = el("button", {
+    class: "title-help-button",
+    type: "button",
+    ...(titleLocked ? { disabled: "" } : {}),
+    text: "도움말",
+    onClick: () => { playClickSfx(); actions.go("onboarding"); },
   });
 
-  function syncAudioHint() {
-    if (!audioHint.isConnected) return;
-    const show = needsAudioUnlock();
-    audioHint.hidden = !show;
-    audioHint.setAttribute("aria-hidden", String(!show));
+  const buttonsWrap = el("div", { class: "title-buttons-wrap" }, [
+    el("div", { class: "title-buttons" }, [mainBtn, helpBtn]),
+    startGate,
+  ]);
+
+  function unlockTitle() {
+    if (!buttonsWrap.isConnected) return;
+    mainBtn.removeAttribute("disabled");
+    helpBtn.removeAttribute("disabled");
+    startGate.hidden = true;
+    startGate.setAttribute("aria-hidden", "true");
+    buttonsWrap.classList.remove("is-locked");
   }
+
+  if (titleLocked) buttonsWrap.classList.add("is-locked");
+  else unlockTitle();
 
   const crtCard = el("div", { class: "title-crt-card" }, [
     logoEl,
     taglineEl,
     questionEl,
-    el("div", { class: "title-buttons" }, [
-      el("button", {
-        class: "title-main-button",
-        onClick: () => { playClickSfx(); actions.go("setup"); },
-      }, [
-        el("span", { class: "play-mark", text: "▶" }),
-        el("span", { text: "출근하기" }),
-      ]),
-      el("button", {
-        class: "title-help-button",
-        text: "도움말",
-        onClick: () => { playClickSfx(); actions.go("onboarding"); },
-      }),
-    ]),
-    audioHint,
+    buttonsWrap,
     el("div", { class: "px-scanline title-crt-scanline" }),
     el("div", { class: "title-crt-noise" }),
     el("div", { class: "px-glare title-crt-glare" }),
   ]);
 
   titleAudioUnlockOff?.();
-  titleAudioUnlockOff = onAudioUnlock(syncAudioHint);
-  requestAnimationFrame(syncAudioHint);
+  titleAudioUnlockOff = onAudioUnlock(unlockTitle);
 
   root.append(
     el("section", { class: "title-menu-screen" }, [
