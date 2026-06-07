@@ -5,6 +5,7 @@ import { playBgm, stopBgm } from "../../lib/audio.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
 const TRUSTED_HOSTS = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "crm.company.com", "docs.google.com", "drive.partner-office.kr"];
+const MAIL_START_Y = -16;
 
 function shuffled(a) {
   const r = a.slice();
@@ -157,7 +158,7 @@ export function renderEmailGame(root, state, actions, game) {
     phase: "play", time: 60, done: false,
     deck: buildRoundDeck(), index: 0,
     correct: 0, wrong: 0, missed: 0,
-    locked: false, detailOpen: false, cardY: 12,
+    locked: false, detailOpen: false, cardY: MAIL_START_Y,
     sortedGood: [], sortedSpam: [],
     bossWatching: false, evJitter: false,
     raf: null, timerInterval: null, elapsed: 0, usedEvents: {},
@@ -179,7 +180,7 @@ export function renderEmailGame(root, state, actions, game) {
   monitorScroll.style.cssText = "position:absolute;inset:0;display:flex;align-items:safe center;justify-content:center;padding:18px 16px;overflow:auto";
 
   const monitorWrapper = document.createElement("div");
-  monitorWrapper.style.cssText = "width:min(1000px, 96vw)";
+  monitorWrapper.style.cssText = "width:min(1180px, 96vw)";
 
   const gameContent = document.createElement("div");
   gameContent.style.cssText = "position:relative";
@@ -246,7 +247,7 @@ export function renderEmailGame(root, state, actions, game) {
 
   // 보드 영역
   const board = document.createElement("div");
-  board.style.cssText = "position:relative;background:#e8eef7;padding:12px 16px 14px";
+  board.style.cssText = "position:relative;background:#e8eef7;padding:14px 18px 16px";
 
   const hintEl = document.createElement("div");
   hintEl.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a6478;margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap";
@@ -265,7 +266,7 @@ export function renderEmailGame(root, state, actions, game) {
   statusRow.append(statusIcon, statusCap);
 
   const gameRow = document.createElement("div");
-  gameRow.style.cssText = "display:flex;gap:12px;align-items:stretch";
+  gameRow.style.cssText = "display:flex;gap:14px;align-items:stretch";
 
   const goodZone = makeDropZone("good");
   const spamZone = makeDropZone("spam");
@@ -273,11 +274,11 @@ export function renderEmailGame(root, state, actions, game) {
   spamZone.wrap.addEventListener("click", () => classify("spam"));
 
   const stage = document.createElement("div");
-  stage.style.cssText = `position:relative;flex:1;min-width:0;height:340px;background:#fbfaf5;border:3px solid ${PX.ink};overflow:hidden;box-sizing:border-box`;
+  stage.style.cssText = `position:relative;flex:1;min-width:0;height:440px;background:#fbfaf5;border:3px solid ${PX.ink};overflow:hidden;box-sizing:border-box`;
 
   const mailCard = document.createElement("article");
   mailCard.className = "mg-mail-card";
-  mailCard.style.cssText = `position:absolute;left:50%;transform:translateX(-50%);width:300px;border:3px solid ${PX.ink};background:#fff;box-shadow:4px 4px 0 ${PX.ink};padding:11px 14px;cursor:pointer;box-sizing:border-box;transition:width .15s,box-shadow .15s`;
+  mailCard.style.cssText = `position:absolute;left:50%;transform:translateX(-50%);width:420px;max-width:calc(100% - 36px);border:3px solid ${PX.ink};background:#fff;box-shadow:4px 4px 0 ${PX.ink};padding:15px 18px;cursor:pointer;box-sizing:border-box;transition:width .15s,box-shadow .15s`;
   mailCard.addEventListener("click", () => toggleDetail());
 
   const feedbackEl = document.createElement("span");
@@ -398,10 +399,10 @@ export function renderEmailGame(root, state, actions, game) {
   // ── 메일 카드 렌더 ──
   function renderMailCard(mail) {
     mailCard.replaceChildren();
-    mailCard.style.width = run.detailOpen ? "380px" : "300px";
+    mailCard.style.width = run.detailOpen ? "620px" : "420px";
 
     const top = document.createElement("div");
-    top.style.cssText = "display:flex;justify-content:space-between;font-family:Galmuri11,monospace;font-size:11px;color:#9a9a9a;margin-bottom:6px";
+    top.style.cssText = "display:flex;justify-content:space-between;gap:12px;font-family:Galmuri11,monospace;font-size:13px;color:#9a9a9a;margin-bottom:8px";
     const from = document.createElement("span");
     from.textContent = mail.from;
     const domain = document.createElement("span");
@@ -410,24 +411,24 @@ export function renderEmailGame(root, state, actions, game) {
     top.append(from, domain);
 
     const subject = document.createElement("div");
-    subject.style.cssText = `font-family:Galmuri14,monospace;font-size:16px;color:${PX.ink};margin-bottom:6px`;
+    subject.style.cssText = `font-family:Galmuri14,monospace;font-size:18px;color:${PX.ink};line-height:1.25;margin-bottom:8px`;
     subject.textContent = statusText(mail.subject, "subject");
     if (isHeadache) subject.style.filter = "blur(2.4px)";
 
     const previewText = clipForStress(makeBasicPreview(mail));
     const preview = document.createElement("div");
-    preview.style.cssText = "font-family:Galmuri11,monospace;font-size:11.5px;color:#777;line-height:1.4;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
+    preview.style.cssText = "font-family:Galmuri11,monospace;font-size:13.5px;color:#777;line-height:1.45;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
     preview.textContent = statusText(previewText, "body");
     if (isHeadache) preview.style.filter = "blur(2.4px)";
 
     const clues = document.createElement("div");
-    clues.style.cssText = "display:flex;flex-wrap:wrap;gap:5px";
+    clues.style.cssText = "display:flex;flex-wrap:wrap;gap:6px";
     buildBasicClues(mail).forEach((tag) => {
       const t = document.createElement("span");
       const color = tag.danger ? PX.red : tag.warn ? "#8b6815" : "#777";
       const border = tag.danger ? PX.red : tag.warn ? "#caa83a" : "#d8d2c0";
       const bg = tag.danger ? "#fff0ee" : tag.warn ? "#fff7d8" : "#f8f4e8";
-      t.style.cssText = `font-family:Galmuri9,monospace;font-size:10px;border:1.5px solid ${border};color:${color};background:${bg};padding:2px 7px`;
+      t.style.cssText = `font-family:Galmuri9,monospace;font-size:11px;border:1.5px solid ${border};color:${color};background:${bg};padding:3px 8px`;
       t.textContent = tag.text;
       clues.append(t);
     });
@@ -436,10 +437,10 @@ export function renderEmailGame(root, state, actions, game) {
 
     if (run.detailOpen) {
       const detail = document.createElement("div");
-      detail.style.cssText = "border-top:1.5px dashed #d8d2c0;margin-top:9px;padding-top:8px;display:grid;gap:5px;font-family:Galmuri11,monospace;font-size:11px;color:#666";
+      detail.style.cssText = "border-top:1.5px dashed #d8d2c0;margin-top:12px;padding-top:11px;display:grid;gap:8px;font-family:Galmuri11,monospace;font-size:13px;line-height:1.4;color:#666";
       [["본문", clipForStress(mail.body)], ["첨부파일", mail.attachment || "없음"], ["링크", mail.link || "없음"], ["수신", mail.recipient || "없음"], ["발신시간", mail.time || "없음"]].forEach(([label, value]) => {
         const row = document.createElement("div");
-        row.style.cssText = "display:grid;grid-template-columns:60px 1fr;gap:6px";
+        row.style.cssText = "display:grid;grid-template-columns:86px 1fr;gap:10px";
         const l = document.createElement("span");
         l.style.cssText = "color:#999;font-weight:700";
         l.textContent = label;
@@ -452,7 +453,7 @@ export function renderEmailGame(root, state, actions, game) {
     }
 
     const hint = document.createElement("span");
-    hint.style.cssText = "display:block;text-align:right;margin-top:6px;font-family:Galmuri9,monospace;font-size:10px;color:#aaa";
+    hint.style.cssText = "display:block;text-align:right;margin-top:8px;font-family:Galmuri9,monospace;font-size:11px;color:#aaa";
     hint.textContent = run.detailOpen ? "SPACE 접기" : "SPACE 상세 확인 (-2초)";
     mailCard.append(hint);
   }
@@ -460,7 +461,7 @@ export function renderEmailGame(root, state, actions, game) {
   function showNextMail() {
     const mail = run.deck[run.index];
     if (!mail) { finish(); return; }
-    run.cardY = 12;
+    run.cardY = MAIL_START_Y;
     run.detailOpen = false;
     mailCard.className = "mg-mail-card";
     mailCard.style.top = run.cardY + "%";

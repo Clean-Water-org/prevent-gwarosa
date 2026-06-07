@@ -1,5 +1,5 @@
 import { el, renderBadges, renderHud } from "../../ui.js";
-import { applyDelta, checkEnding } from "../../state.js";
+import { applyDelta, applyWorkTimeCost, checkEnding } from "../../state.js";
 import { renderEmailGame } from "./email.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
@@ -11,19 +11,19 @@ import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js"
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
 const GAME_DELTAS = {
   email: {
-    success: { workload: -25 },
-    partial: { workload: -10, stress: 8 },
-    fail: { workload: -3, stress: 18, health: -8 },
+    success: { workload: -30 },
+    partial: { workload: -18, stress: 8 },
+    fail: { workload: -8, stress: 18, health: -8 },
   },
   meeting: {
-    success: { workload: -25 },
-    partial: { workload: -10, stress: 8 },
-    fail: { workload: -3, stress: 20, health: -8 },
+    success: { workload: -32 },
+    partial: { workload: -18, stress: 8 },
+    fail: { workload: -8, stress: 20, health: -8 },
   },
   report: {
-    success: { workload: -25 },
-    partial: { workload: -10, stress: 8 },
-    fail: { workload: -5, stress: 20, health: -8 },
+    success: { workload: -35 },
+    partial: { workload: -20, stress: 8 },
+    fail: { workload: -10, stress: 20, health: -8 },
   },
 };
 
@@ -85,8 +85,8 @@ export function renderMiniGame(root, state, actions) {
 function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   const deltas = GAME_DELTAS[gameId] || GAME_DELTAS.email;
   let next = applyDelta(state, deltas[result], message);
-  // 미니게임 실제 소요 시간만큼 게임시간 진행 (빨리 깰수록 일찍 퇴근)
-  next.gameMinute += Math.max(0, Math.min(60, Math.round(usedSec)));
+  // 미니게임 실제 소요 시간만큼 게임시간 진행 (빨리 깰수록 일찍 퇴근하고 체력도 덜 소모)
+  applyWorkTimeCost(next, Math.max(0, Math.min(60, Math.round(usedSec))));
 
   if (next.flags.devMode) {
     next.scene = "title";

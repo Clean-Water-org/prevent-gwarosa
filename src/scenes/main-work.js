@@ -1,5 +1,5 @@
 import { el, renderNarrationPopup } from "../ui.js";
-import { formatTime, applyDelta, checkEnding, normalizeLogEntry, addLogEntry } from "../state.js";
+import { formatTime, applyDelta, applyWorkTimeCost, checkEnding, normalizeLogEntry, addLogEntry } from "../state.js";
 import {
   bossMainEvents,
   chatPool,
@@ -78,7 +78,7 @@ const mainEventPlans = new Map();
 const handoverNotes = [
   "업무량은 100에서 시작합니다. 18시 전에 모두 처리하면 퇴근할 수 있습니다.",
   "스트레스가 100이 되면 더 이상 버틸 수 없습니다. 적절히 관리하세요.",
-  "체력이 0이 되면 업무를 진행할 수 없습니다. 무리하지 마세요.",
+  "업무 시간이 오래 걸릴수록 체력이 조금씩 줄어듭니다. 무리하지 마세요.",
   "상사마다 성향이 다릅니다. 관찰하면 패턴을 찾을 수 있습니다.",
   "메신저는 자주 확인하는 것이 좋습니다. 답장이 늦어질수록 업무가 늘어날 수 있습니다.",
   "아이템은 필요할 때 사용하세요. 아껴둘 이유는 없습니다.",
@@ -725,10 +725,10 @@ function showStatusEventPopup(type, state, container, actions) {
     actions.mutateState((draft) => {
       if (!draft.flags.statusEvents) draft.flags.statusEvents = {};
       draft.flags.statusEvents[type] = true;
-      draft.gameMinute += 10;
+      const timeCost = applyWorkTimeCost(draft, 10);
       addLogEntry(draft, {
         cause: config.logCause,
-        delta: { gameMinute: 10 },
+        delta: { gameMinute: 10, ...timeCost.delta },
         icon: "🔴",
       });
       pendingEnding = checkEnding(draft);
