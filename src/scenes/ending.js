@@ -85,10 +85,20 @@ function makeMonitor(content) {
 }
 
 // ── 엔딩 부품 ─────────────────────────────────────────────────────
-// 일러스트 영역: assets/endings/{key}.svg 로드, 없으면 설명 placeholder 표시
-function makeIllo(card) {
+// card.key → 실제 일러스트 파일명 (assets/endings/). 여성은 _f 변형, 과로사(death)는 공통.
+const ILLO_FILE = {
+  "clear-s": "ending_clear_s",
+  "clear-a": "ending_clear_a",
+  "clear-b": "ending_clear_b",
+  overtime: "ending_overtime",
+  quit: "ending_quit",
+  overwork: "ending_death",
+};
+
+// 일러스트 영역: 엔딩·성별에 맞는 SVG 로드, 없으면 설명 placeholder 표시
+function makeIllo(card, gender) {
   const wrap = document.createElement("div");
-  wrap.style.cssText = `position:relative;height:188px;border:3px solid ${PX.ink};background:#eef1f6;overflow:hidden;box-shadow:4px 4px 0 ${PX.ink}`;
+  wrap.style.cssText = `position:relative;width:100%;aspect-ratio:16/9;border:3px solid ${PX.ink};background:#eef1f6;overflow:hidden;box-shadow:4px 4px 0 ${PX.ink}`;
   const ph = document.createElement("div");
   ph.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px;text-align:center";
   const phTag = document.createElement("span");
@@ -105,7 +115,9 @@ function makeIllo(card) {
   img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;display:none";
   img.addEventListener("load", () => { img.style.display = "block"; });
   img.addEventListener("error", () => { img.remove(); }); // 에셋 없으면 placeholder 유지
-  img.src = `assets/endings/${card.key}.svg`;
+  const base = ILLO_FILE[card.key] ?? card.key;
+  const suffix = (gender === "female" && card.key !== "overwork") ? "_f" : "";
+  img.src = `assets/endings/${base}${suffix}.svg`;
   wrap.append(img);
   return wrap;
 }
@@ -186,7 +198,7 @@ export function renderEnding(root, state, actions) {
   // 좌: 일러스트 + 이모지 + 제목 + 문구
   const left = document.createElement("div");
   left.style.cssText = "flex:1.1;min-width:0;display:flex;flex-direction:column;gap:13px";
-  left.append(makeIllo(card));
+  left.append(makeIllo(card, state.player?.gender));
   const titleRow = document.createElement("div");
   titleRow.style.cssText = "display:flex;align-items:center;gap:12px";
   const emoji = document.createElement("span");
