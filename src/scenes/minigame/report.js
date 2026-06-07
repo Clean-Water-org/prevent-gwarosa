@@ -1,6 +1,7 @@
 import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY, BOSS_RED_PEN } from "../../data/report-typos.js";
 import { el, renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
+import { fillBossText } from "../../lib/boss-text.js";
 import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { headacheCorruptText } from "../../lib/headache-fx.js";
@@ -342,7 +343,7 @@ export function renderReportGame(root, state, actions, game) {
   // 빨간펜 말풍선
   const penSpeechEl = document.createElement("div");
   penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
-  penSpeechEl.textContent = "여기 좀 이상한데? 🖋️";
+  penSpeechEl.textContent = fillBossText("{name}, 여기 좀 이상한데요? 🖋️", state.player?.name);
 
   // 팀장 코멘트형 말풍선 (addPage 등 — 빨간펜 아님)
   const bossSpeechEl = document.createElement("div");
@@ -711,7 +712,8 @@ export function renderReportGame(root, state, actions, game) {
       updateBody();
       updateFoundPill();
       // 상사 실루엣 + 말풍선으로 안내 (겹치면 토스트로 폴백)
-      if (!bossSay("📄 팀장님: 이 내용도 추가해주세요")) showEvToast("📄 팀장님: 이 내용도 추가해주세요");
+      const addPageMsg = fillBossText("📄 {name}, 이 내용도 추가해 주세요.", state.player?.name);
+      if (!bossSay(addPageMsg)) showEvToast(addPageMsg);
     } else if (type === "saveFail") {
       savingEl.style.display = "block";
       clearTimeout(run.saveTimer);

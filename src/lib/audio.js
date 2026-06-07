@@ -131,6 +131,19 @@ export function duckBgm({ volume = 0.12, durationMs = 900 } = {}) {
   }, durationMs);
 }
 
+/** BGM 일시 정지 (시계 컷신 등). */
+export function pauseBgm() {
+  if (!current || current.paused) return false;
+  current.pause();
+  return true;
+}
+
+/** pauseBgm으로 멈춘 BGM 재개. */
+export function resumeBgm() {
+  if (!current || !current.paused) return;
+  current.play().catch(() => {});
+}
+
 let sfxCtx = null;
 function getSfxCtx() {
   if (sfxCtx === null) {
@@ -172,6 +185,27 @@ export function playSfx(src, { volume = 0.6, gain = 1 } = {}) {
   audio.volume = Math.min(volume, 1);
   audio.play().catch(() => {});
   return audio;
+}
+
+/**
+ * 효과음을 재생하고 지정 시간 후 자동 정지한다.
+ * @returns {{ audio: HTMLAudioElement, stop: () => void }}
+ */
+export function playTimedSfx(src, { volume = 0.6, durationMs = 1000 } = {}) {
+  const audio = playSfx(src, { volume });
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    audio.pause();
+    audio.currentTime = 0;
+  };
+  const timer = setTimeout(stop, durationMs);
+  audio.addEventListener("ended", () => {
+    clearTimeout(timer);
+    stopped = true;
+  }, { once: true });
+  return { audio, stop };
 }
 
 const CLICK_SFX_SRC = "assets/audio/computer-mouse-click.mp3";

@@ -1,3 +1,30 @@
+export const BOSS_TYPE_GUIDE = {
+  intro: "상사마다 성향이 다릅니다.",
+  types: [
+    {
+      id: "smart-busy",
+      label: "꼼꼼 · 바쁨",
+      tip: "지시 많음 · 거절 어려움 → 답장 빠르게",
+    },
+    {
+      id: "smart-lazy",
+      label: "똑똑 · 여유",
+      tip: "거절 쉬움 · 책임 넘김 조심 → 선 긋기",
+    },
+    {
+      id: "clumsy-busy",
+      label: "열정 · 바쁨",
+      tip: "지시·방향 자주 바뀜 → 우선순위 정리",
+    },
+    {
+      id: "clumsy-lazy",
+      label: "자유 · 여유",
+      tip: "압박 적음 · 지시 애매 → 여유 미리 확보",
+    },
+  ],
+  footer: "오늘 힌트와 맞춰 거절·답장 전략을 바꿔보세요.",
+};
+
 export const bosses = [
   {
     id: "smart-busy",

@@ -8,20 +8,30 @@ import {
   positiveMainEvents,
 } from "../data/events.js";
 import { items } from "../data/items.js";
+import { BOSS_TYPE_GUIDE } from "../data/bosses.js";
+import { PLAYER_TYPES } from "../data/player-types.js";
 import { PORTAL_TASKS } from "../data/portal-tasks.js";
+import { personalizeBossChat, personalizeBossEventBody, fillBossText } from "../lib/boss-text.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey } from "./minigame/flow.js";
 import { renderLunchIntro, renderLunchResult } from "./lunch.js";
-import { playBgm, duckBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../lib/audio.js";
+import { playBgm, duckBgm, playSfx, playTimedSfx, playClickSfx, syncBgmStatusFx, pauseBgm, resumeBgm } from "../lib/audio.js";
 import {
   applyHeadacheEventToDraft,
   mountHeadacheDialog,
 } from "../lib/headache-event.js";
 import { formatHeadacheDisplayText } from "../lib/headache-fx.js";
+import {
+  buildChatLogCause,
+  getMessageFlavorLabel,
+  getMessageReplyOptions,
+  resolveMessageChoice,
+} from "../lib/chat-replies.js";
 
 const MAIN_BGM_SRC = "assets/audio/so-happy-with-my-8-bit-game.mp3";
 const EVENT_SFX = "assets/audio/new-event-notification.mp3";
+const CLOCK_TICK_SFX = "assets/audio/clock-tick.wav";
 
 let _notifPanel = null;
 let _spawnTimeout = null;
@@ -44,11 +54,21 @@ let _currentGameMinute = 9 * 60;
 let _messengerState = null;
 let _messengerUpdater = null;
 let _intranetUpdater = null;
+let _intranetActiveTab = "board";
+
+const INTRANET_TABS = [
+  { id: "mypage", label: "마이페이지" },
+  { id: "approval", label: "전자결재" },
+  { id: "board", label: "게시판" },
+  { id: "files", label: "자료실" },
+];
 let _hrPortalIntroSpawned = false;
 let _lastRenderedState = null;
 let _openMessengerRoom = null;
 let _replyExpireTimers = new Map();
 let _preservingNotifications = false;
+let _logHighlightClearId = null;
+let _logHighlightTimer = null;
 let _preserveSpawnMs = null;
 
 const STATUS_EVENT_CONFIGS = {
@@ -84,8 +104,8 @@ const HR_NOTICE_SPAWN_WEIGHT = 4;
 const HR_NOTICE_MAX_PER_PHASE = 1;
 const MAX_MESSENGER_TOASTS = 5;
 const MAIN_PHASE_DURATIONS_SEC = [35, 35, 40, 40, 40];
-const PHONE_CHANCE_BY_PHASE = [0.95, 0.95, 0.95, 0.95];
-const PHONE_CALLS_PER_PHASE = 2;
+const PHONE_CHANCE_BY_PHASE = [0.4, 0.45, 0.5, 0.45, 0.4];
+const PHONE_CALLS_PER_PHASE = 1;
 const PHONE_RING_SECONDS = 12;
 const MAIN_EVENT_CHANCE = 0.75;
 const MAIN_EVENT_DELAY_MS = 4500;
@@ -229,21 +249,13 @@ export function renderMainWork(root, state, actions) {
   const room = makeOfficeRoom();
   room.classList.add("main-work-room");
   appendDefaultRoomProps(room);
-  room.append(el("div", { class: "main-work-wall-note" }, [
-    el("strong", { text: "TO DO" }),
-    el("span", { text: "보고서" }),
-    el("span", { text: "회의" }),
-  ]));
 
-  const recentLogCollapsed = Boolean(state.flags?.recentLogCollapsed);
   const monitorScroll = el("div", { class: "main-work-monitor-scroll" });
   const monitorStage = el("div", { class: "main-work-monitor-stage" }, [
-    el("div", {
-      class: `main-work-monitor-stage-spacer${recentLogCollapsed ? " is-collapsed" : ""}`,
-      "aria-hidden": "true",
-    }),
-    el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]),
-    renderRecentLogPanel(state, actions),
+    el("div", { class: "main-work-monitor-wrapper" }, [
+      makeMonitor(monitorScreen),
+      renderRecentLogPanel(state, actions),
+    ]),
   ]);
   monitorScroll.append(monitorStage);
   room.append(monitorScroll);
@@ -404,17 +416,34 @@ function renderMainWorkItemButton(itemId, index, actions) {
 function renderRecentLogPanel(state, actions) {
   const logs = (state.log ?? []).map((entry) => normalizeLogEntry(state, entry));
   const collapsed = Boolean(state.flags?.recentLogCollapsed);
+  const highlightId = state.flags?.recentLogHighlightId ?? null;
+  const hasNewEntry = Boolean(highlightId);
   const title = `📋 업무 일지 (${logs.length})`;
   const logList = collapsed
     ? null
     : el("div", { class: "main-work-recent-log-list" }, logs.length
-      ? logs.map(renderRecentLogEntry)
+      ? logs.map((entry) => renderRecentLogEntry(entry, highlightId))
       : [el("p", { class: "main-work-recent-log-empty", text: "아직 기록된 변화가 없습니다." })]);
 
   if (logList) {
     requestAnimationFrame(() => {
       logList.scrollTop = logList.scrollHeight;
     });
+  }
+
+  if (hasNewEntry && _logHighlightClearId !== highlightId) {
+    if (_logHighlightTimer) window.clearTimeout(_logHighlightTimer);
+    _logHighlightClearId = highlightId;
+    _logHighlightTimer = window.setTimeout(() => {
+      _logHighlightClearId = null;
+      _logHighlightTimer = null;
+      actions.mutateState((draft) => {
+        if (draft.flags?.recentLogHighlightId === highlightId) {
+          draft.flags.recentLogHighlightId = null;
+        }
+        return draft;
+      });
+    }, 2800);
   }
 
   const workStarted = Boolean(state.flags?.handoverGuideSeen);
@@ -425,21 +454,33 @@ function renderRecentLogPanel(state, actions) {
     text: collapsed ? "펼치기" : "접기",
   };
   if (workStarted) {
-    toggleAttrs.onClick = () => actions.mutateState((draft) => {
-      draft.flags.recentLogCollapsed = !Boolean(draft.flags?.recentLogCollapsed);
-      return draft;
-    });
+    toggleAttrs.onMouseDown = (event) => {
+      if (event.button === 0) event.preventDefault();
+    };
+    toggleAttrs.onClick = (event) => {
+      event.currentTarget.focus({ preventScroll: true });
+      actions.mutateState((draft) => {
+        draft.flags.recentLogCollapsed = !Boolean(draft.flags?.recentLogCollapsed);
+        if (draft.flags.recentLogCollapsed) {
+          draft.flags.recentLogHighlightId = null;
+        }
+        return draft;
+      });
+    };
   } else {
     toggleAttrs.disabled = "true";
     toggleAttrs.title = "업무 시작 후 사용 가능";
   }
 
   return el("aside", {
-    class: `main-work-recent-log${collapsed ? " is-collapsed" : ""}`,
+    class: `main-work-recent-log${collapsed ? " is-collapsed" : ""}${hasNewEntry ? " has-new-entry" : ""}`,
     "aria-label": "업무 일지",
   }, [
     el("header", { class: "main-work-recent-log-head" }, [
       el("strong", { text: title }),
+      ...(hasNewEntry
+        ? [el("span", { class: "main-work-recent-log-new-dot", text: "●", "aria-label": "새 기록" })]
+        : []),
       el("button", toggleAttrs),
     ]),
     ...(collapsed
@@ -448,11 +489,15 @@ function renderRecentLogPanel(state, actions) {
   ]);
 }
 
-function renderRecentLogEntry(entry) {
-  return el("article", { class: "main-work-recent-log-entry" }, [
+function renderRecentLogEntry(entry, highlightId) {
+  const isNew = Boolean(highlightId && entry.id === highlightId);
+  return el("article", { class: `main-work-recent-log-entry${isNew ? " is-new" : ""}` }, [
     el("span", { class: "main-work-recent-log-icon", text: entry.icon ?? "🔵" }),
     el("div", { class: "main-work-recent-log-copy" }, [
-      el("time", { text: entry.time ?? "" }),
+      el("div", { class: "main-work-recent-log-meta" }, [
+        el("time", { text: entry.time ?? "" }),
+        ...(isNew ? [el("span", { class: "main-work-recent-log-new-badge", text: "NEW" })] : []),
+      ]),
       el("p", { text: entry.cause ?? "기록된 행동" }),
       ...(entry.effects ?? []).map((effect) => el("span", { text: effect })),
     ]),
@@ -470,20 +515,33 @@ function renderIntranetWindow(actions) {
   const shell = el("section", { class: "main-work-intranet" }, [
     el("header", { class: "main-work-intranet-tabs" }, [
       el("strong", { class: "main-work-intranet-logo", text: "DAEHAN INTRANET" }),
-      el("nav", { class: "main-work-tab-menu" }, [
-        el("span", { text: "마이페이지" }),
-        el("span", { text: "전자결재" }),
-        el("span", { text: "게시판" }),
-        el("span", { text: "자료실" }),
-      ]),
+      el("nav", { class: "main-work-tab-menu", role: "tablist" }),
     ]),
     el("div", { class: "main-work-intranet-body" }),
   ]);
 
   const refresh = (openTaskId = null) => {
+    const state = _lastRenderedState;
+    const tabMenu = shell.querySelector(".main-work-tab-menu");
     const body = shell.querySelector(".main-work-intranet-body");
-    if (!body) return;
-    body.replaceChildren(...renderIntranetBody(actions, openTaskId, (taskId) => refresh(taskId)));
+    if (!tabMenu || !body) return;
+
+    tabMenu.replaceChildren(...INTRANET_TABS.map((tab) => el("button", {
+      class: `main-work-intranet-tab${_intranetActiveTab === tab.id ? " is-active" : ""}`,
+      type: "button",
+      role: "tab",
+      "aria-selected": _intranetActiveTab === tab.id ? "true" : "false",
+      text: tab.label,
+      onClick: () => {
+        if (_intranetActiveTab === tab.id) return;
+        _intranetActiveTab = tab.id;
+        refresh(openTaskId);
+      },
+    })));
+
+    body.classList.toggle("is-mypage", _intranetActiveTab === "mypage");
+    body.classList.toggle("is-placeholder", _intranetActiveTab === "approval" || _intranetActiveTab === "files");
+    body.replaceChildren(...renderIntranetBody(state, actions, openTaskId, (taskId) => refresh(taskId)));
     updateIntranetTaskbarButton(document.querySelector(".main-work-task-intranet"));
   };
 
@@ -492,7 +550,109 @@ function renderIntranetWindow(actions) {
   return shell;
 }
 
-function renderIntranetBody(actions, openTaskId, onOpenTask) {
+function renderIntranetBody(state, actions, openTaskId, onOpenTask) {
+  if (_intranetActiveTab === "mypage") {
+    return [renderIntranetMypage(state)];
+  }
+  if (_intranetActiveTab === "approval" || _intranetActiveTab === "files") {
+    const label = INTRANET_TABS.find((tab) => tab.id === _intranetActiveTab)?.label ?? "메뉴";
+    return [renderIntranetPlaceholder(label)];
+  }
+  return renderIntranetBoardBody(actions, openTaskId, onOpenTask);
+}
+
+function renderIntranetPlaceholder(label) {
+  return el("section", { class: "main-work-notice-panel main-work-intranet-placeholder" }, [
+    el("h2", { text: label }),
+    el("p", { text: "해당 메뉴는 준비 중입니다." }),
+  ]);
+}
+
+function renderIntranetMypage(state) {
+  const player = state?.player ?? {};
+  const playerName = player.name || "김대리";
+  const portrait = player.gender === "female" ? "female" : "male";
+  const genderLabel = player.gender === "female" ? "여성" : "남성";
+  const typeDef = PLAYER_TYPES[player.type] || PLAYER_TYPES.coffee;
+  const typeItem = items[typeDef.item];
+  const bossHint = state?.boss?.publicHint ?? "오늘의 상사 정보를 확인하세요.";
+  const bossGuide = BOSS_TYPE_GUIDE.types.find((entry) => entry.id === state?.boss?.id);
+  const startItemLabel = typeDef.item === "coffee" ? "커피 ☕" : "담배 🚬";
+
+  return el("section", { class: "main-work-mypage" }, [
+    el("header", { class: "main-work-mypage-head" }, [
+      el("h2", { text: "내 정보" }),
+      el("span", { text: "출근부에 입력한 설정을 다시 확인할 수 있습니다." }),
+    ]),
+    el("div", { class: "main-work-mypage-grid" }, [
+      el("aside", { class: "main-work-mypage-side" }, [
+        el("article", { class: "commute-player-card" }, [
+          el("div", { class: "commute-player-photo" }, [
+            el("img", {
+              class: "commute-player-portrait",
+              src: `assets/portraits/${portrait}.svg`,
+              alt: "증명사진",
+            }),
+          ]),
+          el("strong", { text: "오늘의 직장인" }),
+          el("b", { text: `사원 ${playerName}` }),
+          el("span", { text: "DAEHAN TECH 사원" }),
+        ]),
+        el("section", { class: "commute-boss-hint" }, [
+          el("header", { class: "commute-boss-hint-head" }, [
+            el("h2", { text: "상사 힌트" }),
+          ]),
+          el("p", { text: bossHint }),
+          ...(bossGuide ? [
+            el("p", { class: "main-work-mypage-boss-tip", text: `${bossGuide.label} · ${bossGuide.tip}` }),
+          ] : []),
+          el("p", { class: "main-work-mypage-boss-foot", text: BOSS_TYPE_GUIDE.footer }),
+        ]),
+      ]),
+      el("section", { class: "main-work-mypage-main" }, [
+        el("section", { class: "main-work-mypage-section" }, [
+          el("h3", { text: "기본 정보" }),
+          el("dl", { class: "main-work-mypage-facts" }, [
+            renderMypageFact("이름", playerName),
+            renderMypageFact("성별", genderLabel),
+            renderMypageFact("오늘의 컨디션", `${typeDef.emoji} ${typeDef.name} (${typeDef.hint})`),
+          ]),
+        ]),
+        el("section", { class: "main-work-mypage-section" }, [
+          el("h3", { text: `${typeDef.name} 가이드` }),
+          el("div", { class: "main-work-mypage-guide" },
+            typeDef.rows.map((row) => renderMypageGuideRow(row)),
+          ),
+        ]),
+        el("section", { class: "main-work-mypage-section main-work-mypage-items" }, [
+          el("h3", { text: "🎒 아이템 안내" }),
+          el("p", { text: "슬롯 3칸 · 메인화면에서만 사용 가능" }),
+          el("p", { text: `시작 2칸 · ${startItemLabel} + 유튜브 쇼츠 📱` }),
+          el("p", { text: `기본 아이템 효과 · ${typeItem?.icon ?? ""} ${typeItem?.effect ?? typeDef.rows[1]?.v ?? ""}` }),
+          el("p", { text: "보상 1칸 · 동료 이벤트로 획득 (예: 홍삼스틱 🧴)" }),
+        ]),
+      ]),
+    ]),
+  ]);
+}
+
+function renderMypageFact(label, value) {
+  return el("div", { class: "main-work-mypage-fact" }, [
+    el("dt", { text: label }),
+    el("dd", { text: value }),
+  ]);
+}
+
+function renderMypageGuideRow(row) {
+  const isWarn = row.ic === "⚠️";
+  return el("div", { class: `main-work-mypage-guide-row${isWarn ? " is-warn" : ""}` }, [
+    el("span", { class: "main-work-mypage-guide-icon", text: row.ic }),
+    el("span", { class: "main-work-mypage-guide-key", text: row.k }),
+    el("span", { class: "main-work-mypage-guide-val", text: row.v }),
+  ]);
+}
+
+function renderIntranetBoardBody(actions, openTaskId, onOpenTask) {
   const pendingTasks = getPendingPortalTasks();
   const openTask = openTaskId ? PORTAL_TASKS[openTaskId] : null;
 
@@ -672,9 +832,7 @@ function playHandoverGuide(screen, actions, onStartChats) {
 
   timers.push(window.setTimeout(() => {
     cursor.classList.remove("clicking");
-    cancelHandoverPopup = openHandoverPopup(screen, actions, clearGuideLayer, true, onStartChats, {
-      autoCloseMs: 5600,
-    });
+    cancelHandoverPopup = openHandoverPopup(screen, actions, clearGuideLayer, true, onStartChats);
   }, 2950));
 
   function clearGuideLayer() {
@@ -698,8 +856,13 @@ function playHandoverGuide(screen, actions, onStartChats) {
   return clearGuideLayer;
 }
 
+function getMainMonitorScreen(root) {
+  return root.querySelector(".main-work-monitor-screen") ?? root;
+}
+
 function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartChats = null, options = {}) {
-  const existing = screen.querySelector(".main-work-handover-overlay");
+  const monitorScreen = getMainMonitorScreen(screen);
+  const existing = monitorScreen.querySelector(".main-work-handover-overlay");
   if (existing) { onClose?.(); return; }
   let autoCloseTimer = null;
 
@@ -747,7 +910,7 @@ function openHandoverPopup(screen, actions, onClose, playIntro = false, onStartC
     ]),
   ]);
 
-  screen.append(overlay);
+  monitorScreen.append(overlay);
   if (options.autoCloseMs) {
     autoCloseTimer = window.setTimeout(close, options.autoCloseMs);
   }
@@ -771,17 +934,33 @@ function playClockCutscene(screen, onDone, options = {}) {
   ];
   const totalMs = options.totalMs ?? 4400;
   const timers = [];
+  const clockTickStops = [];
+
+  const stopClockTicks = () => {
+    for (const stop of clockTickStops) stop();
+    clockTickStops.length = 0;
+  };
 
   const startClock = () => {
+    pauseBgm();
     const display = el("div", { class: "main-work-clock-display" });
     const overlay = el("div", { class: "main-work-clock-cutscene" }, [display]);
     monitorScreen.append(overlay);
 
     for (const { text, ms, step } of clockSteps) {
-      timers.push(setTimeout(() => { display.textContent = text; display.dataset.step = step; }, ms));
+      timers.push(setTimeout(() => {
+        display.textContent = text;
+        display.dataset.step = step;
+        if (step === "time") {
+          const { stop } = playTimedSfx(CLOCK_TICK_SFX, { volume: 0.75, durationMs: 850 });
+          clockTickStops.push(stop);
+        }
+      }, ms));
     }
     timers.push(setTimeout(() => {
+      stopClockTicks();
       overlay.remove();
+      resumeBgm();
       onDone?.();
     }, totalMs));
   };
@@ -978,8 +1157,8 @@ function renderMessengerMessage(message, state, actions) {
   const displayText = headache
     ? formatHeadacheDisplayText(message.text, { part: "body", seed: message.id, enabled: true })
     : message.text;
-  const replies = getMessengerReplyLabels(message);
-  const hasIgnoreChoice = replies.some((reply) => reply.id === "ignore");
+  const replies = getMessageReplyOptions(message);
+  const flavorLabel = getMessageFlavorLabel(message);
   const expired = isMessageReplyExpired(message);
   const statusText = message.status === "replied"
     ? "답장 완료"
@@ -992,13 +1171,14 @@ function renderMessengerMessage(message, state, actions) {
       : "답장 없음";
   const canReply = message.needsReply && !message.status && !expired;
   const statusClass = message.status ?? (expired ? "ignored" : "pending");
-  return el("article", { class: `main-work-messenger-message main-work-messenger-message-${message.kind}` }, [
+  return el("article", { class: `main-work-messenger-message main-work-messenger-message-${message.kind}${message.subtype === "lore" ? " main-work-messenger-message-lore" : ""}` }, [
     ...(message.needsReply ? [el("span", { class: `main-work-messenger-status is-${statusClass}`, text: statusText })] : []),
     el("div", { class: "main-work-messenger-message-meta" }, [
+      ...(flavorLabel ? [el("span", { class: "main-work-messenger-flavor", text: flavorLabel })] : []),
       el("strong", { text: message.from }),
       el("time", { text: formatTime(message.minute) }),
     ]),
-    el("p", { text: displayText }),
+    el("p", { class: message.text.includes("\n") ? "main-work-messenger-message-body is-multiline" : "main-work-messenger-message-body", text: displayText }),
     ...(message.kind === "hr" && !message.portalCompleted && canReply
       ? [el("p", { class: "main-work-messenger-portal-hint", text: "사내포털에서 먼저 확인하세요." })]
       : []),
@@ -1010,7 +1190,7 @@ function renderMessengerMessage(message, state, actions) {
           text: reply.label,
           onClick: () => handleMessengerChoice(message.id, reply.id, actions),
         })),
-        ...(message.allowIgnore === false || hasIgnoreChoice ? [] : [el("button", {
+        ...(message.allowIgnore === false ? [] : [el("button", {
           class: "main-work-messenger-ignore",
           type: "button",
           text: "못 본 척",
@@ -1033,43 +1213,6 @@ function updateMessengerTaskbarButton(button) {
   button.setAttribute("aria-label", unread ? `메신저 읽지 않은 메시지 ${unread}개` : "메신저");
 }
 
-function getMessengerReplyLabels(message) {
-  if (message.kind === "boss" && message.subtype === "request") {
-    return [
-      { id: "accept", label: "가능합니다", tone: "primary" },
-      { id: "hard", label: "어려울 것 같아요", tone: "neutral" },
-      { id: "ignore", label: "못 본 척", tone: "soft" },
-    ];
-  }
-  if (message.kind === "boss" && message.subtype === "check") {
-    return [
-      { id: "nearly", label: "거의 끝났어요", tone: "primary" },
-      { id: "check", label: "확인해볼게요", tone: "neutral" },
-      { id: "ignore", label: "못 본 척", tone: "soft" },
-    ];
-  }
-  if (message.kind === "boss" && message.subtype === "praise") {
-    return [
-      { id: "thanks", label: "감사합니다", tone: "primary" },
-      { id: "effort", label: "더 노력할게요", tone: "neutral" },
-      { id: "ignore", label: "못 본 척", tone: "soft" },
-    ];
-  }
-  if (message.kind === "colleague") {
-    return [
-      { id: "reply", label: "답장", tone: "primary" },
-      { id: "later", label: "나중에", tone: "neutral" },
-    ];
-  }
-  if (message.kind === "hr") {
-    if (message.portalCompleted) {
-      return [{ id: "confirm", label: "확인했습니다", tone: "primary" }];
-    }
-    return [];
-  }
-  return [];
-}
-
 function handleMessengerChoice(messageId, choiceId, actions) {
   const message = findMessengerMessage(messageId);
   if (!message || message.status) return;
@@ -1081,74 +1224,16 @@ function handleMessengerChoice(messageId, choiceId, actions) {
       ? "ignored"
       : "replied";
   message.unread = false;
-  const result = resolveMessengerChoice(message, choiceId);
+  const result = resolveMessageChoice(message, choiceId, {
+    getBossHardReplyDelta,
+  });
   applyMessengerResult(result, actions, message, choiceId);
   _messengerUpdater?.();
   updateMessengerChrome();
 }
 
-function resolveMessengerChoice(message, choiceId) {
-  if (message.kind === "boss") return resolveBossMessengerChoice(message, choiceId);
-  if (message.kind === "colleague") return resolveColleagueMessengerChoice(message, choiceId);
-  if (message.kind === "hr") return resolveHrMessengerChoice(message, choiceId);
-  return { delta: {}, bossAttentionDelta: 0, colleagueIgnoreDelta: 0, hrIgnoreDelta: 0 };
-}
-
 const BOSS_ATTENTION_WARN_AT = 3;
 const BOSS_ATTENTION_INTERVIEW_AT = 6;
-
-function resolveBossMessengerChoice(message, choiceId) {
-  if (choiceId === "ignore") return { delta: { stress: 3 }, bossAttentionDelta: 1 };
-  if (message.subtype === "request") {
-    if (choiceId === "accept") {
-      return { delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
-    }
-    return { delta: getBossHardReplyDelta(), bossAttentionDelta: -1 };
-  }
-  if (message.subtype === "check") {
-    if (choiceId === "nearly") return { delta: { stress: -1, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
-    return { delta: { gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
-  }
-  if (message.subtype === "praise") {
-    if (choiceId === "thanks") return { delta: { stress: -3 }, bossAttentionDelta: -1 };
-    return { delta: { stress: -2 }, bossAttentionDelta: -1 };
-  }
-  return { delta: {}, bossAttentionDelta: -1 };
-}
-
-function resolveColleagueMessengerChoice(message, choiceId) {
-  if (choiceId === "later") return { delta: {}, colleagueIgnoreDelta: 0 };
-  if (choiceId === "ignore") return getColleagueIgnoreResult(message);
-  if (message.subtype === "favor") {
-    return { delta: { workload: 3, colleagueTrust: 5, gameMinute: 2, health: -1 }, colleagueIgnoreDelta: -1 };
-  }
-  if (message.subtype === "smalltalk") {
-    return { delta: { stress: -3, gameMinute: 1 }, colleagueIgnoreDelta: -1 };
-  }
-  if (message.subtype === "info") {
-    return { delta: { colleagueTrust: 2 }, colleagueIgnoreDelta: -1 };
-  }
-  if (message.subtype === "offer") {
-    return { delta: { workload: -3 }, colleagueIgnoreDelta: -1 };
-  }
-  return { delta: {}, colleagueIgnoreDelta: 0 };
-}
-
-function getColleagueIgnoreResult(message) {
-  if (message.subtype === "favor") {
-    return { delta: { stress: 2, colleagueTrust: -5 }, colleagueIgnoreDelta: 1 };
-  }
-  return { delta: { stress: 2 }, colleagueIgnoreDelta: 1 };
-}
-
-function resolveHrMessengerChoice(message, choiceId) {
-  if (choiceId === "confirm") {
-    if (!message.portalCompleted) return { delta: {}, hrIgnoreDelta: 0 };
-    return { delta: { gameMinute: -5 }, hrIgnoreDelta: -1 };
-  }
-  if (choiceId === "ignore") return { delta: { stress: 2 }, hrIgnoreDelta: 1 };
-  return { delta: {}, hrIgnoreDelta: 0 };
-}
 
 function getBossHardReplyDelta() {
   const key = getBossSpeechKey(_lastRenderedState ?? {});
@@ -1191,12 +1276,16 @@ function applyMessengerResult(result, actions, message, choiceId) {
     }
 
     addLogEntry(next, {
-      cause: buildChatLogCause(message, choiceId),
+      cause: buildChatLogCause(message, choiceId, result),
       delta: logDelta,
     });
     pendingEnding = checkEnding(next);
     return next;
   });
+
+  if (result.delta?.workload !== undefined) {
+    _localWorkload = Math.max(0, Math.min(100, _localWorkload + result.delta.workload));
+  }
 
   if (pendingEnding) {
     actions.finishWith(pendingEnding);
@@ -1218,7 +1307,7 @@ function openBossAttentionInterview(actions) {
     type: "boss",
     speaker: "팀장님",
     title: "팀장 면담",
-    body: "팀장님이 회의실로 부릅니다. \"요즘 진행 상황 파악이 잘 안 되네요. 메신저 답장이 자주 없던데 무슨 문제 있습니까?\"",
+    body: "{name}, 회의실로 모시겠습니다. \"요즘 진행 상황 파악이 잘 되지 않습니다. 메신저 답장이 자주 없던데 무슨 문제 있으십니까?\"",
     choices: [
       getBossInterviewChoice("sorry"),
       getBossInterviewChoice("promise"),
@@ -1399,11 +1488,13 @@ function addMessengerMessage(chat, actions, options = {}) {
   const room = messenger.rooms[roomId];
   if (!room) return;
   const effectiveState = options.stateOverride ?? _lastRenderedState ?? {};
+  const playerName = effectiveState.player?.name;
+  const resolvedChat = chat.kind === "boss" ? personalizeBossChat(chat, playerName) : chat;
   const message = {
-    ...chat,
+    ...resolvedChat,
     id: messenger.nextMessageId++,
     roomId,
-    text: chat.resolvedText ?? chat.text ?? "",
+    text: resolvedChat.resolvedText ?? resolvedChat.text ?? "",
     minute: effectiveState.gameMinute ?? _currentGameMinute,
     unread: !messenger.isOpen || messenger.activeRoomId !== roomId,
     needsReply: (chat.kind === "boss" && chat.subtype !== "warning")
@@ -1497,6 +1588,7 @@ function getMessengerToastKind(message) {
     return message.subtype === "praise" ? "boss-praise" : "boss-task";
   }
   if (message.kind === "colleague") {
+    if (message.subtype === "lore") return "colleague-lore";
     return message.subtype === "favor" || message.subtype === "offer" ? "colleague-help" : "colleague-chat";
   }
   return "notice";
@@ -2010,10 +2102,11 @@ function renderMeetingOutcomePopup(outcome, state, actions) {
 
 function buildMeetingOutcomeEvent(outcome, state) {
   const line = getMeetingBossLine(outcome, state);
+  const playerName = state.player?.name;
   const templates = {
     shame: {
       title: "분위기가 싸해졌다",
-      body: `전체 회의 중, 팀장님이 자료를 가리키며 말했다. "${line}" 회의실 공기가 순간적으로 굳었다.`,
+      body: `전체 회의 중, 팀장님이 자료를 가리키며 말씀하셨습니다. "${line}" 회의실 공기가 순간적으로 굳었습니다.`,
       kicker: "전체 회의",
       choices: [
         {
@@ -2026,7 +2119,7 @@ function buildMeetingOutcomeEvent(outcome, state) {
     },
     praise: {
       title: "짧은 칭찬",
-      body: `전체 회의 중, 팀장님이 고개를 끄덕이며 말했다. "${line}"`,
+      body: `전체 회의 중, 팀장님이 고개를 끄덕이며 말씀하셨습니다. "${line}"`,
       kicker: "전체 회의",
       choices: [
         {
@@ -2039,7 +2132,7 @@ function buildMeetingOutcomeEvent(outcome, state) {
     },
     followup: {
       title: "추가 업무가 생겼다",
-      body: `회의가 끝나갈 무렵, 팀장님이 말했다. "${line}"`,
+      body: `회의가 끝나갈 무렵, 팀장님이 말씀하셨습니다. "${line}"`,
       kicker: "전체 회의",
       choices: [
         {
@@ -2065,7 +2158,7 @@ function buildMeetingOutcomeEvent(outcome, state) {
     speaker: "전체 회의",
     kicker: template.kicker,
     title: template.title,
-    body: template.body,
+    body: personalizeBossEventBody(template.body, playerName),
     choices: template.choices,
   };
 }
@@ -2101,10 +2194,10 @@ function getMeetingRejectChoice(state) {
   const key = getBossSpeechKey(state);
   const success = Math.random() < getBossRejectSuccessRate(key);
   const reactions = {
-    "smart-busy": success ? "팀장님이 잠깐 눈치를 주더니 넘어갔다." : "팀장님이 \"그럼 당신이 하세요\"라고 말했다.",
-    "smart-lazy": success ? "팀장님이 \"그럼 다음에 부탁할게요\"라고 말했다." : "팀장님이 \"그래도 오늘 안으로 부탁해요\"라고 말했다.",
-    "clumsy-busy": success ? "팀장님이 \"음, 그럼 다른 사람한테 물어볼게요!\"라고 말했다." : "팀장님이 \"아니, 일단 해봐요!\"라고 말했다.",
-    "clumsy-lazy": success ? "팀장님이 \"그래, 알았어…\"라고 중얼거렸다." : "팀장님이 \"위에서 시킨 건데…\"라고 말했다.",
+    "smart-busy": success ? "팀장님이 잠깐 눈치를 주시더니 넘어가셨습니다." : "팀장님이 \"그럼 직접 처리해 주세요\"라고 말씀하셨습니다.",
+    "smart-lazy": success ? "팀장님이 \"그럼 다음에 부탁드리겠습니다\"라고 말씀하셨습니다." : "팀장님이 \"그래도 오늘 안으로 부탁드립니다\"라고 말씀하셨습니다.",
+    "clumsy-busy": success ? "팀장님이 \"그럼 다른 분께 여쭤볼게요!\"라고 말씀하셨습니다." : "팀장님이 \"일단 한번 해보세요!\"라고 말씀하셨습니다.",
+    "clumsy-lazy": success ? "팀장님이 \"알겠습니다…\"라고 중얼거리셨습니다." : "팀장님이 \"위에서 지시하신 건데…\"라고 말씀하셨습니다.",
   };
   return {
     id: "reject",
@@ -2116,27 +2209,29 @@ function getMeetingRejectChoice(state) {
 
 function getMeetingBossLine(outcome, state) {
   const key = getBossSpeechKey(state);
+  const playerName = state.player?.name;
   const lines = {
     shame: {
-      "smart-busy": "이 수준이면 다음 회의에 다시 설명하세요.",
-      "smart-lazy": "센스 있게 정리해 주셨어야죠. 이번엔 아쉽네요.",
-      "clumsy-busy": "느낌은 있는데, 제가 원한 방향이 아니에요!",
-      "clumsy-lazy": "음… 제가 뭐 시켰더라… 일단 보완해 주세요.",
+      "smart-busy": "{name}, 이 수준이면 다음 회의에 다시 설명해 주셔야 합니다.",
+      "smart-lazy": "{name}, 센스 있게 정리해 주셨어야 합니다. 이번엔 아쉽습니다.",
+      "clumsy-busy": "{name}, 느낌은 있는데, 제가 원한 방향이 아닙니다!",
+      "clumsy-lazy": "{name}, 제가 뭐라고 하셨는지… 일단 보완해 주세요.",
     },
     praise: {
-      "smart-busy": "이 정도 정리면 바로 넘어가도 되겠네요.",
-      "smart-lazy": "덕분에 회의가 빨리 끝났어요.",
-      "clumsy-busy": "오, 이번엔 느낌이 괜찮은데요?",
-      "clumsy-lazy": "…그래. 나쁘지 않네.",
+      "smart-busy": "{name}, 이 정도 정리면 바로 넘어가도 되겠습니다.",
+      "smart-lazy": "{name}, 덕분에 회의가 빨리 끝났습니다.",
+      "clumsy-busy": "{name}, 오, 이번엔 느낌이 괜찮으십니다!",
+      "clumsy-lazy": "{name}, 이번 결과물 괜찮으십니다.",
     },
     followup: {
-      "smart-busy": "회의록은 오늘 안으로 올려 주세요.",
-      "smart-lazy": "정리해서 공유만 해 주실래요?",
-      "clumsy-busy": "일단 정리해 오세요! 방향은 보고 다시 잡아봐요!",
-      "clumsy-lazy": "위에서 보내래요. 저도 내용은 잘…",
+      "smart-busy": "{name}, 회의록은 오늘 안으로 올려 주세요.",
+      "smart-lazy": "{name}, 정리해서 공유만 부탁드립니다.",
+      "clumsy-busy": "{name}, 일단 정리해 주세요! 방향은 보고 다시 잡아봅시다!",
+      "clumsy-lazy": "{name}, 위에서 보내라고 하셨습니다. 저도 내용은 잘…",
     },
   };
-  return lines[outcome]?.[key] ?? lines[outcome]?.["smart-busy"] ?? "";
+  const raw = lines[outcome]?.[key] ?? lines[outcome]?.["smart-busy"] ?? "";
+  return fillBossText(raw, playerName);
 }
 
 function getBossSpeechKey(state) {
@@ -2338,6 +2433,10 @@ function markMainEventPause(plan, state) {
 function renderMainEventPopup(event, { state, onChoice }) {
   playSfx(EVENT_SFX); // 이벤트 팝업 발생 효과음
   const choices = event.choices ?? [];
+  const playerName = state.player?.name;
+  const bodyText = event.type === "boss" || event.speaker === "팀장님"
+    ? personalizeBossEventBody(event.body, playerName)
+    : event.body;
   return el("div", { class: "main-event-overlay" }, [
     el("article", { class: `main-event-card main-event-${event.type}`, role: "dialog", "aria-modal": "true" }, [
       el("header", { class: "main-event-titlebar" }, [
@@ -2350,7 +2449,7 @@ function renderMainEventPopup(event, { state, onChoice }) {
       el("section", { class: "main-event-body" }, [
         el("p", { class: "main-event-kicker", text: event.kicker ?? (event.type === "boss" ? "팀장님" : event.type === "colleague" ? "동료" : "공통 이벤트") }),
         el("h2", { text: event.title }),
-        el("p", { class: "main-event-copy", text: event.body }),
+        el("p", { class: "main-event-copy", text: bodyText }),
         el("div", { class: getMainEventChoiceGridClass(choices.length) }, choices.map((choice, index) =>
           renderMainEventChoice(choice, state, () => onChoice(choice), index, choices.length),
         )),
@@ -2877,10 +2976,16 @@ function pickOneChat(state) {
     ]);
   }
 
-  const colleaguePool = chatPool.colleague.filter((message) => message.subtype !== "away" && message.subtype !== "offer");
+  const lorePool = chatPool.colleague.filter((message) => message.subtype === "lore");
+  const practicalPool = chatPool.colleague.filter((message) => !["away", "offer", "lore"].includes(message.subtype));
   const offerPool = chatPool.colleague.filter((message) => message.subtype === "offer");
   const offerChance = getColleagueOfferChance(trust);
-  const colleagueWeightedPool = Math.random() < offerChance ? offerPool : colleaguePool;
+  let colleagueWeightedPool = practicalPool;
+  if (Math.random() < offerChance && offerPool.length) {
+    colleagueWeightedPool = offerPool;
+  } else if (Math.random() < 0.58 && lorePool.length) {
+    colleagueWeightedPool = lorePool;
+  }
 
   return pickWeightedChat([
     { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
@@ -2940,36 +3045,6 @@ function applyEffect(delta, actions, cause) {
     return next;
   });
   if (pendingEnding) actions.finishWith(pendingEnding);
-}
-
-function buildChatLogCause(chat, outcome) {
-  const sender = chat.from ?? "메시지";
-  const topic = summarizeChatTopic(chat);
-  if (outcome === "later") return `${sender}의 ${topic} 메시지를 나중에 보기로 했다.`;
-  if (outcome === "ignore") return `${sender}의 ${topic} 메시지를 못 본 척했다.`;
-  if (chat.kind === "boss" && chat.subtype === "request") return `${sender}의 ${topic} 요청에 답장했다.`;
-  if (chat.kind === "boss" && chat.subtype === "check") return `${sender}의 진행 확인 메시지에 답장했다.`;
-  if (chat.kind === "boss" && chat.subtype === "praise") return `${sender}의 칭찬 메시지에 답장했다.`;
-  if (chat.kind === "colleague" && chat.subtype === "favor") return "동료의 부탁에 답장했다.";
-  if (chat.kind === "colleague" && chat.subtype === "smalltalk") return "동료와 짧게 메시지를 주고받았다.";
-  if (chat.kind === "colleague" && chat.subtype === "info") return "동료가 공유한 정보를 확인했다.";
-  if (chat.kind === "colleague" && chat.subtype === "offer") return "동료의 도움 제안에 답장했다.";
-  if (chat.kind === "hr" && outcome === "confirm") return `${sender}에 확인 완료를 답장했다.`;
-  if (chat.kind === "hr" && outcome === "process") return `${sender} 공지를 처리했다.`;
-  if (chat.kind === "hr") return `${sender} 공지를 확인했다.`;
-  return `${sender} 메시지를 확인했다.`;
-}
-
-function summarizeChatTopic(chat) {
-  const text = chat.resolvedText ?? chat.text ?? "";
-  if (text.includes("보고서")) return "보고서 수정";
-  if (text.includes("이메일") || text.includes("회신")) return "거래처 이메일";
-  if (text.includes("회의") || text.includes("자료")) return "회의 자료";
-  if (text.includes("문서")) return "문서 검토";
-  if (text.includes("발표")) return "발표";
-  if (text.includes("복지포인트")) return "복지포인트";
-  if (text.includes("네트워크")) return "네트워크 점검";
-  return "업무";
 }
 
 function playChatNotificationSound() {

@@ -77,6 +77,7 @@ export function createInitialState() {
     },
     log: [
       {
+        id: createRunId(),
         time: "09:00",
         icon: "🔵",
         cause: "출근 준비를 마쳤다.",
@@ -164,9 +165,16 @@ export function applyDelta(state, delta, message) {
 }
 
 export function addLogEntry(state, entry) {
-  const normalized = normalizeLogEntry(state, entry);
+  const normalized = {
+    id: createRunId(),
+    ...normalizeLogEntry(state, entry),
+  };
   state.log = [...(state.log ?? []), normalized].slice(-20);
-  state.flags = { ...(state.flags ?? {}), recentLogCollapsed: false };
+  state.flags = {
+    ...(state.flags ?? {}),
+    recentLogCollapsed: false,
+    recentLogHighlightId: normalized.id,
+  };
   return state;
 }
 
@@ -182,6 +190,7 @@ export function normalizeLogEntry(state, entry) {
 
   const effects = [...describeDelta(entry.delta ?? {}), ...(entry.effects ?? [])];
   return {
+    ...(entry.id ? { id: entry.id } : {}),
     time: entry.time ?? formatTime(state.gameMinute),
     icon: entry.icon ?? iconForDelta(entry.delta ?? {}, effects),
     cause: entry.cause,

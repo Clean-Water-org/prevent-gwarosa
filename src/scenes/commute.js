@@ -44,7 +44,7 @@ export function renderCommute(root, state, actions) {
   playBgm(MAIN_BGM_SRC);
   commuteActiveTab = "briefing";
 
-  const monitorScreen = el("div", { class: "main-work-monitor-screen" }, [
+  const monitorScreen = el("div", { class: "main-work-monitor-screen is-commute" }, [
     renderCommuteHud(state),
     el("main", { class: "main-work-center commute-center" }, [
       renderCommutePanel(state, actions),
@@ -56,8 +56,10 @@ export function renderCommute(root, state, actions) {
   room.classList.add("main-work-room");
   appendDefaultRoomProps(room);
 
-  const monitorScroll = el("div", { class: "main-work-monitor-scroll" });
-  monitorScroll.append(el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]));
+  const monitorScroll = el("div", { class: "main-work-monitor-scroll is-commute-scroll" });
+  const monitor = makeMonitor(monitorScreen);
+  monitor.querySelector(".px-monitor-screen")?.classList.add("is-commute-monitor");
+  monitorScroll.append(el("div", { class: "main-work-monitor-wrapper" }, [monitor]));
   room.append(monitorScroll);
 
   root.append(el("section", { class: "main-work-screen" }, [room]));
@@ -198,12 +200,20 @@ function renderBriefingBody(state) {
         el("p", { text: "※ 18:00 이후에도 자리에 남아있는 동료와 눈을 마주치지 마세요." }),
       ]),
     ]),
-    el("aside", { class: "commute-side-panel" }, [
-      renderPlayerCard(playerName, portrait),
-      el("section", { class: "commute-boss-hint" }, [
+    renderSidePanel(playerName, portrait, state),
+  ]);
+}
+
+function renderSidePanel(playerName, portrait, state) {
+  const hintText = state.boss?.publicHint ?? "오늘의 상사 정보를 확인하세요.";
+
+  return el("aside", { class: "commute-side-panel" }, [
+    renderPlayerCard(playerName, portrait),
+    el("section", { class: "commute-boss-hint" }, [
+      el("header", { class: "commute-boss-hint-head" }, [
         el("h2", { text: "상사 힌트" }),
-        el("p", { text: state.boss?.publicHint ?? "오늘의 상사 정보를 확인하세요." }),
       ]),
+      el("p", { text: hintText }),
     ]),
   ]);
 }
