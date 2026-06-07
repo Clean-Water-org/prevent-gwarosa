@@ -1725,8 +1725,14 @@
   transform-origin: left;
 }
 
+.main-work-messenger-toast-main {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
 .main-work-messenger-toast-body {
-  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
@@ -1739,6 +1745,25 @@
   font-family: NeoDunggeunmo, monospace;
   text-align: left;
   cursor: pointer;
+}
+
+.main-work-messenger-toast-close {
+  flex: 0 0 30px;
+  align-self: stretch;
+  border: 0;
+  border-left: 2px solid var(--ink);
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--ink);
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.main-work-messenger-toast-close:hover {
+  background: #ffe3e0;
 }
 
 .main-work-messenger-toast-avatar {
@@ -1786,7 +1811,8 @@
 
 .main-work-messenger-toast.is-replied,
 .main-work-messenger-toast.is-ignored,
-.main-work-messenger-toast.is-expiring {
+.main-work-messenger-toast.is-expiring,
+.main-work-messenger-toast.is-dismissed {
   pointer-events: none;
   animation: messenger-toast-out 0.18s ease forwards;
 }

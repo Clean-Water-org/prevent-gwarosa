@@ -99,16 +99,19 @@ const HIGH_WORKLOAD_STRESS_THRESHOLD = 80;
 const HIGH_STRESS_FATIGUE_THRESHOLD = 70;
 const EXTREME_STRESS_FATIGUE_THRESHOLD = 90;
 
-export function applyWorkTimeCost(state, minutes = 0) {
+export function applyWorkTimeCost(state, minutes = 0, options = {}) {
   const spentMinutes = Math.max(0, Math.round(minutes));
   if (spentMinutes <= 0) return { state, delta: {} };
+
+  const fatigueInterval = options.fatigueInterval ?? WORK_FATIGUE_INTERVAL_MINUTES;
+  const healthMultiplier = options.healthMultiplier ?? 1;
 
   state.gameMinute += spentMinutes;
 
   const flags = { ...(state.flags ?? {}) };
   const totalFatigueMinutes = (flags.workFatigueMinutes ?? 0) + spentMinutes;
-  const fatigueTicks = Math.floor(totalFatigueMinutes / WORK_FATIGUE_INTERVAL_MINUTES);
-  flags.workFatigueMinutes = totalFatigueMinutes % WORK_FATIGUE_INTERVAL_MINUTES;
+  const fatigueTicks = Math.floor(totalFatigueMinutes / fatigueInterval);
+  flags.workFatigueMinutes = totalFatigueMinutes % fatigueInterval;
 
   const totalStressMinutes = (flags.workStressMinutes ?? 0) + spentMinutes;
   const stressTicks = Math.floor(totalStressMinutes / WORK_STRESS_INTERVAL_MINUTES);
@@ -120,7 +123,9 @@ export function applyWorkTimeCost(state, minutes = 0) {
     : state.stats.stress >= HIGH_STRESS_FATIGUE_THRESHOLD
       ? 2
       : 1;
-  const healthDelta = fatigueTicks > 0 ? -fatigueTicks * healthCostPerTick : 0;
+  const healthDelta = fatigueTicks > 0
+    ? -Math.round(fatigueTicks * healthCostPerTick * healthMultiplier)
+    : 0;
   if (healthDelta !== 0) {
     state.stats.health = clampStat(state.stats.health + healthDelta);
   }

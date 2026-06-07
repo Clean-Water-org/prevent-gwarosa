@@ -6,7 +6,7 @@ import { renderTitle, cleanupTitleFx } from "./scenes/title.js";
 import { renderSetup } from "./scenes/setup.js";
 import { renderOnboarding } from "./scenes/onboarding.js";
 import { renderCommute } from "./scenes/commute.js";
-import { renderMainWork, cleanupMainWorkSystems } from "./scenes/main-work.js";
+import { renderMainWork, cleanupMainWorkSystems, prepareMainWorkForRender } from "./scenes/main-work.js";
 import { renderMiniGame } from "./scenes/minigame/index.js";
 import { renderLunch } from "./scenes/lunch.js";
 import { renderEnding } from "./scenes/ending.js";
@@ -26,6 +26,7 @@ const scenes = {
 
 // 항상 title에서 시작. 저장 데이터는 타이틀 화면의 "이어하기"에서 사용
 let state = createInitialState();
+let _prevScene = state.scene;
 
 // Sync URL hash to current state scene on first load
 history.replaceState(null, "", "#title");
@@ -128,6 +129,7 @@ function playItemSound(src) {
 }
 
 function render() {
+  prepareMainWorkForRender(_prevScene, state.scene);
   cleanupTitleFx();
   app.innerHTML = "";
   scenes[state.scene]?.(app, state, {
@@ -139,6 +141,7 @@ function render() {
     useItem,
     advanceGameMinute,
   });
+  _prevScene = state.scene;
   if (state.scene !== "title") saveGame(state);
 }
 

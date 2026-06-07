@@ -48,6 +48,8 @@ let _hrPortalIntroSpawned = false;
 let _lastRenderedState = null;
 let _openMessengerRoom = null;
 let _replyExpireTimers = new Map();
+let _preservingNotifications = false;
+let _preserveSpawnMs = null;
 
 const STATUS_EVENT_CONFIGS = {
   burnout: {
@@ -78,6 +80,8 @@ const CHAT_REPLY_TIMER_SEC = { boss: 10, colleague: 15, hr: 15 };
 const CHAT_SPAWN_FIRST_MS = 2000;
 const CHAT_SPAWN_INTERVAL_MS = 4000;
 const CHAT_SPAWN_INTERVAL_BUSY_MS = 4000;
+const HR_NOTICE_SPAWN_WEIGHT = 4;
+const HR_NOTICE_MAX_PER_PHASE = 1;
 const MAX_MESSENGER_TOASTS = 5;
 const MAIN_PHASE_DURATIONS_SEC = [35, 35, 40, 40, 40];
 const PHONE_CHANCE_BY_PHASE = [0.95, 0.95, 0.95, 0.95];
@@ -98,6 +102,7 @@ const MESSENGER_ROOM_BY_FROM = {
 const mainPhaseStarts = new Map();
 const phonePlans = new Map();
 const mainEventPlans = new Map();
+const hrNoticeSpawnsByPhase = new Map();
 
 const handoverNotes = [
   "업무량은 100에서 시작합니다. 18시 전에 모두 처리하면 퇴근할 수 있습니다.",
@@ -251,6 +256,7 @@ export function renderMainWork(root, state, actions) {
 
   if (state.flags?.pendingMinigameBriefing) {
     const monitorScreen = screen.querySelector(".main-work-monitor-screen") ?? screen;
+    tryReattachPreservedNotifications(monitorScreen, state, actions);
     const game = getCurrentMiniGame(state);
     renderMiniGameBriefing(monitorScreen, state, {
       onStart: () => {
@@ -268,6 +274,7 @@ export function renderMainWork(root, state, actions) {
 
   if (state.flags?.lunchPhase) {
     const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
+    tryReattachPreservedNotifications(monitorEl, state, actions);
     showLunchOnMain(screen, monitorEl, state, actions);
     return;
   }
@@ -281,9 +288,11 @@ export function renderMainWork(root, state, actions) {
     const pendingStatus = getPendingStatusEvent(state);
     if (pendingStatus) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
+      tryReattachPreservedNotifications(monitorEl, state, actions);
       showStatusEventPopup(pendingStatus, state, monitorEl, actions);
     } else if (shouldShowMeetingEvent(state) || state.flags?.devTriggerMeetingEvent) {
       const monitorEl = screen.querySelector(".main-work-monitor-screen") ?? screen;
+      tryReattachPreservedNotifications(monitorEl, state, actions);
       showMeetingEventPopup(state, monitorEl, actions);
     } else {
       startChats();
@@ -866,6 +875,13 @@ function ensureMessengerState(state) {
 }
 
 function resetMessengerState(state) {
+  if (_notifPanel) {
+    _notifPanel.remove();
+    _notifPanel = null;
+  }
+  _preservingNotifications = false;
+  _preserveSpawnMs = null;
+  _chatSnapshot = null;
   _messengerState = createMessengerState(state.flags?.runId ?? "default");
   _hrPortalIntroSpawned = false;
 }
@@ -1505,17 +1521,31 @@ function showMessengerToast(message, actions) {
     "data-message-id": String(message.id),
   }, [
     el("div", { class: "main-work-messenger-toast-timer" }, [timerBar]),
-    el("button", {
-      class: "main-work-messenger-toast-body",
-      type: "button",
-      onClick: () => _openMessengerRoom?.(message.roomId),
-    }, [
-      el("span", { class: "main-work-messenger-toast-avatar", text: getMessengerRoomIcon(message.roomId) }),
-      el("span", { class: "main-work-messenger-toast-copy" }, [
-        el("strong", { text: message.from }),
-        el("span", { text: message.text }),
+    el("div", { class: "main-work-messenger-toast-main" }, [
+      el("button", {
+        class: "main-work-messenger-toast-body",
+        type: "button",
+        onClick: () => _openMessengerRoom?.(message.roomId),
+      }, [
+        el("span", { class: "main-work-messenger-toast-avatar", text: getMessengerRoomIcon(message.roomId) }),
+        el("span", { class: "main-work-messenger-toast-copy" }, [
+          el("strong", { text: message.from }),
+          el("span", { text: message.text }),
+        ]),
+        el("span", { class: "main-work-messenger-toast-state", text: "답장 필요" }),
       ]),
-      el("span", { class: "main-work-messenger-toast-state", text: "답장 필요" }),
+      el("button", {
+        class: "main-work-messenger-toast-close",
+        type: "button",
+        title: "알림 닫기",
+        "aria-label": "알림 닫기",
+        text: "×",
+        onClick: (event) => {
+          event.stopPropagation();
+          playClickSfx();
+          dismissMessengerToast(message.id, "is-dismissed");
+        },
+      }),
     ]),
   ]);
 
@@ -1527,10 +1557,10 @@ function showMessengerToast(message, actions) {
   _notifPanel.append(toast);
 }
 
-function dismissMessengerToast(messageId) {
+function dismissMessengerToast(messageId, exitClass = "is-replied") {
   const toast = _notifPanel?.querySelector(`.main-work-messenger-toast[data-message-id="${messageId}"]`);
   if (!toast) return;
-  toast.classList.add("is-replied");
+  toast.classList.add(exitClass);
   toast.addEventListener("animationend", () => toast.remove(), { once: true });
   setTimeout(() => toast.remove(), 220);
 }
@@ -1573,6 +1603,63 @@ function expirePendingReply(messageId, actions) {
 }
 
 // ── 채팅 알림 시스템 ─────────────────────────────────────────
+
+// app.innerHTML="" 직전에 호출. 메인→메인 리렌더면 알림 DOM을 보존하고, 메인→타씬이면 스냅샷을 남긴다.
+export function prepareMainWorkForRender(prevScene, nextScene) {
+  if (prevScene !== "main" || !_messengerState) {
+    _preservingNotifications = false;
+    return;
+  }
+
+  if (nextScene === "main") {
+    if (_notifPanel?.parentElement) {
+      _notifPanel.remove();
+      pauseChatSystem();
+    }
+    _preserveSpawnMs = _spawnTimeout
+      ? Math.max(0, _spawnDelayMs - (Date.now() - _spawnScheduledAt))
+      : null;
+    if (_spawnTimeout) {
+      clearTimeout(_spawnTimeout);
+      _spawnTimeout = null;
+    }
+    clearAllReplyExpiryTimers();
+    _preservingNotifications = Boolean(_notifPanel);
+    return;
+  }
+
+  if (!_chatSnapshot) {
+    _chatSnapshot = captureChatSnapshot();
+  }
+  pauseChatSystem();
+  if (_spawnTimeout) {
+    clearTimeout(_spawnTimeout);
+    _spawnTimeout = null;
+  }
+  clearAllReplyExpiryTimers();
+  if (_notifPanel) {
+    _notifPanel.remove();
+    _notifPanel = null;
+  }
+  _preservingNotifications = false;
+  _preserveSpawnMs = null;
+}
+
+function tryReattachPreservedNotifications(container, state, actions) {
+  if (!_preservingNotifications || !_notifPanel) return false;
+
+  container.append(_notifPanel);
+  resumeChatSystem();
+  for (const message of collectPendingReplyMessages()) {
+    scheduleReplyExpiry(message, actions);
+  }
+  if (_preserveSpawnMs != null) {
+    scheduleSpawn(state, actions, _preserveSpawnMs);
+  }
+  _preserveSpawnMs = null;
+  _preservingNotifications = false;
+  return true;
+}
 
 export function cleanupMainWorkSystems() {
   cleanupChatSystem();
@@ -1621,7 +1708,9 @@ function captureChatSnapshot() {
 }
 
 function cleanupChatSystem() {
-  if (_messengerState) {
+  if (_preservingNotifications) return;
+
+  if (_messengerState && !_chatSnapshot) {
     _chatSnapshot = captureChatSnapshot();
   }
   if (_notifPanel) {
@@ -1639,6 +1728,13 @@ function pauseChatSystem() {
       bar.style.animationPlayState = "paused";
     });
   }
+}
+
+function resumeChatSystem() {
+  if (!_notifPanel) return;
+  _notifPanel.querySelectorAll(".chat-notif-timer-bar, .main-work-messenger-toast-timer-bar").forEach((bar) => {
+    bar.style.animationPlayState = "running";
+  });
 }
 
 function cleanupMainClock() {
@@ -2654,6 +2750,8 @@ function toTaskbarTime(gameMinute) {
 
 function startChatNotifications(state, actions, container) {
   ensureMessengerState(state);
+  if (tryReattachPreservedNotifications(container, state, actions)) return;
+
   _notifPanel = el("div", { class: "chat-notif-panel main-work-messenger-runtime" });
   container.append(_notifPanel);
 
@@ -2721,6 +2819,7 @@ function spawnOneNotification(state, actions) {
     const healthCheck = chatPool.notice.find((message) => message.portalTaskId === "health-check");
     if (healthCheck) {
       addMessengerMessage({ ...healthCheck }, actions);
+      recordHrNoticeSpawn(state);
       return;
     }
   }
@@ -2729,9 +2828,25 @@ function spawnOneNotification(state, actions) {
   if (!chat) return;
 
   addMessengerMessage(chat, actions);
+  if (chat.kind === "hr") recordHrNoticeSpawn(state);
 }
 
-function getAvailableNoticePool() {
+function hasPendingHrPortalNotice() {
+  const hrMessages = _messengerState?.rooms?.hr?.messages ?? [];
+  return hrMessages.some((message) => message.portalTaskId && message.needsReply && !message.status);
+}
+
+function recordHrNoticeSpawn(state) {
+  const phaseKey = getMainPhaseKey(state, getMainPhaseIndex(state));
+  hrNoticeSpawnsByPhase.set(phaseKey, (hrNoticeSpawnsByPhase.get(phaseKey) ?? 0) + 1);
+}
+
+function getAvailableNoticePool(state) {
+  if (hasPendingHrPortalNotice()) return [];
+
+  const phaseKey = getMainPhaseKey(state, getMainPhaseIndex(state));
+  if ((hrNoticeSpawnsByPhase.get(phaseKey) ?? 0) >= HR_NOTICE_MAX_PER_PHASE) return [];
+
   const activeTaskIds = getActivePortalTaskIds();
   return chatPool.notice.filter((message) => {
     if (!message.portalTaskId) return false;
@@ -2743,11 +2858,11 @@ function pickOneChat(state) {
   const trust = state.colleagueTrust ?? 30;
   const colleagueIgnoreCount = state.counters?.colleagueIgnoreCount ?? 0;
   const colleagueGone = state.flags?.colleagueAwayMessageSent || colleagueIgnoreCount >= 3;
-  const noticePool = getAvailableNoticePool();
+  const noticePool = getAvailableNoticePool(state);
   if (colleagueGone) {
     return pickWeightedChat([
       { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
-      { pool: noticePool, weight: 10 },
+      { pool: noticePool, weight: HR_NOTICE_SPAWN_WEIGHT },
     ]);
   }
 
@@ -2759,7 +2874,7 @@ function pickOneChat(state) {
   return pickWeightedChat([
     { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
     { pool: colleagueWeightedPool, weight: 50 },
-    { pool: noticePool, weight: 10 },
+    { pool: noticePool, weight: HR_NOTICE_SPAWN_WEIGHT },
   ]);
 }
 
