@@ -94,7 +94,33 @@
   overflow: auto;
 }
 
+.main-work-monitor-stage {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(12px, 2vw, 20px);
+  width: 100%;
+  min-width: 0;
+}
+
+.main-work-monitor-stage-spacer {
+  flex: 0 0 min(268px, 26vw);
+  width: min(268px, 26vw);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.main-work-monitor-stage-spacer.is-collapsed {
+  flex-basis: min(220px, 26vw);
+  width: min(220px, 26vw);
+}
+
 .main-work-monitor-wrapper {
+  width: min(1000px, 96vw);
+}
+
+.main-work-monitor-stage .main-work-monitor-wrapper {
+  flex: 0 0 auto;
   width: min(1000px, 96vw);
 }
 
@@ -1563,7 +1589,7 @@
   top: auto;
   right: 12px;
   bottom: 58px;
-  z-index: 8;
+  z-index: 14;
   width: min(310px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
@@ -1692,13 +1718,15 @@
 
 /* ── 최근 기록 패널 ─────────────────────────────────────── */
 
+.main-work-monitor-stage .main-work-recent-log {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 min(268px, 26vw);
+  width: min(268px, 26vw);
+  max-height: clamp(420px, 72vh, 620px);
+}
+
 .main-work-recent-log {
-  position: absolute;
-  left: 20px;
-  bottom: 58px;
-  z-index: 35;
-  width: min(300px, calc(100% - 40px));
-  max-height: 184px;
   display: grid;
   grid-template-rows: 34px minmax(0, 1fr);
   overflow: hidden;
@@ -1710,8 +1738,8 @@
   font-family: NeoDunggeunmo, monospace;
 }
 
-.main-work-recent-log.is-collapsed {
-  width: min(220px, calc(100% - 40px));
+.main-work-monitor-stage .main-work-recent-log.is-collapsed {
+  width: min(220px, 26vw);
   max-height: 34px;
   grid-template-rows: 34px;
 }
@@ -3330,8 +3358,8 @@
     bottom: 58px;
   }
 
-  .main-work-recent-log {
-    max-height: 150px;
+  .main-work-monitor-stage .main-work-recent-log {
+    max-height: clamp(360px, 62vh, 500px);
   }
 }
 
@@ -3472,15 +3500,28 @@
     min-width: max(72px, 28%);
   }
 
-  .main-work-recent-log {
-    left: 10px;
-    bottom: 58px;
-    width: min(280px, calc(100% - 20px));
+  .main-work-monitor-stage {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .main-work-monitor-stage-spacer {
+    display: none;
+  }
+
+  .main-work-monitor-stage .main-work-monitor-wrapper {
+    width: 100%;
+  }
+
+  .main-work-monitor-stage .main-work-recent-log {
+    flex: 0 0 auto;
+    width: min(100%, 1000px);
     max-height: 142px;
   }
 
-  .main-work-recent-log.is-collapsed {
-    width: min(210px, calc(100% - 20px));
+  .main-work-monitor-stage .main-work-recent-log.is-collapsed {
+    width: min(210px, 100%);
   }
 }
 
@@ -7728,7 +7769,7 @@ textarea,
 }
 
 .main-work-monitor-screen.fx-headache .main-work-messenger-message p,
-.main-work-monitor-screen.fx-headache .main-work-recent-log-entry p {
+.main-work-screen.fx-headache .main-work-recent-log-entry p {
   text-shadow: 0.5px 0 0 rgba(192, 57, 43, 0.1), -0.5px 0 0 rgba(52, 152, 219, 0.08);
 }
 

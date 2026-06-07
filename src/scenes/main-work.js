@@ -205,7 +205,6 @@ export function renderMainWork(root, state, actions) {
       intranetPanel,
       messengerPanel,
     ]),
-    renderRecentLogPanel(state, actions),
     renderTaskbar(
       state.gameMinute,
       toggleIntranet,
@@ -231,12 +230,22 @@ export function renderMainWork(root, state, actions) {
     el("span", { text: "회의" }),
   ]));
 
+  const recentLogCollapsed = Boolean(state.flags?.recentLogCollapsed);
   const monitorScroll = el("div", { class: "main-work-monitor-scroll" });
-  const monitorWrapper = el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]);
-  monitorScroll.append(monitorWrapper);
+  const monitorStage = el("div", { class: "main-work-monitor-stage" }, [
+    el("div", {
+      class: `main-work-monitor-stage-spacer${recentLogCollapsed ? " is-collapsed" : ""}`,
+      "aria-hidden": "true",
+    }),
+    el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]),
+    renderRecentLogPanel(state, actions),
+  ]);
+  monitorScroll.append(monitorStage);
   room.append(monitorScroll);
 
-  const screen = el("section", { class: "main-work-screen" }, [room]);
+  const screen = el("section", {
+    class: `main-work-screen${state.stats.health <= 30 ? " fx-headache" : ""}`,
+  }, [room]);
 
   root.append(screen);
 
@@ -916,7 +925,7 @@ function renderMessengerShell(container, state, actions, onClose) {
   container.replaceChildren(windowEl);
   requestAnimationFrame(() => {
     const log = container.querySelector(".main-work-messenger-thread-log");
-    if (log) log.scrollTop = log.scrollHeight;
+    if (log) log.scrollTop = 0;
   });
 }
 
@@ -950,7 +959,7 @@ function renderMessengerThread(room, state, actions) {
       el("span", { class: "main-work-messenger-presence", text: room.id === "hr" ? "인사 알림" : "업무 중" }),
     ]),
     el("div", { class: "main-work-messenger-thread-log" }, messages.length
-      ? messages.map((message) => renderMessengerMessage(message, state, actions))
+      ? [...messages].reverse().map((message) => renderMessengerMessage(message, state, actions))
       : [el("p", { class: "main-work-messenger-empty", text: "아직 도착한 메시지가 없습니다." })]),
   ]);
 }
