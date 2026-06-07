@@ -111,6 +111,12 @@ const handoverNotes = [
 
 let stopHandoverGuide = null;
 
+function bringWorkspacePanelToFront(panel) {
+  const parent = panel?.parentElement;
+  if (!parent || !panel) return;
+  parent.appendChild(panel);
+}
+
 export function renderMainWork(root, state, actions) {
   _currentGameMinute = state.gameMinute;
   _lastRenderedState = state;
@@ -147,7 +153,10 @@ export function renderMainWork(root, state, actions) {
     const willOpen = intranetPanel.style.display === "none";
     intranetPanel.style.display = willOpen ? "" : "none";
     intranetBtn?.classList.toggle("active", willOpen);
-    if (willOpen) _intranetUpdater?.();
+    if (willOpen) {
+      bringWorkspacePanelToFront(intranetPanel);
+      _intranetUpdater?.();
+    }
   };
   const refreshMessenger = () => {
     renderMessengerShell(messengerPanel, state, actions, closeMessenger);
@@ -167,6 +176,7 @@ export function renderMainWork(root, state, actions) {
       markRoomRead(_messengerState.activeRoomId);
       messengerPanel.style.display = "";
       messengerBtn?.classList.add("active");
+      bringWorkspacePanelToFront(messengerPanel);
       refreshMessenger();
       return;
     }
@@ -180,6 +190,7 @@ export function renderMainWork(root, state, actions) {
     markRoomRead(roomId);
     messengerPanel.style.display = "";
     messengerBtn?.classList.add("active");
+    bringWorkspacePanelToFront(messengerPanel);
     refreshMessenger();
   };
 
