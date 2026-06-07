@@ -59,17 +59,52 @@ export function duckBgm({ volume = 0.12, durationMs = 900 } = {}) {
   }, durationMs);
 }
 
+let sfxCtx = null;
+function getSfxCtx() {
+  if (sfxCtx === null) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    sfxCtx = AC ? new AC() : false; // false = 미지원(웹오디오 불가)
+  }
+  return sfxCtx || null;
+}
+
 /**
  * 일회성 효과음 재생. BGM과 독립적으로 재생되며 겹쳐 재생도 가능하다.
+ * gain > 1 이면 Web Audio 게인으로 1.0(HTMLAudio 한계)을 넘어 더 크게 재생한다.
  * @param {string} src 오디오 파일 경로
  * @param {object} [opts]
- * @param {number} [opts.volume=0.6]
+ * @param {number} [opts.volume=0.6] 기본 음량(0~1)
+ * @param {number} [opts.gain=1] 증폭 배수. 1 초과 시 Web Audio 사용
  */
-export function playSfx(src, { volume = 0.6 } = {}) {
+export function playSfx(src, { volume = 0.6, gain = 1 } = {}) {
   const audio = new Audio(src);
-  audio.volume = volume;
   audio.currentTime = 0;
+
+  if (gain > 1) {
+    const ctx = getSfxCtx();
+    if (ctx) {
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      try {
+        const source = ctx.createMediaElementSource(audio);
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = volume * gain; // 1.0을 넘는 증폭 허용
+        source.connect(gainNode).connect(ctx.destination);
+        audio.play().catch(() => {});
+        return audio;
+      } catch {
+        // Web Audio 실패 시 일반 재생으로 폴백
+      }
+    }
+  }
+
+  audio.volume = Math.min(volume, 1);
   // 자동재생 정책에 막히면 조용히 무시
   audio.play().catch(() => {});
   return audio;
+}
+
+// 공용 UI 클릭음 — 설정·타이틀 등 버튼 클릭에서 동일하게 사용.
+const CLICK_SFX_SRC = "assets/audio/computer-mouse-click.mp3";
+export function playClickSfx() {
+  playSfx(CLICK_SFX_SRC, { volume: 1.0, gain: 2.5 });
 }

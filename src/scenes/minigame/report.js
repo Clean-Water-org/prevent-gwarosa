@@ -1,7 +1,7 @@
 import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY, BOSS_RED_PEN } from "../../data/report-typos.js";
 import { el, renderHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
-import { playBgm, stopBgm } from "../../lib/audio.js";
+import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -735,6 +735,7 @@ export function renderReportGame(root, state, actions, game) {
   }
 
   function showResult(tier, found, wrong, usedSec) {
+    playSfx("assets/audio/gameboy-pluck.mp3"); // 결과 팝업 효과음
     const t = TIERS[tier];
     const panel = document.createElement("div");
     panel.className = "pop-in";
@@ -770,7 +771,7 @@ export function renderReportGame(root, state, actions, game) {
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
-    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`, usedSec); });
+    btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`, usedSec); });
     nextBtn.append(btnInner);
 
     panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);

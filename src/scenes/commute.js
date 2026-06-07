@@ -1,4 +1,5 @@
 import { el } from "../ui.js";
+import { playClickSfx } from "../lib/audio.js";
 
 const briefingTips = [
   "업무량만 관리해서는 살아남을 수 없습니다.",
@@ -54,7 +55,7 @@ export function renderCommute(root, state, actions) {
       el("footer", { class: "survival-footer" }, [
         el("button", {
           class: "briefing-start-button survival-start-button",
-          onClick: () => actions.go("main"),
+          onClick: () => { playClickSfx(); actions.go("main"); },
         }, [
           el("strong", { text: "업무 시작" }),
           el("span", { text: "→" }),
@@ -77,6 +78,7 @@ function renderBriefingTip() {
       class: "tip-next-button",
       text: "다음 TIP ↻",
       onClick: () => {
+        playClickSfx();
         const nextIndex = pickTipIndex();
         tipText.textContent = briefingTips[nextIndex];
       },

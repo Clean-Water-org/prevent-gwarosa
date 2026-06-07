@@ -1,4 +1,5 @@
 ﻿import { el } from "../ui.js";
+import { playClickSfx } from "../lib/audio.js";
 
 export function renderTitle(root, state, actions) {
   root.append(
@@ -26,7 +27,7 @@ export function renderTitle(root, state, actions) {
             el("div", { class: "title-buttons" }, [
               el("button", {
                 class: "title-main-button",
-                onClick: () => actions.go("setup"),
+                onClick: () => { playClickSfx(); actions.go("setup"); },
               }, [
                 el("span", { class: "play-mark", text: "▶" }),
                 el("span", { text: "출근하기" }),
@@ -34,7 +35,7 @@ export function renderTitle(root, state, actions) {
               el("button", {
                 class: "title-help-button",
                 text: "도움말",
-                onClick: () => actions.go("onboarding"),
+                onClick: () => { playClickSfx(); actions.go("onboarding"); },
               }),
             ]),
             el("div", { class: "px-scanline" }),

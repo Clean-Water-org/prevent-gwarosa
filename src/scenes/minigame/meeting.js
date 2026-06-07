@@ -1,7 +1,7 @@
 import { TOPICS, TRAPS, TRAP_MSGS } from "../../data/meeting-slides.js";
 import { renderHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
-import { playBgm, stopBgm } from "../../lib/audio.js";
+import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
 const CARD_W = 120, CARD_H = 168;
@@ -944,6 +944,7 @@ export function renderMeetingGame(root, state, actions, game) {
   }
 
   function showResult(tier, errors, trapsLeft, usedSec) {
+    playSfx("assets/audio/gameboy-pluck.mp3"); // 결과 팝업 효과음
     const TIERS = {
       success:{ title:"회의 준비 완료!", emoji:"🎉", bg:"#eafae8", color:PX.green, deltas:[{label:"업무량",v:-25}] },
       partial:{ title:"아슬아슬하게 마쳤다…", emoji:"😮‍💨", bg:"#fff3df", color:"#c98a2a", deltas:[{label:"업무량",v:-18},{label:"스트레스",v:8}] },
@@ -981,7 +982,7 @@ export function renderMeetingGame(root, state, actions, game) {
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
-    btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `회의 준비 ${tier}: 오류 ${errors}개`, usedSec); });
+    btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `회의 준비 ${tier}: 오류 ${errors}개`, usedSec); });
     nextBtn.append(btnInner);
     panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
     card.append(panel);

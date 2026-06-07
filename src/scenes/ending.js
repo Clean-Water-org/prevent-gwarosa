@@ -1,6 +1,8 @@
 import { createInitialState, formatTime } from "../state.js";
 import { resolveEnding, STAT_BARS } from "../data/endings.js";
-import { stopBgm } from "../lib/audio.js";
+import { playBgm, stopBgm } from "../lib/audio.js";
+
+const CLEAR_S_BGM_SRC = "assets/audio/retro-8bit-happy-videogame-music.mp3";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 const STAT_COLOR = { ink: PX.ink, marker: PX.red, blue: PX.blue };
@@ -149,8 +151,10 @@ function makeStatBar(label, dir, color, value) {
 
 // ══════════════════════════════════════════════════════════════════
 export function renderEnding(root, state, actions) {
-  stopBgm();
   const card = resolveEnding(state);
+  // 칼퇴 성공 S등급 엔딩에서만 전용 BGM 재생, 그 외 엔딩은 무음.
+  if (card.key === "clear-s") playBgm(CLEAR_S_BGM_SRC);
+  else stopBgm();
   const clockText = formatTime(state.gameMinute);
   const badgeLabel = card.key === "overtime" ? `${card.badgeLabel} ${state.stats.workload}` : card.badgeLabel;
 
