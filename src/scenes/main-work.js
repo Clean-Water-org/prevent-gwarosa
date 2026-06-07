@@ -1,5 +1,5 @@
 import { el, getActiveStatusEffects, renderNarrationPopup, renderStatusBadge } from "../ui.js";
-import { formatTime, applyDelta, applyWorkTimeCost, checkEnding, normalizeLogEntry, addLogEntry, currentDateLabel } from "../state.js";
+import { formatTime, applyDelta, applyWorkTimeCost, checkEnding, normalizeLogEntry, addLogEntry, currentDateLabel, effectiveLogDelta } from "../state.js";
 import {
   bossMainEvents,
   chatPool,
@@ -791,7 +791,7 @@ function completePortalTask(taskId, actions, onClose) {
     const next = applyDelta(draft, { gameMinute: 2 }, null);
     addLogEntry(next, {
       cause: `${PORTAL_TASKS[taskId]?.detailTitle ?? "포털 공지"}를 확인했다.`,
-      delta: { gameMinute: 2 },
+      delta: effectiveLogDelta(draft, next, { gameMinute: 2 }),
     });
     return next;
   });
@@ -1312,7 +1312,6 @@ function applyMessengerResult(result, actions, message, choiceId) {
   let pendingEnding = null;
   actions.mutateState((draft) => {
     let next = applyDelta(draft, result.delta ?? {}, null);
-    const logDelta = { ...(result.delta ?? {}) };
     next.counters.bossAttention = Math.max(0, (next.counters.bossAttention ?? 0) + (result.bossAttentionDelta ?? 0));
     next.counters.colleagueIgnoreCount = Math.max(0, (next.counters.colleagueIgnoreCount ?? 0) + (result.colleagueIgnoreDelta ?? 0));
     next.counters.hrIgnoreCount = Math.max(0, (next.counters.hrIgnoreCount ?? 0) + (result.hrIgnoreDelta ?? 0));
@@ -1321,7 +1320,6 @@ function applyMessengerResult(result, actions, message, choiceId) {
       const warning = pickBossWarningMessage();
       addMessengerMessage(warning, actions, { silent: true, stateOverride: next });
       next = applyDelta(next, { stress: 2 }, null);
-      logDelta.stress = (logDelta.stress ?? 0) + 2;
     }
 
     if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= BOSS_ATTENTION_INTERVIEW_AT) {
@@ -1340,7 +1338,7 @@ function applyMessengerResult(result, actions, message, choiceId) {
 
     addLogEntry(next, {
       cause: buildChatLogCause(message, choiceId, result),
-      delta: logDelta,
+      delta: effectiveLogDelta(draft, next, result.delta ?? {}),
     });
     pendingEnding = checkEnding(next);
     return next;
@@ -1396,7 +1394,7 @@ function closeBossAttentionInterview(actions, choice) {
     next.counters.bossAttention = 0;
     addLogEntry(next, {
       cause: choice.message,
-      delta: choice.delta ?? {},
+      delta: effectiveLogDelta(draft, next, choice.delta ?? {}),
     });
     pendingEnding = checkEnding(next);
     return next;
@@ -1440,7 +1438,7 @@ function closeHrCallEvent(actions, choice) {
     next.flags.hrCallDone = true;
     addLogEntry(next, {
       cause: choice.message,
-      delta: choice.delta ?? {},
+      delta: effectiveLogDelta(draft, next, choice.delta ?? {}),
     });
     pendingEnding = checkEnding(next);
     return next;
@@ -2364,7 +2362,7 @@ function closeMeetingEventChoice(actions, state, choice, outcome) {
     delete next.flags.devMeetingOutcome;
     addLogEntry(next, {
       cause: logCause,
-      delta: finalChoice.delta ?? {},
+      delta: effectiveLogDelta(draft, next, finalChoice.delta ?? {}),
     });
     pendingEnding = checkEnding(next);
     return next;
@@ -2792,7 +2790,7 @@ function applyMainEventChoice(actions, event, choice, phaseIndex, options = {}) 
 
     addLogEntry(next, {
       cause: choice.message ?? `${event.title} 이벤트를 처리했다.`,
-      delta: choice.delta ?? {},
+      delta: effectiveLogDelta(draft, next, choice.delta ?? {}),
       effects: pickedItem ? [`${items[pickedItem]?.label ?? pickedItem} 획득`] : [],
     });
     pendingEnding = checkEnding(next);
@@ -3043,15 +3041,30 @@ function startMainClock(screen, state, actions) {
   updateMainClockDisplay(screen, currentMinute);
 
   _clockInterval = setInterval(() => {
-    const nextMinute = actions.advanceGameMinute?.(1) ?? currentMinute + 1;
+    const nextState = actions.advanceGameMinute?.(1);
     if (!screen.isConnected) {
       cleanupMainWorkSystems();
       return;
     }
 
-    currentMinute = nextMinute;
+    currentMinute = nextState?.gameMinute ?? currentMinute + 1;
     updateMainClockDisplay(screen, currentMinute);
+    // 업무 피로(체력/스트레스)는 매 틱 조용히 적용되므로 HUD 스탯바도 라이브로 갱신해
+    // 채팅 답변 등 재렌더 시 누적분이 한꺼번에 튀지 않게 한다(로그와 실제 표시 일치).
+    if (nextState?.stats) updateMainHudStats(screen, nextState.stats);
   }, MAIN_CLOCK_TICK_MS);
+}
+
+function updateMainHudStats(screen, stats) {
+  for (const type of ["workload", "stress", "health"]) {
+    const sec = screen.querySelector(`.main-work-stat-${type}`);
+    if (!sec) continue;
+    const value = stats[type];
+    const strong = sec.querySelector(".main-work-stat-meta strong");
+    if (strong) strong.textContent = String(value);
+    const bar = sec.querySelector(".main-work-stat-bar i");
+    if (bar) bar.style.width = `${value}%`;
+  }
 }
 
 function updateMainClockDisplay(screen, gameMinute) {

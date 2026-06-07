@@ -95,7 +95,7 @@ export function finishWith(ending) {
 
 export function advanceGameMinute(minutes = 1) {
   if (state.scene !== "main" || !state.flags?.handoverGuideSeen || state.ending) {
-    return state.gameMinute;
+    return state;
   }
 
   state = { ...state, stats: { ...state.stats }, flags: { ...state.flags } };
@@ -107,7 +107,7 @@ export function advanceGameMinute(minutes = 1) {
   } else {
     saveGame(state);
   }
-  return state.gameMinute;
+  return state;
 }
 
 export function useItem(index) {

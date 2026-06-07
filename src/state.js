@@ -102,6 +102,22 @@ const HIGH_WORKLOAD_STRESS_THRESHOLD = 80;
 const HIGH_STRESS_FATIGUE_THRESHOLD = 70;
 const EXTREME_STRESS_FATIGUE_THRESHOLD = 90;
 
+// 업무일지에 '실제 반영된' 스탯 변화를 기록하기 위한 헬퍼.
+// applyDelta는 gameMinute을 업무 피로(체력/스트레스 추가 감소)로 처리하고 0~100 클램프하므로,
+// 선택지 명목 delta가 아니라 적용 전/후 스탯 차이를 기록해야 로그와 실제 스탯이 일치한다.
+export function effectiveLogDelta(before, after, baseDelta = {}) {
+  const out = { ...baseDelta };
+  for (const k of ["workload", "stress", "health"]) {
+    const diff = (after.stats?.[k] ?? 0) - (before.stats?.[k] ?? 0);
+    if (diff !== 0) out[k] = diff;
+    else delete out[k];
+  }
+  const trustDiff = (after.colleagueTrust ?? 0) - (before.colleagueTrust ?? 0);
+  if (trustDiff !== 0) out.colleagueTrust = trustDiff;
+  else delete out.colleagueTrust;
+  return out;
+}
+
 export function applyWorkTimeCost(state, minutes = 0, options = {}) {
   const spentMinutes = Math.max(0, Math.round(minutes));
   if (spentMinutes <= 0) return { state, delta: {} };
