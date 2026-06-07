@@ -661,11 +661,24 @@
   box-shadow: 5px 5px 0 var(--ink);
 }
 
+.main-work-intranet-slot,
+.main-work-messenger-slot {
+  position: absolute;
+  z-index: 12;
+  left: 124px;
+  right: 18px;
+  top: 16px;
+  bottom: 16px;
+  min-width: 0;
+  min-height: 0;
+}
+
 .main-work-intranet {
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-rows: 42px minmax(0, 1fr);
   color: var(--ink);
-  margin-left: 104px;
   font-family: NeoDunggeunmo, monospace;
 }
 
@@ -714,19 +727,25 @@
 .main-work-intranet-body {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(250px, 0.8fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(160px, 0.65fr);
   gap: 12px;
   padding: 12px;
+  overflow: auto;
   background: #fff8e3;
 }
 
 .main-work-notice-panel,
 .main-work-schedule-panel {
   min-width: 0;
+  min-height: 0;
   border: 2px solid var(--ink);
   border-radius: 6px;
   padding: 12px;
   background: var(--white, #fdfcf2);
+}
+
+.main-work-notice-panel {
+  overflow: auto;
 }
 
 .main-work-notice-panel h2,
@@ -781,14 +800,16 @@
 
 .main-work-portal-task {
   width: 100%;
+  min-height: 44px;
   border: 2px solid var(--ink);
   border-radius: 5px;
-  padding: 8px 10px;
+  padding: 12px 14px;
   color: var(--ink);
   background: #ffe3e3;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
+  line-height: 1.4;
   text-align: left;
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--ink);
@@ -844,12 +865,13 @@
 
 .main-work-portal-detail-confirm {
   width: 100%;
+  min-height: 44px;
   border: 2px solid var(--ink);
   border-radius: 5px;
-  padding: 10px;
+  padding: 12px 14px;
   background: #b8f5c6;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--ink);
@@ -893,17 +915,6 @@
 .main-work-schedule-item strong {
   color: var(--blue, #3d8bff);
   font-size: 12px;
-}
-
-.main-work-messenger-slot {
-  position: absolute;
-  z-index: 12;
-  left: 124px;
-  right: 18px;
-  top: 16px;
-  bottom: 16px;
-  min-width: 0;
-  min-height: 0;
 }
 
 .main-work-messenger-window {
@@ -1552,7 +1563,7 @@
   top: auto;
   right: 12px;
   bottom: 58px;
-  z-index: 900;
+  z-index: 8;
   width: min(310px, calc(100% - 24px));
   display: flex;
   flex-direction: column;
@@ -2154,10 +2165,29 @@
 }
 
 .main-work-start-icon {
-  width: 42px;
-  color: var(--ink);
-  background: var(--accent, #ffd23f);
-  font-size: 22px;
+  width: 44px;
+  flex-shrink: 0;
+  color: transparent;
+  background:
+    linear-gradient(180deg, #fff4b8 0%, var(--accent, #ffd23f) 42%, #e8b800 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.72),
+    inset -1px -1px 0 rgba(29, 31, 46, 0.12),
+    2px 2px 0 var(--ink);
+  font-size: 0;
+}
+
+.main-work-start-icon::before {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(29, 31, 46, 0.35);
+  background: #e85a5a;
+  box-shadow:
+    9px 0 0 0 #58b958,
+    0 9px 0 0 #4d8fe8,
+    9px 9px 0 0 #ffd23f;
 }
 
 .main-work-task-icon {
@@ -3176,6 +3206,16 @@
   grid-template-columns: 1fr;
 }
 
+.main-event-choice-grid--triple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.main-event-choice-grid--triple .main-event-choice:last-child {
+  grid-column: 1 / -1;
+  max-width: calc(50% - 7px);
+  justify-self: center;
+}
+
 .main-event-choice {
   min-height: 104px;
   display: grid;
@@ -3200,6 +3240,11 @@
 .main-event-choice-reject {
   border-color: var(--red, #ff4d4d);
   background: #fff0ee;
+}
+
+.main-event-choice-neutral {
+  border-color: var(--ink);
+  background: #fff8e3;
 }
 
 .main-event-reason-choice {
@@ -3350,10 +3395,7 @@
     justify-self: start;
   }
 
-  .main-work-intranet {
-    margin-left: 0;
-  }
-
+  .main-work-intranet-slot,
   .main-work-messenger-slot {
     left: 10px;
     right: 10px;
@@ -7727,15 +7769,15 @@ textarea,
 }
 
 @keyframes mgMailThrowLeft {
-  to { transform: translate(-220%, -50%) rotate(-18deg); opacity: 0; }
+  to { transform: translate(-220%, 0) rotate(-18deg); opacity: 0; }
 }
 
 @keyframes mgMailThrowRight {
-  to { transform: translate(120%, -50%) rotate(18deg); opacity: 0; }
+  to { transform: translate(120%, 0) rotate(18deg); opacity: 0; }
 }
 
 @keyframes mgMailMissed {
-  to { transform: translate(-50%, 40%); opacity: 0; }
+  to { transform: translate(0, 40%); opacity: 0; }
 }
 
 /* 키프레임 */

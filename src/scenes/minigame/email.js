@@ -3,7 +3,7 @@ import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
 import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
-import { formatHeadacheDisplayText, syncHeadacheTextLayers } from "../../lib/headache-fx.js";
+import { syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
 const TRUSTED_HOSTS = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "crm.company.com", "docs.google.com", "drive.partner-office.kr"];
@@ -91,7 +91,7 @@ function makeDropZone(kind) {
   const accent = isGood ? PX.green : PX.red;
   const bg = isGood ? "#e3f7e2" : "#ffe3e0";
   const wrap = document.createElement("div");
-  wrap.style.cssText = `flex:0 0 168px;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
+  wrap.style.cssText = `flex:0 0 168px;height:100%;border:3px dashed ${accent};background:${bg};display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;box-sizing:border-box;cursor:pointer`;
   const icon = document.createElement("span");
   icon.style.fontSize = "30px";
   icon.textContent = isGood ? "📥" : "🗑️";
@@ -102,9 +102,9 @@ function makeDropZone(kind) {
   key.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#8a8478";
   key.textContent = isGood ? "← / A" : "D / →";
   const list = document.createElement("div");
-  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;width:100%;min-height:96px";
+  list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;width:100%;flex:1;min-height:96px";
   const count = document.createElement("span");
-  count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px`;
+  count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px;margin-top:auto;flex-shrink:0`;
   count.textContent = "0";
   wrap.append(icon, title, key, list, count);
   return { wrap, list, count, accent, kind };
@@ -278,15 +278,20 @@ export function renderEmailGame(root, state, actions, game) {
   const stage = document.createElement("div");
   stage.style.cssText = `position:relative;flex:1;min-width:0;height:440px;background:#fbfaf5;border:3px solid ${PX.ink};overflow:hidden;box-sizing:border-box`;
 
+  const mailSlot = document.createElement("div");
+  mailSlot.className = "mg-mail-slot";
+  mailSlot.style.cssText = "position:absolute;left:50%;transform:translateX(-50%);width:420px;max-width:calc(100% - 36px)";
+
   const mailCard = document.createElement("article");
   mailCard.className = "mg-mail-card";
-  mailCard.style.cssText = `position:absolute;left:50%;transform:translateX(-50%);width:420px;max-width:calc(100% - 36px);border:3px solid ${PX.ink};background:#fff;box-shadow:4px 4px 0 ${PX.ink};padding:15px 18px;cursor:pointer;box-sizing:border-box;transition:width .15s,box-shadow .15s`;
+  mailCard.style.cssText = `width:100%;border:3px solid ${PX.ink};background:#fff;box-shadow:4px 4px 0 ${PX.ink};padding:15px 18px;cursor:pointer;box-sizing:border-box;transition:width .15s,box-shadow .15s`;
   mailCard.addEventListener("click", () => toggleDetail());
 
   const feedbackEl = document.createElement("span");
   feedbackEl.style.cssText = "position:absolute;left:50%;top:46%;transform:translateX(-50%);z-index:5;font-family:NeoDunggeunmo,monospace;font-size:22px;text-shadow:2px 2px 0 #fff;display:none;pointer-events:none";
 
-  stage.append(mailCard, feedbackEl);
+  mailSlot.append(mailCard);
+  stage.append(mailSlot, feedbackEl);
   gameRow.append(goodZone.wrap, stage, spamZone.wrap);
 
   const resultOverlay = document.createElement("div");
@@ -338,20 +343,14 @@ export function renderEmailGame(root, state, actions, game) {
   function refreshStatusBadge() {
     const id = activeStatus();
     if (!id) { statusRow.style.display = "none"; return; }
-    const info = { burnout: { icon: "🥵", text: "번아웃 — 글자가 깨져 보인다" }, headache: { icon: "🤕", text: "두통 — 글자가 번지고 깨져 보인다" }, coffee: { icon: "☕", text: "손 떨림 — 메일이 잘게 떨려 보인다" } }[id];
+    const info = { burnout: { icon: "🥵", text: "번아웃 — 글자가 깨져 보인다" }, headache: { icon: "🤕", text: "두통 — 글자가 번져 보인다" }, coffee: { icon: "☕", text: "손 떨림 — 메일이 잘게 떨려 보인다" } }[id];
     statusIcon.textContent = info.icon;
     statusCap.textContent = info.text;
     statusRow.style.display = "flex";
   }
 
   function statusText(text, part) {
-    if (isHeadache) {
-      return formatHeadacheDisplayText(text, {
-        part: part === "subject" ? "subject" : "body",
-        seed: run.index + (part === "subject" ? 0 : 1),
-        enabled: true,
-      });
-    }
+    if (isHeadache) return text;
     if (stress >= 70) return corruptText(text, part === "subject" ? 0.22 : 0.18, run.index);
     return text;
   }
@@ -400,7 +399,9 @@ export function renderEmailGame(root, state, actions, game) {
   // ── 메일 카드 렌더 ──
   function renderMailCard(mail) {
     mailCard.replaceChildren();
-    mailCard.style.width = run.detailOpen ? "620px" : "420px";
+    const cardWidth = run.detailOpen ? "620px" : "420px";
+    mailSlot.style.width = cardWidth;
+    mailCard.style.width = "100%";
 
     const top = document.createElement("div");
     top.style.cssText = "display:flex;justify-content:space-between;gap:12px;font-family:NeoDunggeunmo,monospace;font-size:13px;color:#9a9a9a;margin-bottom:8px";
@@ -472,7 +473,7 @@ export function renderEmailGame(root, state, actions, game) {
     run.cardY = MAIL_START_Y;
     run.detailOpen = false;
     mailCard.className = "mg-mail-card";
-    mailCard.style.top = run.cardY + "%";
+    mailSlot.style.top = run.cardY + "%";
     renderMailCard(mail);
     updateScorePill();
   }
@@ -541,7 +542,7 @@ export function renderEmailGame(root, state, actions, game) {
     const bossBoost = run.bossWatching ? 0.05 : 0;
     if (!run.locked) {
       run.cardY += 0.28 + stressBoost + bossBoost;
-      mailCard.style.top = run.cardY + "%";
+      mailSlot.style.top = run.cardY + "%";
       if (run.cardY >= 84) classify("missed");
     }
     run.raf = requestAnimationFrame(tick);

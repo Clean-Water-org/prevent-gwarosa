@@ -279,9 +279,7 @@ function renderPlayerCard(playerName, portrait) {
 function renderCommuteTaskbar() {
   return el("footer", { class: "main-work-taskbar" }, [
     el("div", { class: "main-work-taskbar-left" }, [
-      el("span", { class: "main-work-start-icon", text: "⊞" }),
-      el("span", { class: "main-work-task-icon", text: "검색" }),
-      el("span", { class: "main-work-task-icon", text: "📁" }),
+      el("span", { class: "main-work-start-icon", title: "시작", "aria-label": "시작" }),
       el("span", { class: "main-work-task-icon is-disabled", text: "사내포털" }),
       el("span", { class: "main-work-task-icon is-disabled main-work-task-messenger", text: "💬" }),
     ]),
