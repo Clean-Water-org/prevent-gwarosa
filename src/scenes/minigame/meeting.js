@@ -1,6 +1,7 @@
 import { TOPICS, TRAPS, TRAP_MSGS } from "../../data/meeting-slides.js";
 import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
+import { buildBossKakaoMsgs } from "../../lib/boss-text.js";
 import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { formatHeadacheDisplayText, syncHeadacheTextLayers } from "../../lib/headache-fx.js";
@@ -906,7 +907,11 @@ export function renderMeetingGame(root, state, actions, game) {
     if (type==="kakao") {
       kakaoEl.replaceChildren();
       kakaoEl.append(makeKakaoWin({ title:"까까오톡 PC", onClose:()=>{ kakaoEl.replaceChildren(); kakaoEl.hidden=true; }, styleStr:`top:50%;left:50%;transform:translate(-50%,-50%)`,
-        msgs:[["😤","김팀장","지금 어디까지 됐어요?"],["😤","김팀장","오늘 안에 끝나죠?"],["😤","김팀장","검토 빨리 부탁해요"]] }));
+        msgs: buildBossKakaoMsgs(state, [
+          ["😤", "{name}, 지금 어디까지 진행되셨습니까?"],
+          ["😤", "{name}, 오늘 안에 마무리 가능하십니까?"],
+          ["😤", "{name}, 검토 빨리 부탁드립니다."],
+        ]) }));
       kakaoEl.hidden=false;
     }
     if (type==="dinner") {

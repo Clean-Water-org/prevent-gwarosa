@@ -70,6 +70,12 @@ export function renderStatusBadge(effect) {
     class: `main-work-status-badge main-work-status-badge-${effect.id} has-status-tooltip`,
     tabindex: "0",
     "aria-describedby": tooltipId,
+    onMouseDown: (event) => {
+      if (event.button === 0) event.preventDefault();
+    },
+    onClick: (event) => {
+      event.currentTarget.focus({ preventScroll: true });
+    },
   }, [
     el("span", { class: "main-work-status-badge-icon", text: effect.icon }),
     el("span", { text: effect.label }),

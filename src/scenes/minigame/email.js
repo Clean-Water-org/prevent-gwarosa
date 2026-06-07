@@ -1,6 +1,7 @@
 import { emailDeck } from "../../data/minigames.js";
 import { renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
+import { buildBossKakaoMsgs } from "../../lib/boss-text.js";
 import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { syncHeadacheTextLayers } from "../../lib/headache-fx.js";
@@ -547,7 +548,11 @@ export function renderEmailGame(root, state, actions, game) {
       kakaoEl.replaceChildren();
       kakaoEl.append(makeKakaoWin({
         onClose: () => { kakaoEl.replaceChildren(); kakaoEl.hidden = true; },
-        msgs: [["😤", "김팀장", "받은편지함 정리 다 됐어요?"], ["😤", "김팀장", "중요 메일 놓치면 안 돼요"], ["😤", "김팀장", "빨리 좀 확인해줘요"]],
+        msgs: buildBossKakaoMsgs(state, [
+          ["😤", "{name}, 받은편지함 정리 다 하셨습니까?"],
+          ["😤", "{name}, 중요한 메일을 놓치시면 안 됩니다."],
+          ["😤", "{name}, 빠르게 확인 부탁드립니다."],
+        ]),
       }));
       kakaoEl.hidden = false;
       clearTimeout(run.kakaoTimer);
