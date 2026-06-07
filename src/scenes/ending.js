@@ -1,8 +1,10 @@
 import { createInitialState, formatTime } from "../state.js";
 import { resolveEnding, STAT_BARS } from "../data/endings.js";
-import { playBgm, stopBgm } from "../lib/audio.js";
+import { playBgm, stopBgm, playClickSfx } from "../lib/audio.js";
 
 const CLEAR_S_BGM_SRC = "assets/audio/retro-8bit-happy-videogame-music.mp3";
+const CLEAR_AB_BGM_SRC = "assets/audio/success-ending.mp3";
+const GAMEOVER_BGM_SRC = "assets/audio/game-over.mp3";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 const STAT_COLOR = { ink: PX.ink, marker: PX.red, blue: PX.blue };
@@ -152,8 +154,10 @@ function makeStatBar(label, dir, color, value) {
 // ══════════════════════════════════════════════════════════════════
 export function renderEnding(root, state, actions) {
   const card = resolveEnding(state);
-  // 칼퇴 성공 S등급 엔딩에서만 전용 BGM 재생, 그 외 엔딩은 무음.
+  // 엔딩별 전용 BGM: 칼퇴 성공(S / A·B) · 게임오버(당일퇴사·과로사) · 그 외 무음.
   if (card.key === "clear-s") playBgm(CLEAR_S_BGM_SRC);
+  else if (card.key === "clear-a" || card.key === "clear-b") playBgm(CLEAR_AB_BGM_SRC);
+  else if (card.key === "quit" || card.key === "overwork") playBgm(GAMEOVER_BGM_SRC);
   else stopBgm();
   const clockText = formatTime(state.gameMinute);
   const badgeLabel = card.key === "overtime" ? `${card.badgeLabel} ${state.stats.workload}` : card.badgeLabel;
@@ -266,7 +270,7 @@ export function renderEnding(root, state, actions) {
   retryInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:11px 22px;font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.ink};display:flex;align-items:center;justify-content:center;gap:8px`;
   retryInner.textContent = "🔄 다시하기";
   retryBtn.append(retryInner);
-  retryBtn.addEventListener("click", () => actions.mutateState(() => createInitialState()));
+  retryBtn.addEventListener("click", () => { playClickSfx(); stopBgm(); actions.mutateState(() => createInitialState()); });
 
   right.append(clockBox, statBox, retryBtn);
 
