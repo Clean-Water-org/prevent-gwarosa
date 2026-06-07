@@ -81,8 +81,10 @@ function applyMiniResult(state, gameId, result, message, usedSec = 60) {
     next.ending = ending;
     next.scene = "ending";
   } else if (next.minigameRound >= MINI_ROUNDS) {
-    // 5라운드 모두 마침 → 마감 판정 (18:00 도달 전이라도 더 할 미니게임 없음)
-    next.ending = next.stats.workload <= 0 ? "success" : "overtime";
+    // 5라운드 모두 마쳤는데 업무량 남음 → 야근 (업무량≤0이면 위 checkEnding에서 success).
+    // 야근은 18:00 기준으로 표시.
+    next.ending = "overtime";
+    next.gameMinute = Math.max(next.gameMinute, 18 * 60);
     next.scene = "ending";
   } else if (next.minigameRound === 2) {
     next.scene = "lunch";

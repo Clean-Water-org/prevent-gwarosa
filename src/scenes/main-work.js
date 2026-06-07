@@ -61,7 +61,7 @@ export function renderMainWork(root, state, actions) {
             intranetPanel,
           ]),
           renderRecentLogPanel(state, actions),
-          renderTaskbar(toggleIntranet, (btn) => { intranetBtn = btn; }),
+          renderTaskbar(state.gameMinute, toggleIntranet, (btn) => { intranetBtn = btn; }),
         ]),
       ]),
       el("div", { class: "main-work-monitor-neck" }),
@@ -410,7 +410,7 @@ function renderSchedule(time, text) {
   ]);
 }
 
-function renderTaskbar(onIntranetClick, registerIntranetBtn) {
+function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn) {
   const intranetBtn = el("span", {
     class: "main-work-task-icon",
     text: "사내포털",
@@ -426,7 +426,7 @@ function renderTaskbar(onIntranetClick, registerIntranetBtn) {
       intranetBtn,
     ]),
     el("div", { class: "main-work-taskbar-right" }, [
-      el("span", { class: "main-work-task-clock", text: "AM 09:00" }),
+      el("span", { class: "main-work-task-clock", text: toTaskbarTime(gameMinute) }),
     ]),
   ]);
 }
