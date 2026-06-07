@@ -195,8 +195,7 @@ function renderBriefingBody(state) {
         onMouseEnter: () => setBgmPlaybackRate(0.72),
         onMouseLeave: () => restoreBgmPlaybackRate(),
       }, [
-        el("p", { text: "※ 18:00 이후에도 자리에 남아있는" }),
-        el("p", { text: "동료와 눈을 마주치지 마세요." }),
+        el("p", { text: "※ 18:00 이후에도 자리에 남아있는 동료와 눈을 마주치지 마세요." }),
       ]),
     ]),
     el("aside", { class: "commute-side-panel" }, [
