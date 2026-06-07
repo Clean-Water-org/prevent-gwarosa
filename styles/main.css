@@ -71,6 +71,9 @@
   justify-content: center;
   width: 100%;
   min-width: 0;
+  /* 업무 일지(모니터 우측 absolute)가 room overflow에 잘리지 않도록 */
+  padding-right: calc(min(220px, 26vw) + 12px);
+  box-sizing: border-box;
 }
 
 .main-work-monitor-wrapper {
@@ -2031,7 +2034,7 @@
 .main-work-recent-log {
   display: grid;
   grid-template-rows: 34px minmax(0, 1fr);
-  overflow: hidden;
+  overflow: visible;
   border: 3px solid var(--ink);
   border-radius: 7px;
   color: var(--ink);
@@ -2105,7 +2108,9 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
+  overflow-x: hidden;
   overflow-y: auto;
+  border-radius: 0 0 4px 4px;
   padding: 9px 10px 11px;
   background: #fff8e3;
   scrollbar-color: var(--ink) #fff8e3;
@@ -2140,8 +2145,8 @@
   border: 2px solid #ffb800;
   border-radius: 5px;
   padding: 6px 5px 8px;
-  margin: -2px -3px 0;
   background: #fff3c4;
+  box-shadow: inset 0 0 0 1px #ffb800;
   animation: recent-log-entry-in 0.35s ease, recent-log-entry-glow 1.1s ease-in-out 0.35s 2;
 }
 
@@ -2215,8 +2220,8 @@
 }
 
 @keyframes recent-log-panel-nudge {
-  0%, 100% { box-shadow: 5px 5px 0 var(--ink); }
-  50% { box-shadow: 5px 5px 0 var(--ink), 0 0 0 3px #ffb800; }
+  0%, 100% { border-color: var(--ink); }
+  50% { border-color: #ffb800; }
 }
 
 @keyframes recent-log-dot-pulse {
@@ -3895,6 +3900,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
+    padding-right: 0;
   }
 
   .main-work-monitor-stage .main-work-monitor-wrapper {
