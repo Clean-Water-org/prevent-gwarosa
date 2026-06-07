@@ -3579,6 +3579,10 @@
 
 .main-event-card {
   width: min(620px, 94%);
+  /* 모니터 영역을 넘지 않게 최대 높이 제한 + 타이틀바 고정/본문 스크롤(반응형) */
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 3px solid var(--ink);
   border-radius: 8px;
@@ -3631,6 +3635,9 @@
   display: grid;
   gap: 14px;
   padding: 28px 28px 30px;
+  /* 카드 최대 높이를 넘으면 본문만 세로 스크롤(타이틀바는 고정). 충분히 크면 스크롤 없음. */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .main-event-kicker {
