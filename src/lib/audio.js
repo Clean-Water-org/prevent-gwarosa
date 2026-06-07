@@ -15,6 +15,7 @@ let titleGlitchRestoreTimer = null;
 let bgmEnabled = loadSettings().bgmEnabled;
 let pendingBgm = null;
 let audioUnlocked = false;
+const unlockListeners = new Set();
 
 const HEADACHE_BGM_RATE = 0.72;
 const HEADACHE_BGM_WOBBLE = 0.035;
@@ -47,10 +48,29 @@ function resumeAudioContext() {
   if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
 }
 
+/** BGM 재생이 사용자 입력을 기다리는 중인지 (자동재생 차단 상태). */
+export function needsAudioUnlock() {
+  if (audioUnlocked || !bgmEnabled) return false;
+  if (pendingBgm) return true;
+  return !!(current && current.paused && !current.ended);
+}
+
+/** 오디오 unlock 시 1회 호출. 이미 unlock됐으면 즉시 호출. 해제 함수 반환. */
+export function onAudioUnlock(listener) {
+  unlockListeners.add(listener);
+  if (audioUnlocked) listener();
+  return () => unlockListeners.delete(listener);
+}
+
+function notifyAudioGateChange() {
+  unlockListeners.forEach((listener) => listener());
+}
+
 /** 브라우저 자동재생 차단 후 첫 사용자 입력에서 BGM을 이어 재생한다. */
 function onFirstUserGesture() {
   if (audioUnlocked) return;
   audioUnlocked = true;
+  notifyAudioGateChange();
   resumeAudioContext();
   if (!bgmEnabled) return;
 
@@ -220,6 +240,7 @@ export function playBgm(src, { volume = 0.4, loop = true } = {}) {
     })
     .catch(() => {
       pendingBgm = { src, opts: { volume, loop } };
+      notifyAudioGateChange();
     });
   applyHeadacheFxToCurrent();
   return audio;
