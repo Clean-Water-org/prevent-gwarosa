@@ -1223,7 +1223,7 @@ function expirePendingReply(messageId, actions) {
 
 // ── 채팅 알림 시스템 ─────────────────────────────────────────
 
-function cleanupMainWorkSystems() {
+export function cleanupMainWorkSystems() {
   cleanupChatSystem();
   cleanupMainClock();
   cleanupMainPhaseTimer();

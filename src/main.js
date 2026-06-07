@@ -6,7 +6,7 @@ import { renderTitle } from "./scenes/title.js";
 import { renderSetup } from "./scenes/setup.js";
 import { renderOnboarding } from "./scenes/onboarding.js";
 import { renderCommute } from "./scenes/commute.js";
-import { renderMainWork } from "./scenes/main-work.js";
+import { renderMainWork, cleanupMainWorkSystems } from "./scenes/main-work.js";
 import { renderMiniGame } from "./scenes/minigame/index.js";
 import { renderLunch } from "./scenes/lunch.js";
 import { renderEnding } from "./scenes/ending.js";
@@ -69,6 +69,11 @@ export function go(scene) {
 }
 
 export function finishWith(ending) {
+  // 엔딩은 단 한 번만 진입. 이미 엔딩 상태면 무시해 화면 중복 표시를 막는다.
+  // (메인화면의 여러 타이머/이벤트 핸들러가 같은 순간에 finishWith를 호출할 수 있음)
+  if (state.ending) return;
+  // 메인화면 타이머·오버레이를 정리해, 전환 후 남은 타이머가 다시 렌더를 유발하지 않게 한다.
+  cleanupMainWorkSystems();
   state = { ...state, ending, scene: "ending" };
   history.pushState(null, "", "#ending");
   render();
