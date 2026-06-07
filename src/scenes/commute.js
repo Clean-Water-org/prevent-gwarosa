@@ -186,15 +186,17 @@ function renderBriefingBody(state) {
       }),
     ]),
     el("section", { class: "commute-mission-panel" }, [
-      el("p", { class: "commute-mission-kicker", text: "출근 인증 완료 ✓" }),
-      el("h1", { text: "오늘도 출근! 잘 오셨어요~" }),
-      el("div", { class: "commute-mission-rule" }),
-      el("p", { class: "commute-mission-lead", text: "오늘의 미션은 딱 하나. 퇴근 버튼 누르기." }),
-      el("p", { text: "업무는 쌓이고, 체력은 줄고, 스트레스는 웃으며 올라갑니다." }),
-      el("p", { text: "괜찮아요. 회사 분위기는 아주 밝으니까요. (화면이 붉어지는 건 기분 탓.)" }),
-      el("div", { class: "commute-mission-closing" }, [
-        el("span", { text: "생존 보너스: 18:00 전에 자리 비우기" }),
-        el("small", { text: "09:00 업무 시작 대기 중 · 오늘도 건강(?)한 하루!" }),
+      el("h1", { text: "좋은 아침입니다! ☀️" }),
+      el("p", { class: "commute-mission-lead", text: "오늘도 건강한 직장 생활을 위해" }),
+      el("ul", { class: "commute-mission-rules" }, [
+        el("li", { text: "업무량을 적절히 관리해주세요." }),
+        el("li", { text: "스트레스를 방치하지 마세요." }),
+        el("li", { text: "체력이 부족하다면 휴식을 취하세요." }),
+      ]),
+      el("p", { class: "commute-mission-cheer", text: "오늘도 화이팅입니다 :)" }),
+      el("aside", { class: "commute-hidden-rule" }, [
+        el("p", { text: "※ 18:00 이후에도 자리에 남아있는" }),
+        el("p", { text: "동료와 눈을 마주치지 마세요." }),
       ]),
     ]),
     el("aside", { class: "commute-side-panel" }, [
@@ -212,7 +214,6 @@ function renderScheduleBody() {
     el("section", { class: "commute-schedule-panel" }, [
       el("header", { class: "commute-schedule-head" }, [
         el("h2", { text: "오늘 하루, 대략 이런 흐름" }),
-        el("p", { text: "정확한 시각은 안 알려드려요. 현장에서 확인하세요." }),
       ]),
       el("ol", { class: "commute-flow-list" },
         DAY_FLOW_STEPS.map((step) => renderFlowStep(step)),

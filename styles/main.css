@@ -2395,10 +2395,6 @@
   box-shadow: inset 0 -3px 0 var(--ink);
 }
 
-.commute-schedule-body {
-  grid-template-columns: minmax(0, 1fr);
-  padding: 12px;
-}
 
 .commute-schedule-panel {
   min-height: 0;
@@ -2418,13 +2414,6 @@
   margin: 0;
   font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
-}
-
-.commute-schedule-head p {
-  margin: 6px 0 0;
-  color: #6b7287;
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .commute-flow-list {
@@ -2516,6 +2505,10 @@
   background: #fff8e3;
 }
 
+.commute-briefing-body.commute-schedule-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .commute-tip-panel {
   min-height: 0;
   display: grid;
@@ -2557,66 +2550,125 @@
 
 .commute-mission-panel {
   min-height: 0;
-  display: grid;
-  align-content: start;
-  gap: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   border: 2px solid var(--ink);
   border-radius: 6px;
-  padding: 18px 22px;
+  padding: 18px 22px 14px;
   color: var(--ink);
   background: var(--white, #fdfcf2);
   text-align: center;
 }
 
-.commute-mission-kicker {
-  margin: 0;
-  color: #6b7287;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
 .commute-mission-panel h1 {
   margin: 0;
   font-family: NeoDunggeunmo, monospace;
-  font-size: clamp(18px, 2.4vw, 24px);
-}
-
-.commute-mission-rule {
-  height: 2px;
-  background: var(--ink);
+  font-size: clamp(17px, 2.2vw, 22px);
 }
 
 .commute-mission-lead {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 }
 
-.commute-mission-panel p {
-  margin: 0;
+.commute-mission-rules {
+  width: min(100%, 280px);
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.commute-mission-rules li {
+  position: relative;
+  padding-left: 14px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
 }
 
-.commute-mission-closing {
-  display: grid;
-  gap: 4px;
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 2px dashed rgba(29, 31, 46, 0.28);
+.commute-mission-rules li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--ink);
 }
 
-.commute-mission-closing span {
+.commute-mission-cheer {
+  margin: 2px 0 0;
   font-size: 13px;
   font-weight: 900;
 }
 
-.commute-mission-closing small {
-  color: #6b7287;
-  font-size: 11px;
+.commute-hidden-rule {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
+  text-align: right;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1.55;
+  color: #4a4f5d;
+  opacity: 0.14;
+  filter: blur(0.5px);
+  animation: commute-legend-flicker 14s ease-in-out infinite;
+  user-select: none;
+  pointer-events: none;
+}
+
+.commute-hidden-rule p {
+  margin: 0;
+  padding-right: 8px;
+}
+
+.commute-hidden-rule p:last-child {
+  padding-right: 18px;
+}
+
+.commute-mission-panel:hover .commute-hidden-rule {
+  opacity: 0.5;
+  filter: blur(0);
+  animation: commute-legend-reveal 2.4s ease forwards;
+}
+
+@keyframes commute-legend-flicker {
+  0%, 86%, 100% {
+    opacity: 0.12;
+    filter: blur(0.55px);
+  }
+
+  88% {
+    opacity: 0.34;
+    filter: blur(0.2px);
+  }
+
+  89% {
+    opacity: 0.08;
+    filter: blur(0.7px);
+  }
+
+  91% {
+    opacity: 0.38;
+    filter: blur(0.15px);
+  }
+}
+
+@keyframes commute-legend-reveal {
+  0% {
+    opacity: 0.14;
+    filter: blur(0.5px);
+  }
+
+  100% {
+    opacity: 0.58;
+    filter: blur(0);
+  }
 }
 
 .commute-side-panel {
