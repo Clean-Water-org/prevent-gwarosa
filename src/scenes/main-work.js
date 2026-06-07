@@ -187,6 +187,15 @@ export function renderMainWork(root, state, actions) {
 
   let intranetBtn;
   let messengerBtn;
+  const closeIntranet = () => {
+    _intranetOpen = false;
+    if (intranetPanel.style.display === "none") {
+      intranetBtn?.classList.remove("active");
+      return;
+    }
+    intranetPanel.style.display = "none";
+    intranetBtn?.classList.remove("active");
+  };
   const closeMessenger = () => {
     _messengerState.isOpen = false;
     if (messengerPanel.style.display === "none") {
@@ -215,6 +224,8 @@ export function renderMainWork(root, state, actions) {
   const toggleMessenger = () => {
     const willOpen = messengerPanel.style.display === "none";
     if (willOpen) {
+      // 메신저를 열 때 포털을 닫아 두 패널이 겹치거나 리렌더 후 포털이 앞으로 덮지 않게 한다.
+      closeIntranet();
       _messengerState.isOpen = true;
       _messengerState.activeRoomId = findFirstUnreadRoomId() ?? _messengerState.activeRoomId ?? "boss";
       markRoomRead(_messengerState.activeRoomId);
@@ -229,6 +240,7 @@ export function renderMainWork(root, state, actions) {
   _messengerUpdater = refreshMessenger;
   _openMessengerRoom = (roomId) => {
     if (!_messengerState) return;
+    closeIntranet();
     _messengerState.isOpen = true;
     _messengerState.activeRoomId = roomId;
     markRoomRead(roomId);
@@ -264,10 +276,10 @@ export function renderMainWork(root, state, actions) {
     messengerPanel.style.display = "";
     messengerBtn?.classList.add("active");
   }
-  if (_intranetOpen) {
-    bringWorkspacePanelToFront(intranetPanel);
-  } else if (_messengerState.isOpen) {
+  if (_messengerState.isOpen) {
     bringWorkspacePanelToFront(messengerPanel);
+  } else if (_intranetOpen) {
+    bringWorkspacePanelToFront(intranetPanel);
   }
 
   // 회의 준비 미니게임과 동일한 오피스 룸 + CHADOL-TRON 모니터 비주얼로 통일
@@ -1944,6 +1956,16 @@ function cleanupStatusEventSystem() {
   }
 }
 
+/** 메인→메인 리렌더 후 상태이상 팝업을 다시 붙일 때 등장 애니메이션을 재생하지 않는다. */
+function reattachStatusEventOverlay(container) {
+  if (!_statusEventOverlay || _statusEventOverlay.isConnected) return;
+  _statusEventOverlay
+    .querySelector(".headache-dialog, .main-event-card")
+    ?.classList
+    .add("is-reattached");
+  container.append(_statusEventOverlay);
+}
+
 // 화면 전환(미니게임 진입 등)이나 리렌더로 채팅 패널이 사라지기 직전 상태를 스냅샷으로
 // 남겨둔다. startChatNotifications가 같은 판으로 복귀했을 때 이 스냅샷을 보고
 // "타이머가 멈춘 채" 그대로 이어서 보여준다.
@@ -2095,8 +2117,7 @@ function pauseMainWorkForBlockingEvent() {
 
 function showStatusEventPopup(type, state, container, actions) {
   if (_statusEventOverlay) {
-    if (!_statusEventOverlay.isConnected) container.append(_statusEventOverlay);
-    _preservingStatusEvent = false;
+    reattachStatusEventOverlay(container);
     return;
   }
   if (type === "headache") {
@@ -2167,6 +2188,7 @@ function showStatusEventPopup(type, state, container, actions) {
   ]);
 
   container.append(_statusEventOverlay);
+  _preservingStatusEvent = true;
 }
 
 function showHeadacheStatusPopup(state, container, actions) {
@@ -2197,6 +2219,7 @@ function showHeadacheStatusPopup(state, container, actions) {
       return { afterMinute };
     },
   });
+  _preservingStatusEvent = true;
 }
 
 function shouldShowMeetingEvent(state) {
