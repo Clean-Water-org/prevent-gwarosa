@@ -70,8 +70,7 @@ export const items = {
       state.counters.coffeeStreak = 0;
       addLogEntry(state, {
         cause: "짧은 영상을 봤다.",
-        delta: { stress: -10 },
-        effects: ["다음 메인화면 상사 이벤트 확률 증가"],
+        effects: ["살짝 상사 눈치가 보인다.."],
         icon: "🟡",
       });
       return state;
