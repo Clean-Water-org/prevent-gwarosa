@@ -76,8 +76,8 @@ const MAIN_CLOCK_TICK_MS = 1000;
 const CHAT_NOTIFICATION_SOUND_SRC = "assets/audio/messenger-notification.mp3";
 const CHAT_REPLY_TIMER_SEC = { boss: 10, colleague: 15, hr: 15 };
 const CHAT_SPAWN_FIRST_MS = 2000;
-const CHAT_SPAWN_INTERVAL_MS = 18000;
-const CHAT_SPAWN_INTERVAL_BUSY_MS = 10000;
+const CHAT_SPAWN_INTERVAL_MS = 4000;
+const CHAT_SPAWN_INTERVAL_BUSY_MS = 4000;
 const MAX_MESSENGER_TOASTS = 5;
 const MAIN_PHASE_DURATIONS_SEC = [35, 35, 40, 40];
 const PHONE_CHANCE_BY_PHASE = [0.95, 0.95, 0.95, 0.95];
@@ -1900,7 +1900,7 @@ function renderMeetingOutcomePopup(outcome, state, actions) {
 
   return renderMainEventPopup(event, {
     state,
-    onChoice: (choice) => closeMeetingEventChoice(actions, state, choice),
+    onChoice: (choice) => closeMeetingEventChoice(actions, state, choice, outcome),
   });
 }
 
@@ -1966,7 +1966,7 @@ function buildMeetingOutcomeEvent(outcome, state) {
   };
 }
 
-function closeMeetingEventChoice(actions, state, choice) {
+function closeMeetingEventChoice(actions, state, choice, outcome) {
   _meetingEventOverlay?.remove();
   _meetingEventOverlay = null;
 
@@ -1977,6 +1977,8 @@ function closeMeetingEventChoice(actions, state, choice) {
   let pendingEnding = null;
   actions.mutateState((draft) => {
     let next = applyDelta(draft, finalChoice.delta ?? {}, null);
+    if (outcome === "praise") next.counters.successStreak = 0;
+    if (outcome === "shame") next.counters.failures = 0;
     next.flags.meetingEventDone = true;
     next.flags.devTriggerMeetingEvent = false;
     delete next.flags.devMeetingOutcome;
@@ -2109,10 +2111,15 @@ function getMainEventPlan(state, phaseIndex) {
       plan.openAt = Date.now() + 600;
       plan.status = "waiting";
     }
+    if (isMeetingOnlyMainEvent(plan.event)) {
+      plan.event = null;
+      plan.status = "done";
+    }
     return plan;
   }
 
-  const event = forcedEvent ?? selectMainEvent(state, phaseIndex);
+  let event = forcedEvent ?? selectMainEvent(state, phaseIndex);
+  if (isMeetingOnlyMainEvent(event)) event = null;
   plan = {
     phaseIndex,
     event,
@@ -2121,6 +2128,10 @@ function getMainEventPlan(state, phaseIndex) {
   };
   mainEventPlans.set(key, plan);
   return plan;
+}
+
+function isMeetingOnlyMainEvent(event) {
+  return event?.id === "public-praise" || event?.id === "public-shame";
 }
 
 function selectMainEvent(state, phaseIndex) {
@@ -2144,8 +2155,7 @@ function selectMainEvent(state, phaseIndex) {
 
 function selectForcedMainEvent(state) {
   if (state.flags?.badMailInterview) return getBossMainEvent("boss-interview");
-  if ((state.counters?.failures ?? 0) >= 2) return getBossMainEvent("public-shame");
-  if ((state.counters?.successStreak ?? 0) >= 2) return getBossMainEvent("public-praise");
+  // public-shame / public-praise는 페이즈 2~3 회의 이벤트(showMeetingEventPopup) 전용
   if (state.flags?.forcedBossOrder) return getBossMainEvent("sudden-order");
   return null;
 }
@@ -2437,8 +2447,8 @@ function getPhonePlans(state, phaseIndex, durationSec) {
 
     const slotStart = (durationSec / PHONE_CALLS_PER_PHASE) * slot;
     const slotLen = durationSec / PHONE_CALLS_PER_PHASE;
-    const minSec = slotStart + slotLen * 0.12;
-    const maxSec = slotStart + slotLen * 0.72;
+    const minSec = slotStart + slotLen * 0.05;
+    const maxSec = slotStart + slotLen * 0.55;
     const delaySec = minSec + Math.random() * Math.max(0.5, maxSec - minSec);
     const call = phoneCallPool[Math.floor(Math.random() * phoneCallPool.length)];
     plans.push({
