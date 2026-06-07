@@ -11,18 +11,18 @@ import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js"
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
 const GAME_DELTAS = {
   email: {
-    success: { workload: -30 },
+    success: { workload: -25 },
     partial: { workload: -18, stress: 8 },
     fail: { workload: -8, stress: 18, health: -8 },
   },
   meeting: {
-    success: { workload: -32 },
+    success: { workload: -25 },
     partial: { workload: -18, stress: 8 },
     fail: { workload: -8, stress: 20, health: -8 },
   },
   report: {
-    success: { workload: -35 },
-    partial: { workload: -20, stress: 8 },
+    success: { workload: -25 },
+    partial: { workload: -18, stress: 8 },
     fail: { workload: -10, stress: 20, health: -8 },
   },
 };
