@@ -78,6 +78,7 @@ let _openMessengerRoom = null;
 let _replyExpireTimers = new Map();
 let _preservingNotifications = false;
 let _preservingMeetingEvent = false;
+let _preservingStatusEvent = false;
 let _logHighlightClearId = null;
 let _logHighlightTimer = null;
 let _preserveSpawnMs = null;
@@ -1793,11 +1794,13 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
   if (prevScene !== "main" || !_messengerState) {
     _preservingNotifications = false;
     _preservingMeetingEvent = false;
+    _preservingStatusEvent = false;
     return;
   }
 
   if (nextScene !== "main") {
     _preservingMeetingEvent = false;
+    _preservingStatusEvent = false;
   }
 
   if (nextScene === "main") {
@@ -1808,6 +1811,10 @@ export function prepareMainWorkForRender(prevScene, nextScene) {
     if (_meetingEventOverlay?.parentElement) {
       _meetingEventOverlay.remove();
       _preservingMeetingEvent = true;
+    }
+    if (_statusEventOverlay?.parentElement) {
+      _statusEventOverlay.remove();
+      _preservingStatusEvent = true;
     }
     _preserveSpawnMs = _spawnTimeout
       ? Math.max(0, _spawnDelayMs - (Date.now() - _spawnScheduledAt))
@@ -1932,6 +1939,7 @@ export function cleanupMainWorkSystems() {
 }
 
 function cleanupStatusEventSystem() {
+  if (_preservingStatusEvent) return;
   if (_statusEventOverlay) {
     _statusEventOverlay.remove();
     _statusEventOverlay = null;
@@ -2088,7 +2096,11 @@ function pauseMainWorkForBlockingEvent() {
 }
 
 function showStatusEventPopup(type, state, container, actions) {
-  if (_statusEventOverlay) return;
+  if (_statusEventOverlay) {
+    if (!_statusEventOverlay.isConnected) container.append(_statusEventOverlay);
+    _preservingStatusEvent = false;
+    return;
+  }
   if (type === "headache") {
     showHeadacheStatusPopup(state, container, actions);
     return;
@@ -2103,6 +2115,7 @@ function showStatusEventPopup(type, state, container, actions) {
   const close = () => {
     _statusEventOverlay?.remove();
     _statusEventOverlay = null;
+    _preservingStatusEvent = false;
 
     const phaseIndex = getMainPhaseIndex(state);
     const phaseKey = getMainPhaseKey(state, phaseIndex);
@@ -2182,6 +2195,7 @@ function showHeadacheStatusPopup(state, container, actions) {
 
       if (pendingEnding) actions.finishWith(pendingEnding);
       _statusEventOverlay = null;
+      _preservingStatusEvent = false;
       return { afterMinute };
     },
   });
