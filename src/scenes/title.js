@@ -5,8 +5,6 @@ import {
   pulseTitleBgmGlitch,
   cleanupTitleBgmFx,
   bindBgmToggleButton,
-  needsAudioUnlock,
-  onAudioUnlock,
 } from "../lib/audio.js";
 
 const TITLE_BGM_SRC = "assets/audio/title-bgm.mp3";
@@ -42,13 +40,19 @@ function buildTaglineGlitchText() {
 }
 
 let titleFxTimers = [];
-let titleAudioUnlockOff = null;
+let titleActivateOff = null;
+let titleInteractionReady = false;
+
+/** 다른 씬에서 타이틀로 돌아올 때 클릭 게이트를 다시 켠다. */
+export function prepareTitleEntry(prevScene) {
+  if (prevScene !== "title") titleInteractionReady = false;
+}
 
 export function cleanupTitleFx() {
   titleFxTimers.forEach(clearTimeout);
   titleFxTimers = [];
-  titleAudioUnlockOff?.();
-  titleAudioUnlockOff = null;
+  titleActivateOff?.();
+  titleActivateOff = null;
   cleanupTitleBgmFx();
 }
 
@@ -250,46 +254,72 @@ export function renderTitle(root, state, actions) {
   const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
   const questionEl = el("p", { class: "title-question", text: QUESTION_NORMAL });
   const logoEl = el("h1", { class: "title-logo", text: "과로사 방지" });
-  const audioHint = el("p", {
-    class: "title-audio-hint",
-    text: "🔇 화면을 클릭하세요",
-    "aria-live": "polite",
+  const titleLocked = !titleInteractionReady;
+  let unlockTitle = () => {};
+
+  const startGate = el("button", {
+    class: "title-start-gate",
+    type: "button",
+    "aria-label": "화면을 클릭하여 시작",
+    onClick: () => unlockTitle(),
+  }, [
+    el("span", { class: "title-audio-hint-mark", text: "▶" }),
+    el("span", { class: "title-audio-hint-text", text: "화면을 클릭하세요" }),
+    el("span", { class: "title-audio-hint-sub", text: "클릭 후 출근·도움말 이용 가능" }),
+  ]);
+
+  const mainBtn = el("button", {
+    class: "title-main-button",
+    type: "button",
+    ...(titleLocked ? { disabled: "" } : {}),
+    onClick: () => { playClickSfx(); actions.go("setup"); },
+  }, [
+    el("span", { class: "play-mark", text: "▶" }),
+    el("span", { text: "출근하기" }),
+  ]);
+
+  const helpBtn = el("button", {
+    class: "title-help-button",
+    type: "button",
+    ...(titleLocked ? { disabled: "" } : {}),
+    text: "도움말",
+    onClick: () => { playClickSfx(); actions.go("onboarding"); },
   });
 
-  function syncAudioHint() {
-    if (!audioHint.isConnected) return;
-    const show = needsAudioUnlock();
-    audioHint.hidden = !show;
-    audioHint.setAttribute("aria-hidden", String(!show));
-  }
+  const actionButtons = el("div", { class: "title-buttons" }, [mainBtn, helpBtn]);
+  const buttonsWrap = el("div", {
+    class: `title-buttons-wrap${titleLocked ? " is-locked" : ""}`,
+  }, titleLocked ? [startGate] : [actionButtons]);
+
+  unlockTitle = () => {
+    if (titleInteractionReady || !buttonsWrap.isConnected) return;
+    titleInteractionReady = true;
+    mainBtn.removeAttribute("disabled");
+    helpBtn.removeAttribute("disabled");
+    startGate.remove();
+    buttonsWrap.classList.remove("is-locked");
+    buttonsWrap.append(actionButtons);
+    titleActivateOff?.();
+    titleActivateOff = null;
+  };
+
+  if (!titleLocked) unlockTitle();
 
   const crtCard = el("div", { class: "title-crt-card" }, [
     logoEl,
     taglineEl,
     questionEl,
-    el("div", { class: "title-buttons" }, [
-      el("button", {
-        class: "title-main-button",
-        onClick: () => { playClickSfx(); actions.go("setup"); },
-      }, [
-        el("span", { class: "play-mark", text: "▶" }),
-        el("span", { text: "출근하기" }),
-      ]),
-      el("button", {
-        class: "title-help-button",
-        text: "도움말",
-        onClick: () => { playClickSfx(); actions.go("onboarding"); },
-      }),
-    ]),
-    audioHint,
+    buttonsWrap,
     el("div", { class: "px-scanline title-crt-scanline" }),
     el("div", { class: "title-crt-noise" }),
     el("div", { class: "px-glare title-crt-glare" }),
   ]);
 
-  titleAudioUnlockOff?.();
-  titleAudioUnlockOff = onAudioUnlock(syncAudioHint);
-  requestAnimationFrame(syncAudioHint);
+  if (titleLocked) {
+    const onActivate = () => unlockTitle();
+    crtCard.addEventListener("pointerdown", onActivate, { once: true });
+    titleActivateOff = () => crtCard.removeEventListener("pointerdown", onActivate);
+  }
 
   root.append(
     el("section", { class: "title-menu-screen" }, [

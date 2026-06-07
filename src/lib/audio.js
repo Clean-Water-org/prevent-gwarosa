@@ -48,6 +48,11 @@ function resumeAudioContext() {
   if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
 }
 
+/** 사용자 입력으로 오디오가 unlock됐는지. */
+export function isAudioUnlocked() {
+  return audioUnlocked;
+}
+
 /** BGM 재생이 사용자 입력을 기다리는 중인지 (자동재생 차단 상태). */
 export function needsAudioUnlock() {
   if (audioUnlocked || !bgmEnabled) return false;
