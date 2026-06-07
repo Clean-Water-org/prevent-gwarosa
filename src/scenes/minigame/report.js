@@ -109,7 +109,7 @@ function buildReport(repIdx, lineCount) {
 }
 
 const TIERS = {
-  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -20 }] },
+  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -25 }] },
   partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 8 }] },
   fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -5 }, { label: "스트레스", v: 20 }, { label: "체력", v: -8 }] },
 };
@@ -727,10 +727,6 @@ export function renderReportGame(root, state, actions, game) {
       deltaRow.append(s);
     });
 
-    const note = document.createElement("span");
-    note.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#8a8478";
-    note.textContent = "미니게임이 끝나면 항상 메인 화면으로";
-
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:2px;cursor:pointer";
     const btnInner = document.createElement("div");
@@ -739,7 +735,7 @@ export function renderReportGame(root, state, actions, game) {
     btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`, usedSec); });
     nextBtn.append(btnInner);
 
-    panel.append(emojiEl, titleEl, statsRow, deltaRow, note, nextBtn);
+    panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
     resultOverlay.replaceChildren(panel);
     resultOverlay.style.display = "flex";
   }
