@@ -24,7 +24,6 @@ export function renderOnboarding(root, state, actions) {
           el("div", { class: "handover-rule" }),
         ]),
         el("div", { class: "actions" }, [
-          el("button", { class: "primary", text: "출근하기", onClick: () => actions.go("commute") }),
           el("button", { text: "처음으로", onClick: () => actions.go("title") }),
         ]),
       ]),
