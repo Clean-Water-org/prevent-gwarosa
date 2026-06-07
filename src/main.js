@@ -62,6 +62,13 @@ export function mutateState(mutator) {
   render();
 }
 
+/** 씬 리렌더 없이 상태만 갱신 (미니게임 중 두통 등). */
+export function patchGameState(mutator) {
+  state = mutator(structuredClone(state));
+  saveGame(state);
+  return state;
+}
+
 export function go(scene) {
   state = { ...state, scene };
   history.pushState(null, "", "#" + scene);
@@ -122,7 +129,15 @@ function playItemSound(src) {
 
 function render() {
   app.innerHTML = "";
-  scenes[state.scene]?.(app, state, { setState, mutateState, go, finishWith, useItem, advanceGameMinute });
+  scenes[state.scene]?.(app, state, {
+    setState,
+    mutateState,
+    patchGameState,
+    go,
+    finishWith,
+    useItem,
+    advanceGameMinute,
+  });
   if (state.scene !== "title") saveGame(state);
 }
 

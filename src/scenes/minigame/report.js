@@ -1,7 +1,9 @@
 import { REPORTS, parseReportLine, TRAP_TOASTS, DIFFICULTY, BOSS_RED_PEN } from "../../data/report-typos.js";
 import { el, renderStatHud } from "../../ui.js";
 import { makeBossSilhouette } from "../../components/boss-silhouette.js";
-import { playBgm, stopBgm, playSfx, playClickSfx } from "../../lib/audio.js";
+import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
+import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
+import { formatHeadacheDisplayText } from "../../lib/headache-fx.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -127,6 +129,7 @@ function pickReportIdx() {
 // ══════════════════════════════════════════════════════════════════
 export function renderReportGame(root, state, actions, game) {
   const stress = state.stats.stress;
+  const isHeadache = state.stats.health <= 30;
   const diff = diffOf(stress);
   const repIdx = pickReportIdx();
   const report = buildReport(repIdx, diff.lines);
@@ -137,7 +140,7 @@ export function renderReportGame(root, state, actions, game) {
     elapsed: 0,
     flashKey: null, wrongKey: null,
     penActive: false, penKey: null, firedPen: false,
-    spellKeys: [], usedEvents: {},
+    spellKeys: [], usedEvents: {}, paused: false,
     timerInterval: null, flashTimer: null, wrongTimer: null, floatTimer: null,
     toastTimer: null, warnTimer: null, endTimer: null, penHoldTimer: null, penOutTimer: null,
     evToastTimer: null, spellTimer: null, saveTimer: null, flickTimer: null,
@@ -236,6 +239,7 @@ export function renderReportGame(root, state, actions, game) {
   const board = document.createElement("div");
   board.style.cssText = "position:relative;background:#fbfaf4;padding:16px 26px;min-height:300px";
   if (diff.fx === "화면 흔들림") board.className = "fx-shake";
+  if (isHeadache) board.classList.add("fx-headache-report");
 
   const reportHolder = document.createElement("div");
   board.append(reportHolder);
@@ -319,6 +323,11 @@ export function renderReportGame(root, state, actions, game) {
   board.append(savingEl);
 
   // ── 렌더 헬퍼 ──────────────────────────────────────────────────
+  function displayWord(text, seed = 0) {
+    if (!isHeadache) return text;
+    return formatHeadacheDisplayText(text, { part: "body", seed, enabled: true });
+  }
+
   function renderSeg(s) {
     if (s.plain != null) {
       const parts = s.plain.split(/(\s+)/);
@@ -329,7 +338,7 @@ export function renderReportGame(root, state, actions, game) {
         const wk = s.key + "-w" + i;
         nodes.push(el("span", {
           class: "mg3p-word" + (run.wrongKey === wk ? " wrongflash" : "") + (run.penKey === wk ? " pen" : "") + (run.spellKeys.includes(wk) ? " spell" : ""),
-          text: tok,
+          text: displayWord(tok, wk.length),
           onClick: () => clickWrong(wk, false),
         }));
       });
@@ -338,27 +347,30 @@ export function renderReportGame(root, state, actions, game) {
     if (s.typo) {
       if (run.found.includes(s.key)) {
         return [el("span", { class: "mg3p-fixed" + (run.flashKey === s.key ? " flash" : "") }, [
-          el("span", { class: "mg3p-old", text: s.wrong }),
+          el("span", { class: "mg3p-old", text: displayWord(s.wrong, s.key.length) }),
           el("span", { class: "mg3p-new", text: s.correct + " ✓" }),
         ])];
       }
       return [el("span", {
         class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : ""),
-        text: s.wrong,
+        text: displayWord(s.wrong, s.key.length),
         onClick: () => clickTypo(s.key),
       })];
     }
     // trap
     return [el("span", {
       class: "mg3p-word" + (run.wrongKey === s.key ? " wrongflash" : "") + (run.penKey === s.key ? " pen" : "") + (run.spellKeys.includes(s.key) ? " spell" : ""),
-      text: s.word,
+      text: displayWord(s.word, s.key.length),
       onClick: () => clickWrong(s.key, true),
     })];
   }
 
   function buildReportNode() {
-    const rep = el("div", { class: "mg3p-report" });
-    rep.append(el("p", { class: "mg3p-title", text: "제목. " + report.title }));
+    const rep = el("div", { class: "mg3p-report" + (isHeadache ? " headache-text-host" : "") });
+    rep.append(el("p", {
+      class: "mg3p-title",
+      text: "제목. " + displayWord(report.title, 7),
+    }));
     report.lines.forEach((ln) => {
       const p = el("p", { class: "mg3p-line" });
       ln.segs.forEach((s) => renderSeg(s).forEach((n) => p.append(n)));
@@ -692,7 +704,7 @@ export function renderReportGame(root, state, actions, game) {
   // ── 타이머 ──
   function startTimer() {
     run.timerInterval = setInterval(() => {
-      if (run.done || run.phase !== "play") return;
+      if (run.paused || run.done || run.phase !== "play") return;
       run.time = Math.max(0, run.time - 1);
       run.elapsed += 1; // 실제 경과 초 (run.time 조작과 무관 — 10초 주기 보장)
       updateTimer();
@@ -793,5 +805,10 @@ export function renderReportGame(root, state, actions, game) {
   updateWrongPill();
   updateTimer();
   playBgm("assets/audio/report_bgm.mp3");
+  syncBgmStatusFx({ headache: state.stats.health <= 30 });
+  maybeShowHeadacheDialog(shell, state, actions, {
+    run,
+    clockEl: shell.querySelector(".hud .clock"),
+  });
   startTimer();
 }

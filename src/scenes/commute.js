@@ -1,8 +1,8 @@
 import { el } from "../ui.js";
 import { formatTime } from "../state.js";
-import { DAY_FLOW_STEPS, DAY_FLOW_FOOTNOTES } from "../data/day-schedule.js";
+import { DAY_FLOW_STEPS, SCHEDULE_WARNING } from "../data/day-schedule.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
-import { playBgm, playClickSfx } from "../lib/audio.js";
+import { playBgm, playClickSfx, restoreBgmPlaybackRate, setBgmPlaybackRate } from "../lib/audio.js";
 
 const MAIN_BGM_SRC = "assets/audio/so-happy-with-my-8-bit-game.mp3";
 const COMMUTE_MINUTE = 9 * 60;
@@ -195,7 +195,11 @@ function renderBriefingBody(state) {
         el("li", { text: "체력이 부족하다면 휴식을 취하세요." }),
       ]),
       el("p", { class: "commute-mission-cheer", text: "오늘도 화이팅입니다 :)" }),
-      el("aside", { class: "commute-hidden-rule" }, [
+      el("aside", {
+        class: "commute-hidden-rule",
+        onMouseEnter: () => setBgmPlaybackRate(0.72),
+        onMouseLeave: () => restoreBgmPlaybackRate(),
+      }, [
         el("p", { text: "※ 18:00 이후에도 자리에 남아있는" }),
         el("p", { text: "동료와 눈을 마주치지 마세요." }),
       ]),
@@ -215,12 +219,10 @@ function renderScheduleBody() {
     el("section", { class: "commute-schedule-panel" }, [
       el("header", { class: "commute-schedule-head" }, [
         el("h2", { text: "오늘 하루, 대략 이런 흐름" }),
+        el("p", { class: "commute-schedule-warning", text: SCHEDULE_WARNING }),
       ]),
       el("ol", { class: "commute-flow-list" },
         DAY_FLOW_STEPS.map((step) => renderFlowStep(step)),
-      ),
-      el("footer", { class: "commute-schedule-footnotes" },
-        DAY_FLOW_FOOTNOTES.map((note) => el("p", { text: note })),
       ),
     ]),
   ]);
@@ -231,6 +233,9 @@ function renderFlowStep(step) {
     el("article", { class: "commute-flow-card" }, [
       el("header", { class: "commute-flow-card-head" }, [
         el("span", { class: "commute-flow-icon", text: step.icon }),
+        ...(step.time
+          ? [el("span", { class: "commute-flow-time", text: step.time })]
+          : []),
         ...(step.label
           ? [el("span", { class: "commute-flow-label", text: step.label })]
           : []),
@@ -250,7 +255,7 @@ function renderCommuteFooter(actions) {
     }, [
       el("strong", { text: "업무 시작" }),
       el("span", { text: "→" }),
-      el("small", { text: "자리에 앉으면 오늘의 생존 게임이 시작됩니다." }),
+        el("small", { text: "자리에 앉으면 업무가 시작됩니다." }),
     ]),
     el("p", { text: "※ 본 게임은 과로사 예방과 건강한 직장 생활을 응원하기 위해 제작되었습니다." }),
   ]);
