@@ -1,37 +1,22 @@
 import { el, renderBadges, renderHud } from "../../ui.js";
-import { applyDelta, applyWorkTimeCost, checkEnding } from "../../state.js";
+import { applyDelta, applyWorkTimeCost, checkEnding, addLogEntry, effectiveLogDelta } from "../../state.js";
 import { renderEmailGame } from "./email.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey, MINI_ROUNDS, buildLateRounds } from "./flow.js";
+import {
+  GAME_DELTAS,
+  MINIGAME_HEALTH_MULTIPLIER,
+  MINIGAME_WORK_MINUTES,
+} from "./result-delta.js";
 
 // 미니게임 씬 이탈 시 window 리스너·타이머 정리 (두통→엔딩 등 cleanup 없이 전환될 때).
 export { cleanupMinigameScene, setMinigameCleanup } from "./lifecycle.js";
+export { previewMiniGameResult, getMiniResultStatDeltas } from "./result-delta.js";
 
 // 미니게임 선택은 flow.js getCurrentMiniGame(state.miniOrder, 5라운드) 사용. 시간은 실제 소요(usedSec).
-
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
-const MINIGAME_WORK_MINUTES = 28;
-const MINIGAME_HEALTH_MULTIPLIER = 1;
-
-const GAME_DELTAS = {
-  email: {
-    success: { workload: -20, stress: 3 },
-    partial: { workload: -10, stress: 8, health: -3 },
-    fail: { workload: -3, stress: 16, health: -8 },
-  },
-  meeting: {
-    success: { workload: -20, stress: 4 },
-    partial: { workload: -10, stress: 10, health: -3 },
-    fail: { workload: -3, stress: 20, health: -10 },
-  },
-  report: {
-    success: { workload: -20, stress: 4 },
-    partial: { workload: -10, stress: 10, health: -3 },
-    fail: { workload: -5, stress: 20, health: -10 },
-  },
-};
 
 export function renderMiniGame(root, state, actions) {
   if (state.minigameRound >= MINI_ROUNDS && !state.flags.devMode) {
@@ -90,10 +75,18 @@ export function renderMiniGame(root, state, actions) {
 
 function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   const deltas = GAME_DELTAS[gameId] || GAME_DELTAS.email;
-  let next = applyDelta(state, deltas[result], message);
+  const before = structuredClone(state);
+  let next = applyDelta(state, deltas[result], null);
   // 미니게임 실제 소요 + 최소 업무 블록 (빨리 깰수록 일찍 퇴근·체력 소모는 줄지만 기본 피로는 발생)
   const workMinutes = Math.max(MINIGAME_WORK_MINUTES, Math.min(60, Math.round(usedSec)));
   applyWorkTimeCost(next, workMinutes, { healthMultiplier: MINIGAME_HEALTH_MULTIPLIER });
+
+  if (message) {
+    const logDelta = effectiveLogDelta(before, next);
+    const minuteDelta = next.gameMinute - before.gameMinute;
+    if (minuteDelta !== 0) logDelta.gameMinute = minuteDelta;
+    addLogEntry(next, { cause: message, delta: logDelta });
+  }
 
   if (next.flags.devMode) {
     next.scene = "title";

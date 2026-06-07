@@ -7,6 +7,12 @@ import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { headacheCorruptText } from "../../lib/headache-fx.js";
 import { MINI_TIER_LABEL } from "./flow.js";
 import { setMinigameCleanup } from "./lifecycle.js";
+import {
+  appendMiniResultDeltaRow,
+  appendMiniResultHealthSummary,
+  getMiniResultStatDeltas,
+  previewMiniGameResult,
+} from "./result-delta.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -114,9 +120,9 @@ function buildReport(repIdx, lineCount) {
 }
 
 const TIERS = {
-  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -20 }] },
-  partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -18 }, { label: "스트레스", v: 8 }] },
-  fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 20 }, { label: "체력", v: -8 }] },
+  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e" },
+  partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a" },
+  fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red },
 };
 
 // 직전에 출제한 보고서를 기억해 매번 다른 주제가 나오도록 (연속 중복 회피)
@@ -822,6 +828,8 @@ export function renderReportGame(root, state, actions, game) {
   function showResult(tier, found, wrong, usedSec) {
     playSfx("assets/audio/gameboy-pluck.mp3"); // 결과 팝업 효과음
     const t = TIERS[tier];
+    const preview = previewMiniGameResult(state, "report", tier, usedSec);
+    const statDeltas = getMiniResultStatDeltas(preview);
     const panel = document.createElement("div");
     panel.className = "pop-in";
     panel.style.cssText = `width:440px;max-width:84%;background:${t.bg};border:4px solid ${PX.ink};box-shadow:6px 6px 0 rgba(29,31,46,.35);padding:20px 26px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px`;
@@ -843,13 +851,9 @@ export function renderReportGame(root, state, actions, game) {
     });
 
     const deltaRow = document.createElement("div");
-    deltaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;justify-content:center";
-    t.deltas.forEach((d) => {
-      const s = document.createElement("span");
-      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
-      s.textContent = `${d.label} ${d.v < 0 ? "▼" : "▲"}${Math.abs(d.v)}`;
-      deltaRow.append(s);
-    });
+    deltaRow.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;width:100%";
+    appendMiniResultDeltaRow(deltaRow, statDeltas, PX.ink);
+    appendMiniResultHealthSummary(deltaRow, preview, PX.ink);
 
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:2px;cursor:pointer";
