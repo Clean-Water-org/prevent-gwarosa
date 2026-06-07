@@ -116,7 +116,7 @@ export function makeMonitor(content, { brand = "CHADOL-TRON", led = PX.green } =
   const label = document.createElement("div");
   label.style.cssText = "position:absolute;bottom:7px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px";
   const brandEl = document.createElement("span");
-  brandEl.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
+  brandEl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
   brandEl.textContent = brand;
   const ledEl = document.createElement("span");
   ledEl.style.cssText = `width:9px;height:9px;border-radius:50%;background:${led};border:2px solid ${PX.ink}`;

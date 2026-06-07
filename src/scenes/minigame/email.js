@@ -94,15 +94,15 @@ function makeDropZone(kind) {
   icon.style.fontSize = "30px";
   icon.textContent = isGood ? "📥" : "🗑️";
   const title = document.createElement("span");
-  title.style.cssText = `font-family:Galmuri14,monospace;font-size:18px;color:${accent}`;
+  title.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:18px;color:${accent}`;
   title.textContent = isGood ? "중요" : "스팸";
   const key = document.createElement("span");
-  key.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#8a8478";
+  key.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#8a8478";
   key.textContent = isGood ? "← / A" : "D / →";
   const list = document.createElement("div");
   list.style.cssText = "display:flex;flex-direction:column-reverse;gap:4px;width:100%;min-height:96px";
   const count = document.createElement("span");
-  count.style.cssText = `font-family:Galmuri9,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px`;
+  count.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#fff;background:${accent};border:2px solid ${PX.ink};padding:1px 9px`;
   count.textContent = "0";
   wrap.append(icon, title, key, list, count);
   return { wrap, list, count, accent, kind };
@@ -115,10 +115,10 @@ function makeKakaoWin({ msgs, onClose }) {
   const bar = document.createElement("div");
   bar.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:#fee500;padding:7px 12px;border-bottom:3px solid ${PX.ink}`;
   const barTitle = document.createElement("span");
-  barTitle.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:#3a2e00;font-weight:700";
+  barTitle.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#3a2e00;font-weight:700";
   barTitle.textContent = "💬 까까오톡 PC";
   const closeBtn = document.createElement("span");
-  closeBtn.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
+  closeBtn.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
   closeBtn.textContent = "✕";
   closeBtn.addEventListener("click", onClose);
   bar.append(barTitle, closeBtn);
@@ -133,10 +133,10 @@ function makeKakaoWin({ msgs, onClose }) {
     const msgBody = document.createElement("div");
     msgBody.style.cssText = "display:flex;flex-direction:column;gap:2px";
     const nameEl = document.createElement("span");
-    nameEl.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#2a3a47";
+    nameEl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#2a3a47";
     nameEl.textContent = name;
     const textEl = document.createElement("span");
-    textEl.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
+    textEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
     textEl.textContent = text;
     msgBody.append(nameEl, textEl);
     row.append(avatar, msgBody);
@@ -192,13 +192,13 @@ export function renderEmailGame(root, state, actions, game) {
   const titlebar = document.createElement("div");
   titlebar.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#3a6ea5;border-bottom:3px solid ${PX.ink}`;
   const titleLeft = document.createElement("span");
-  titleLeft.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#fff";
+  titleLeft.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#fff";
   titleLeft.textContent = "📧 받은편지함_정리_확인요망.eml — 아웃클룩";
   const wbtns = document.createElement("div");
   wbtns.style.cssText = "display:flex;gap:4px";
   ["_", "▢", "✕"].forEach((c) => {
     const b = document.createElement("span");
-    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:Galmuri11,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
+    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:NeoDunggeunmo,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
     b.textContent = c;
     wbtns.append(b);
   });
@@ -209,7 +209,7 @@ export function renderEmailGame(root, state, actions, game) {
   menubar.style.cssText = `display:flex;align-items:center;gap:14px;padding:3px 12px;background:#ece6d6;border-bottom:3px solid ${PX.ink}`;
   ["파일", "편집", "보기", "메일", "도구"].forEach((m) => {
     const s = document.createElement("span");
-    s.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a5440";
+    s.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#5a5440";
     s.textContent = m;
     menubar.append(s);
   });
@@ -218,21 +218,21 @@ export function renderEmailGame(root, state, actions, game) {
   const hud = document.createElement("div");
   hud.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#ffe9a8;border-bottom:3px solid ${PX.ink}`;
   const topicLabel = document.createElement("span");
-  topicLabel.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
+  topicLabel.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
   topicLabel.textContent = "📧 이메일 분류 — 받은편지함";
   const hudRight = document.createElement("div");
   hudRight.style.cssText = "display:flex;align-items:center;gap:10px;flex-shrink:0";
 
   scorePill = document.createElement("span");
-  scorePill.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;padding:3px 9px;border:2px solid ${PX.ink};background:#fff3c4;color:#8a6d12;white-space:nowrap`;
+  scorePill.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;padding:3px 9px;border:2px solid ${PX.ink};background:#fff3c4;color:#8a6d12;white-space:nowrap`;
 
   const timerWrap = document.createElement("div");
   timerWrap.style.cssText = "position:relative;display:flex;align-items:center";
   floatEl = document.createElement("span");
-  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:Galmuri14,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
+  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:NeoDunggeunmo,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
   floatEl.hidden = true;
   timerPill = document.createElement("div");
-  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:Galmuri9,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
+  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:NeoDunggeunmo,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
   const timerIcon = document.createElement("span");
   timerIcon.style.fontSize = "15px";
   timerIcon.textContent = "⏱";
@@ -250,7 +250,7 @@ export function renderEmailGame(root, state, actions, game) {
   board.style.cssText = "position:relative;background:#e8eef7;padding:14px 18px 16px";
 
   const hintEl = document.createElement("div");
-  hintEl.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a6478;margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap";
+  hintEl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#5a6478;margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap";
   ["← / A 분류: 중요  ·", "SPACE 상세 확인 (-2초)", "· D / → 분류: 스팸"].forEach((txt, i) => {
     const s = document.createElement("span");
     if (i === 1) s.style.cssText = "font-weight:700;color:#3a6ea5";
@@ -259,7 +259,7 @@ export function renderEmailGame(root, state, actions, game) {
   });
 
   const statusRow = document.createElement("div");
-  statusRow.style.cssText = "display:none;align-items:center;gap:8px;margin-bottom:8px;font-family:Galmuri11,monospace;font-size:12px;color:#8a6d12;background:#fff3c4;border:2px solid #d8c27a;padding:5px 11px";
+  statusRow.style.cssText = "display:none;align-items:center;gap:8px;margin-bottom:8px;font-family:NeoDunggeunmo,monospace;font-size:12px;color:#8a6d12;background:#fff3c4;border:2px solid #d8c27a;padding:5px 11px";
   const statusIcon = document.createElement("span");
   statusIcon.style.fontSize = "15px";
   const statusCap = document.createElement("span");
@@ -282,7 +282,7 @@ export function renderEmailGame(root, state, actions, game) {
   mailCard.addEventListener("click", () => toggleDetail());
 
   const feedbackEl = document.createElement("span");
-  feedbackEl.style.cssText = "position:absolute;left:50%;top:46%;transform:translateX(-50%);z-index:5;font-family:Galmuri14,monospace;font-size:22px;text-shadow:2px 2px 0 #fff;display:none;pointer-events:none";
+  feedbackEl.style.cssText = "position:absolute;left:50%;top:46%;transform:translateX(-50%);z-index:5;font-family:NeoDunggeunmo,monospace;font-size:22px;text-shadow:2px 2px 0 #fff;display:none;pointer-events:none";
 
   stage.append(mailCard, feedbackEl);
   gameRow.append(goodZone.wrap, stage, spamZone.wrap);
@@ -299,7 +299,7 @@ export function renderEmailGame(root, state, actions, game) {
   const modeChip = document.createElement("div");
   modeChip.style.cssText = "display:flex;justify-content:center;margin-top:10px";
   const modeChipInner = document.createElement("span");
-  modeChipInner.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
+  modeChipInner.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
   modeChipInner.textContent = `받은편지함 ${run.deck.length}통${stress >= 80 ? " · 스트레스 80↑ 본문 축약" : stress >= 50 ? " · 스트레스 50↑ 낙하 가속" : ""}`;
   modeChip.append(modeChipInner);
 
@@ -319,7 +319,7 @@ export function renderEmailGame(root, state, actions, game) {
   kakaoEl.hidden = true;
 
   const evToastEl = document.createElement("div");
-  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:Galmuri14,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:NeoDunggeunmo,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   evToastEl.className = "banner-in";
 
   shell.append(room, bossOverlayEl, bossBannerEl, kakaoEl, evToastEl);
@@ -402,7 +402,7 @@ export function renderEmailGame(root, state, actions, game) {
     mailCard.style.width = run.detailOpen ? "620px" : "420px";
 
     const top = document.createElement("div");
-    top.style.cssText = "display:flex;justify-content:space-between;gap:12px;font-family:Galmuri11,monospace;font-size:13px;color:#9a9a9a;margin-bottom:8px";
+    top.style.cssText = "display:flex;justify-content:space-between;gap:12px;font-family:NeoDunggeunmo,monospace;font-size:13px;color:#9a9a9a;margin-bottom:8px";
     const from = document.createElement("span");
     from.textContent = mail.from;
     const domain = document.createElement("span");
@@ -411,13 +411,13 @@ export function renderEmailGame(root, state, actions, game) {
     top.append(from, domain);
 
     const subject = document.createElement("div");
-    subject.style.cssText = `font-family:Galmuri14,monospace;font-size:18px;color:${PX.ink};line-height:1.25;margin-bottom:8px`;
+    subject.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.ink};line-height:1.25;margin-bottom:8px`;
     subject.textContent = statusText(mail.subject, "subject");
     if (isHeadache) subject.style.filter = "blur(2.4px)";
 
     const previewText = clipForStress(makeBasicPreview(mail));
     const preview = document.createElement("div");
-    preview.style.cssText = "font-family:Galmuri11,monospace;font-size:13.5px;color:#777;line-height:1.45;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
+    preview.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13.5px;color:#777;line-height:1.45;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
     preview.textContent = statusText(previewText, "body");
     if (isHeadache) preview.style.filter = "blur(2.4px)";
 
@@ -428,7 +428,7 @@ export function renderEmailGame(root, state, actions, game) {
       const color = tag.danger ? PX.red : tag.warn ? "#8b6815" : "#777";
       const border = tag.danger ? PX.red : tag.warn ? "#caa83a" : "#d8d2c0";
       const bg = tag.danger ? "#fff0ee" : tag.warn ? "#fff7d8" : "#f8f4e8";
-      t.style.cssText = `font-family:Galmuri9,monospace;font-size:11px;border:1.5px solid ${border};color:${color};background:${bg};padding:3px 8px`;
+      t.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;border:1.5px solid ${border};color:${color};background:${bg};padding:3px 8px`;
       t.textContent = tag.text;
       clues.append(t);
     });
@@ -437,7 +437,7 @@ export function renderEmailGame(root, state, actions, game) {
 
     if (run.detailOpen) {
       const detail = document.createElement("div");
-      detail.style.cssText = "border-top:1.5px dashed #d8d2c0;margin-top:12px;padding-top:11px;display:grid;gap:8px;font-family:Galmuri11,monospace;font-size:13px;line-height:1.4;color:#666";
+      detail.style.cssText = "border-top:1.5px dashed #d8d2c0;margin-top:12px;padding-top:11px;display:grid;gap:8px;font-family:NeoDunggeunmo,monospace;font-size:13px;line-height:1.4;color:#666";
       [["본문", clipForStress(mail.body)], ["첨부파일", mail.attachment || "없음"], ["링크", mail.link || "없음"], ["수신", mail.recipient || "없음"], ["발신시간", mail.time || "없음"]].forEach(([label, value]) => {
         const row = document.createElement("div");
         row.style.cssText = "display:grid;grid-template-columns:86px 1fr;gap:10px";
@@ -453,7 +453,7 @@ export function renderEmailGame(root, state, actions, game) {
     }
 
     const hint = document.createElement("span");
-    hint.style.cssText = "display:block;text-align:right;margin-top:8px;font-family:Galmuri9,monospace;font-size:11px;color:#aaa";
+    hint.style.cssText = "display:block;text-align:right;margin-top:8px;font-family:NeoDunggeunmo,monospace;font-size:11px;color:#aaa";
     hint.textContent = run.detailOpen ? "SPACE 접기" : "SPACE 상세 확인 (-2초)";
     mailCard.append(hint);
   }
@@ -475,7 +475,7 @@ export function renderEmailGame(root, state, actions, game) {
     const arr = isGood ? run.sortedGood : run.sortedSpam;
     arr.push(mail);
     const item = document.createElement("span");
-    item.style.cssText = `font-family:Galmuri9,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
+    item.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:10.5px;border:1.5px solid ${zone.accent};background:#fff;color:#666;padding:2px 7px;display:block;width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis`;
     item.textContent = mail.subject;
     zone.list.prepend(item);
     while (zone.list.children.length > 4) zone.list.removeChild(zone.list.lastChild);
@@ -590,11 +590,11 @@ export function renderEmailGame(root, state, actions, game) {
       warn.style.fontSize = "20px";
       warn.textContent = "⚠️";
       const title = document.createElement("span");
-      title.style.cssText = `font-family:Galmuri14,monospace;font-size:16px;color:${PX.red}`;
+      title.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red}`;
       title.textContent = "상사가 내 자리 옆에 서 있다…";
       top.append(warn, title);
       const desc = document.createElement("span");
-      desc.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#4a4636";
+      desc.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
       desc.textContent = "아무 말 없이 모니터만 보고 있다. 메일이 더 빨리 떨어진다.";
       card.append(top, desc);
       bossBannerEl.append(card);
@@ -642,13 +642,13 @@ export function renderEmailGame(root, state, actions, game) {
     emojiEl.style.cssText = "font-size:46px;line-height:1";
     emojiEl.textContent = t.emoji;
     const titleEl = document.createElement("div");
-    titleEl.style.cssText = `font-family:Galmuri14,monospace;font-size:22px;color:${t.color}`;
+    titleEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:22px;color:${t.color}`;
     titleEl.textContent = t.title;
     const statsRow = document.createElement("div");
     statsRow.style.cssText = "display:flex;gap:8px";
     [["정확", `${correct}/${total}`, ""], ["소요", usedSec, "초"]].forEach(([lbl, v, unit]) => {
       const s = document.createElement("span");
-      s.style.cssText = `font-family:Galmuri11,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
+      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
       s.textContent = `${lbl} ${v}${unit}`;
       statsRow.append(s);
     });
@@ -656,14 +656,14 @@ export function renderEmailGame(root, state, actions, game) {
     deltaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;justify-content:center";
     t.deltas.forEach((d) => {
       const s = document.createElement("span");
-      s.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
+      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
       s.textContent = `${d.label} ${d.v < 0 ? "▼" : "▲"}${Math.abs(d.v)}`;
       deltaRow.append(s);
     });
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:4px;cursor:pointer";
     const btnInner = document.createElement("div");
-    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
+    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:NeoDunggeunmo,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
     btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `이메일 분류 ${tier}: 정확 ${correct}/${total}`, usedSec); });
     nextBtn.append(btnInner);

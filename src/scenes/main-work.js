@@ -35,6 +35,8 @@ let _currentGameMinute = 9 * 60;
 let _messengerState = null;
 let _messengerUpdater = null;
 let _lastRenderedState = null;
+let _openMessengerRoom = null;
+let _replyExpireTimers = new Map();
 
 const STATUS_EVENT_CONFIGS = {
   burnout: {
@@ -61,6 +63,8 @@ const STATUS_EVENT_CONFIGS = {
 
 const MAIN_CLOCK_TICK_MS = 1000;
 const CHAT_NOTIFICATION_SOUND_SRC = "assets/audio/messenger-notification.mp3";
+const CHAT_REPLY_TIMER_SEC = { boss: 10, colleague: 15, hr: 15 };
+const MAX_MESSENGER_TOASTS = 5;
 const MAIN_PHASE_DURATIONS_SEC = [35, 35, 40, 40];
 const PHONE_CHANCE_BY_PHASE = [0.75, 0.75, 0.75, 0.75];
 const PHONE_RING_SECONDS = 12;
@@ -150,6 +154,15 @@ export function renderMainWork(root, state, actions) {
     closeMessenger();
   };
   _messengerUpdater = refreshMessenger;
+  _openMessengerRoom = (roomId) => {
+    if (!_messengerState) return;
+    _messengerState.isOpen = true;
+    _messengerState.activeRoomId = roomId;
+    markRoomRead(roomId);
+    messengerPanel.style.display = "";
+    messengerBtn?.classList.add("active");
+    refreshMessenger();
+  };
 
   const firstTime = !state.flags?.handoverGuideSeen;
 
@@ -729,23 +742,26 @@ function renderMessengerThread(room, actions) {
 function renderMessengerMessage(message, actions) {
   const replies = getMessengerReplyLabels(message);
   const hasIgnoreChoice = replies.some((reply) => reply.id === "ignore");
+  const expired = isMessageReplyExpired(message);
   const statusText = message.status === "replied"
     ? "답장 완료"
     : message.status === "processed"
       ? "처리 완료"
     : message.status === "later"
       ? "나중에"
-    : message.status === "ignored"
+    : message.status === "ignored" || expired
       ? "못 본 척"
       : "답장 없음";
+  const canReply = message.needsReply && !message.status && !expired;
+  const statusClass = message.status ?? (expired ? "ignored" : "pending");
   return el("article", { class: `main-work-messenger-message main-work-messenger-message-${message.kind}` }, [
+    ...(message.needsReply ? [el("span", { class: `main-work-messenger-status is-${statusClass}`, text: statusText })] : []),
     el("div", { class: "main-work-messenger-message-meta" }, [
       el("strong", { text: message.from }),
       el("time", { text: formatTime(message.minute) }),
-      ...(message.needsReply ? [el("span", { class: `main-work-messenger-status is-${message.status ?? "pending"}`, text: statusText })] : []),
     ]),
     el("p", { text: message.text }),
-    ...(message.needsReply && !message.status
+    ...(canReply
       ? [el("div", { class: "main-work-messenger-replies" }, [
         ...replies.map((reply) => el("button", {
           class: `main-work-messenger-reply tone-${reply.tone}`,
@@ -760,7 +776,7 @@ function renderMessengerMessage(message, actions) {
           onClick: () => handleMessengerChoice(message.id, "ignore", actions),
         })]),
       ])]
-      : [el("div", { class: "main-work-messenger-read-state", text: statusText })]),
+      : []),
   ]);
 }
 
@@ -811,6 +827,8 @@ function getMessengerReplyLabels(message) {
 function handleMessengerChoice(messageId, choiceId, actions) {
   const message = findMessengerMessage(messageId);
   if (!message || message.status) return;
+  clearReplyExpiryTimer(messageId);
+  dismissMessengerToast(messageId);
   message.status = choiceId === "process" ? "processed" : choiceId === "later" ? "later" : choiceId === "ignore" ? "ignored" : "replied";
   message.unread = false;
   const result = resolveMessengerChoice(message, choiceId);
@@ -1062,14 +1080,29 @@ function addMessengerMessage(chat, actions, options = {}) {
     text: chat.resolvedText ?? chat.text ?? "",
     minute: effectiveState.gameMinute ?? _currentGameMinute,
     unread: !messenger.isOpen || messenger.activeRoomId !== roomId,
-    needsReply: (chat.kind === "boss" && chat.subtype !== "warning") || (chat.kind === "colleague" && chat.subtype !== "away"),
+    needsReply: (chat.kind === "boss" && chat.subtype !== "warning")
+      || (chat.kind === "colleague" && chat.subtype !== "away")
+      || chat.kind === "hr",
     status: null,
+    spawnedAt: Date.now(),
+    timerSec: 0,
   };
+  if (message.needsReply) {
+    message.timerSec = getReplyTimerSec(chat);
+  }
   room.messages.push(message);
   if (messenger.isOpen && messenger.activeRoomId === roomId) message.unread = false;
   updateMessengerChrome();
   _messengerUpdater?.();
-  if (!options.silent) playChatNotificationSound();
+  if (!options.silent) {
+    playChatNotificationSound();
+    if (message.needsReply) {
+      showMessengerToast(message, actions);
+      scheduleReplyExpiry(message, actions);
+    }
+  } else if (message.needsReply) {
+    scheduleReplyExpiry(message, actions);
+  }
   return message;
 }
 
@@ -1083,6 +1116,109 @@ function getRoomUnreadCount(roomId) {
 
 function findFirstUnreadRoomId() {
   return MESSENGER_ROOMS.find((room) => getRoomUnreadCount(room.id) > 0)?.id ?? null;
+}
+
+function getReplyTimerSec(chat) {
+  if (chat.kind === "boss") return CHAT_REPLY_TIMER_SEC.boss;
+  if (chat.kind === "hr") return CHAT_REPLY_TIMER_SEC.hr;
+  return CHAT_REPLY_TIMER_SEC.colleague;
+}
+
+function isMessageReplyExpired(message) {
+  if (!message?.needsReply || message.status) return false;
+  if (!message.spawnedAt || !message.timerSec) return false;
+  return Date.now() >= message.spawnedAt + message.timerSec * 1000;
+}
+
+function getMessengerToastKind(message) {
+  if (message.kind === "boss") {
+    return message.subtype === "praise" ? "boss-praise" : "boss-task";
+  }
+  if (message.kind === "colleague") {
+    return message.subtype === "favor" || message.subtype === "offer" ? "colleague-help" : "colleague-chat";
+  }
+  return "notice";
+}
+
+function getMessengerRoomIcon(roomId) {
+  return MESSENGER_ROOMS.find((room) => room.id === roomId)?.icon ?? "💬";
+}
+
+function showMessengerToast(message, actions) {
+  if (!_notifPanel || !message.needsReply) return;
+
+  const existing = _notifPanel.querySelectorAll(".main-work-messenger-toast");
+  if (existing.length >= MAX_MESSENGER_TOASTS) existing[0].remove();
+
+  const timerBar = el("div", { class: "main-work-messenger-toast-timer-bar" });
+  timerBar.style.animationDuration = `${message.timerSec}s`;
+
+  const toast = el("article", {
+    class: `main-work-messenger-toast main-work-messenger-toast-${getMessengerToastKind(message)}`,
+    "data-message-id": String(message.id),
+  }, [
+    el("div", { class: "main-work-messenger-toast-timer" }, [timerBar]),
+    el("button", {
+      class: "main-work-messenger-toast-body",
+      type: "button",
+      onClick: () => _openMessengerRoom?.(message.roomId),
+    }, [
+      el("span", { class: "main-work-messenger-toast-avatar", text: getMessengerRoomIcon(message.roomId) }),
+      el("span", { class: "main-work-messenger-toast-copy" }, [
+        el("strong", { text: message.from }),
+        el("span", { text: message.text }),
+      ]),
+      el("span", { class: "main-work-messenger-toast-state", text: "답장 필요" }),
+    ]),
+  ]);
+
+  toast._messageRef = message;
+  timerBar.addEventListener("animationend", () => {
+    expirePendingReply(message.id, actions);
+  });
+
+  _notifPanel.append(toast);
+}
+
+function dismissMessengerToast(messageId) {
+  const toast = _notifPanel?.querySelector(`.main-work-messenger-toast[data-message-id="${messageId}"]`);
+  if (!toast) return;
+  toast.classList.add("is-replied");
+  toast.addEventListener("animationend", () => toast.remove(), { once: true });
+  setTimeout(() => toast.remove(), 220);
+}
+
+function scheduleReplyExpiry(message, actions) {
+  if (!message.needsReply || message.status) return;
+  clearReplyExpiryTimer(message.id);
+  const remainingMs = Math.max(0, message.spawnedAt + message.timerSec * 1000 - Date.now());
+  const timeoutId = setTimeout(() => expirePendingReply(message.id, actions), remainingMs);
+  _replyExpireTimers.set(message.id, timeoutId);
+}
+
+function clearReplyExpiryTimer(messageId) {
+  const timeoutId = _replyExpireTimers.get(messageId);
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+    _replyExpireTimers.delete(messageId);
+  }
+}
+
+function clearAllReplyExpiryTimers() {
+  for (const timeoutId of _replyExpireTimers.values()) clearTimeout(timeoutId);
+  _replyExpireTimers.clear();
+}
+
+function expirePendingReply(messageId, actions) {
+  const message = findMessengerMessage(messageId);
+  if (!message || message.status || !message.needsReply) return;
+  if (!isMessageReplyExpired(message)) {
+    scheduleReplyExpiry(message, actions);
+    return;
+  }
+  const toast = _notifPanel?.querySelector(`.main-work-messenger-toast[data-message-id="${messageId}"]`);
+  if (toast) toast.classList.add("is-expiring");
+  handleMessengerChoice(messageId, "ignore", actions);
 }
 
 // ── 채팅 알림 시스템 ─────────────────────────────────────────
@@ -1111,11 +1247,22 @@ function captureChatSnapshot() {
   if (!_notifPanel) return null;
   const now = Date.now();
 
+  const pendingReplies = [];
+  for (const room of Object.values(_messengerState?.rooms ?? {})) {
+    for (const message of room.messages) {
+      if (!message.needsReply || message.status) continue;
+      const elapsedMs = now - (message.spawnedAt ?? now);
+      const remainingMs = Math.max(500, message.timerSec * 1000 - elapsedMs);
+      pendingReplies.push({ messageId: message.id, remainingMs });
+    }
+  }
+
   const nextSpawnRemainingMs = _spawnTimeout
     ? Math.max(0, _spawnDelayMs - (now - _spawnScheduledAt))
     : 3000;
 
   return {
+    pendingReplies,
     nextSpawnRemainingMs,
     localWorkload: _localWorkload,
   };
@@ -1128,12 +1275,13 @@ function cleanupChatSystem() {
     _notifPanel = null;
   }
   if (_spawnTimeout) { clearTimeout(_spawnTimeout); _spawnTimeout = null; }
+  clearAllReplyExpiryTimers();
 }
 
 function pauseChatSystem() {
   if (_spawnTimeout) { clearTimeout(_spawnTimeout); _spawnTimeout = null; }
   if (_notifPanel) {
-    _notifPanel.querySelectorAll(".chat-notif-timer-bar").forEach((bar) => {
+    _notifPanel.querySelectorAll(".chat-notif-timer-bar, .main-work-messenger-toast-timer-bar").forEach((bar) => {
       bar.style.animationPlayState = "paused";
     });
   }
@@ -2005,6 +2153,15 @@ function restoreChatSnapshot(state, actions) {
 
   _localWorkload = snapshot.localWorkload;
 
+  for (const { messageId, remainingMs } of snapshot.pendingReplies ?? []) {
+    const message = findMessengerMessage(messageId);
+    if (!message || message.status) continue;
+    message.spawnedAt = Date.now();
+    message.timerSec = remainingMs / 1000;
+    showMessengerToast(message, actions);
+    scheduleReplyExpiry(message, actions);
+  }
+
   scheduleSpawn(state, actions, snapshot.nextSpawnRemainingMs);
 }
 
@@ -2027,7 +2184,6 @@ function spawnOneNotification(state, actions) {
   const chat = pickOneChat(state);
   if (!chat) return;
 
-  chat.spawnedAt = Date.now();
   addMessengerMessage(chat, actions);
 }
 
@@ -2118,6 +2274,8 @@ function buildChatLogCause(chat, outcome) {
   if (chat.kind === "colleague" && chat.subtype === "smalltalk") return "동료와 짧게 메시지를 주고받았다.";
   if (chat.kind === "colleague" && chat.subtype === "info") return "동료가 공유한 정보를 확인했다.";
   if (chat.kind === "colleague" && chat.subtype === "offer") return "동료의 도움 제안에 답장했다.";
+  if (chat.kind === "hr" && outcome === "process") return `${sender} 공지를 처리했다.`;
+  if (chat.kind === "hr") return `${sender} 공지를 확인했다.`;
   return `${sender} 메시지를 확인했다.`;
 }
 

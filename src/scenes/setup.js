@@ -75,7 +75,7 @@ function makeMonitor(content) {
   const label = document.createElement("div");
   label.style.cssText = "position:absolute;bottom:7px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px";
   const brand = document.createElement("span");
-  brand.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
+  brand.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
   brand.textContent = "CHADOL-TRON";
   const led = document.createElement("span");
   led.style.cssText = `width:9px;height:9px;border-radius:50%;background:${PX.green};border:2px solid ${PX.ink}`;
@@ -103,7 +103,7 @@ function makePixPortrait(gender) {
 // ── 픽셀 입력/버튼 헬퍼 ───────────────────────────────────────────
 function flabel(text) {
   const s = document.createElement("span");
-  s.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#5a5440";
+  s.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#5a5440";
   s.textContent = text;
   return s;
 }
@@ -158,13 +158,13 @@ export function renderSetup(root, state, actions) {
   const titlebar = document.createElement("div");
   titlebar.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#3a6ea5;border-bottom:3px solid ${PX.ink}`;
   const titleLeft = document.createElement("span");
-  titleLeft.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#fff";
+  titleLeft.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#fff";
   titleLeft.textContent = "📋 출근부_2026.hwp — 인사팀 전산";
   const wbtns = document.createElement("div");
   wbtns.style.cssText = "display:flex;gap:4px";
   ["_", "▢", "✕"].forEach((c) => {
     const b = document.createElement("span");
-    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:Galmuri11,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
+    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:NeoDunggeunmo,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
     b.textContent = c;
     wbtns.append(b);
   });
@@ -174,10 +174,10 @@ export function renderSetup(root, state, actions) {
   const docHead = document.createElement("div");
   docHead.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#ffe9a8;border-bottom:3px solid ${PX.ink}`;
   const docTitle = document.createElement("span");
-  docTitle.style.cssText = "font-family:Galmuri14,monospace;font-size:16px;color:var(--ink)";
+  docTitle.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:16px;color:var(--ink)";
   docTitle.textContent = "📋 오늘의 출근부";
   const docCo = document.createElement("span");
-  docCo.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#7a5a2a";
+  docCo.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#7a5a2a";
   docCo.textContent = "과로사 방지 (주)";
   docHead.append(docTitle, docCo);
 
@@ -208,7 +208,7 @@ export function renderSetup(root, state, actions) {
   nameInput.type = "text";
   nameInput.maxLength = 12;
   nameInput.placeholder = "이름을 입력하세요";
-  nameInput.style.cssText = `font-family:Galmuri11,monospace;font-size:14px;color:${PX.ink};background:#fff;border:2px solid ${PX.ink};padding:7px 10px;outline:none`;
+  nameInput.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:14px;color:${PX.ink};background:#fff;border:2px solid ${PX.ink};padding:7px 10px;outline:none`;
   nameInput.addEventListener("input", () => { form.name = nameInput.value; });
   nameWrap.append(flabel("이름"), nameInput);
 
@@ -220,7 +220,7 @@ export function renderSetup(root, state, actions) {
   const genderBtns = [];
   [["male", "👨 남성"], ["female", "👩 여성"]].forEach(([key, label]) => {
     const btn = document.createElement("div");
-    btn.style.cssText = `flex:1;font-family:Galmuri11,monospace;font-size:14px;color:${PX.ink};padding:7px 10px;text-align:center;cursor:pointer`;
+    btn.style.cssText = `flex:1;font-family:NeoDunggeunmo,monospace;font-size:14px;color:${PX.ink};padding:7px 10px;text-align:center;cursor:pointer`;
     btn.textContent = label;
     btn.addEventListener("click", () => { playClick(); form.gender = key; updateGenderSel(); updatePhoto(); });
     genderBtns.push({ key, btn });
@@ -242,10 +242,10 @@ export function renderSetup(root, state, actions) {
     em.style.cssText = "font-size:24px;line-height:1";
     em.textContent = d.emoji;
     const nm = document.createElement("span");
-    nm.style.cssText = "font-family:Galmuri14,monospace;font-size:15px;color:var(--ink)";
+    nm.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:15px;color:var(--ink)";
     nm.textContent = d.name;
     const ht = document.createElement("span");
-    ht.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#888;margin-left:auto";
+    ht.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#888;margin-left:auto";
     ht.textContent = d.hint;
     chip.append(em, nm, ht);
     chip.addEventListener("click", () => { playClick(); form.type = key; updateTypeSel(); updateGuide(); updateItemNote(); });
@@ -264,7 +264,7 @@ export function renderSetup(root, state, actions) {
     const head = document.createElement("div");
     head.style.cssText = "display:flex;align-items:center;gap:7px;border-bottom:1.5px dashed #ccc;padding-bottom:4px;margin-bottom:1px";
     const e = document.createElement("span"); e.style.fontSize = "18px"; e.textContent = d.emoji;
-    const t = document.createElement("span"); t.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink)"; t.textContent = `${d.name} 가이드`;
+    const t = document.createElement("span"); t.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink)"; t.textContent = `${d.name} 가이드`;
     head.append(e, t);
     guide.append(head);
     d.rows.forEach((r) => {
@@ -272,8 +272,8 @@ export function renderSetup(root, state, actions) {
       const row = document.createElement("div");
       row.style.cssText = "display:flex;gap:7px;align-items:baseline";
       const ic = document.createElement("span"); ic.style.fontSize = "13px"; ic.textContent = r.ic;
-      const k = document.createElement("span"); k.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;width:66px;flex:0 0 auto;color:${warn ? PX.red : "#777"}`; k.textContent = r.k;
-      const v = document.createElement("span"); v.style.cssText = `font-family:Galmuri11,monospace;font-size:12.5px;color:${warn ? "#c0392b" : "var(--ink)"}`; v.textContent = r.v;
+      const k = document.createElement("span"); k.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;width:66px;flex:0 0 auto;color:${warn ? PX.red : "#777"}`; k.textContent = r.k;
+      const v = document.createElement("span"); v.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:${warn ? "#c0392b" : "var(--ink)"}`; v.textContent = r.v;
       row.append(ic, k, v);
       guide.append(row);
     });
@@ -287,12 +287,12 @@ export function renderSetup(root, state, actions) {
   const itemBox = document.createElement("div");
   itemBox.style.cssText = `border:2px dashed ${PX.ink};background:#fbf9f2;padding:9px 14px;display:flex;flex-direction:column;gap:4px`;
   const itemHead = document.createElement("span");
-  itemHead.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink)";
+  itemHead.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink)";
   itemHead.textContent = "🎒 아이템 안내 (슬롯 3칸 · 메인화면에서만 사용)";
   const itemStart = document.createElement("span");
-  itemStart.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:var(--ink);padding-left:4px";
+  itemStart.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:var(--ink);padding-left:4px";
   const itemReward = document.createElement("span");
-  itemReward.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:var(--ink);padding-left:4px";
+  itemReward.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:var(--ink);padding-left:4px";
   itemReward.textContent = "보상 1칸 · 동료 이벤트로 획득 (예: 홍삼스틱 🧴)";
   itemBox.append(itemHead, itemStart, itemReward);
   function updateItemNote() {
@@ -306,7 +306,7 @@ export function renderSetup(root, state, actions) {
   const submitBtn = document.createElement("div");
   submitBtn.style.cssText = "cursor:pointer";
   const submitInner = document.createElement("div");
-  submitInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:18px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
+  submitInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
   submitInner.textContent = "서명하고 출근 →";
   submitBtn.append(submitInner);
   submitBtn.addEventListener("click", submit);
@@ -326,7 +326,7 @@ export function renderSetup(root, state, actions) {
     if (!toast) {
       toast = document.createElement("div");
       toast.className = "setup-toast";
-      toast.style.cssText = `position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:90;font-family:Galmuri14,monospace;font-size:15px;padding:12px 24px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.25);white-space:nowrap`;
+      toast.style.cssText = `position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:90;font-family:NeoDunggeunmo,monospace;font-size:15px;padding:12px 24px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.25);white-space:nowrap`;
       shell.append(toast);
     }
     toast.textContent = msg;

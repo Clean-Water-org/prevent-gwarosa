@@ -14,16 +14,10 @@
   --marker: #ff4d4d;
   --green: #3fc24a;
   --yellow: #ffd23f;
-  --px-body: Galmuri11, sans-serif;
-  --px-head: Galmuri14, sans-serif;
-  --px-mono: Galmuri9, monospace;
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    system-ui,
-    "Apple SD Gothic Neo",
-    "Malgun Gothic",
-    sans-serif;
+  --px-body: NeoDunggeunmo, sans-serif;
+  --px-head: NeoDunggeunmo, sans-serif;
+  --px-mono: NeoDunggeunmo, monospace;
+  font-family: NeoDunggeunmo, "Malgun Gothic", sans-serif;
 }
 
 /* Main work monitor scene — 회의 준비 미니게임과 동일한 오피스 룸 + CHADOL-TRON 모니터 비주얼 */
@@ -33,7 +27,7 @@
   overflow: hidden;
   color: var(--ink);
   background: #caa46a;
-  font-family: Galmuri11, -apple-system, BlinkMacSystemFont, "Malgun Gothic", system-ui, sans-serif;
+  font-family: NeoDunggeunmo, -apple-system, BlinkMacSystemFont, "Malgun Gothic", system-ui, sans-serif;
 }
 
 .main-work-screen *,
@@ -76,14 +70,14 @@
   padding: 12px;
   color: var(--ink);
   background: var(--accent);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 12px;
   font-weight: 700;
 }
 
 .main-work-wall-note strong {
   color: var(--ink);
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
 }
 
@@ -175,7 +169,7 @@
   box-shadow: 2px 2px 0 var(--ink);
   background: var(--white, #fdfcf2);
   color: var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 12px;
   font-weight: 900;
   animation: status-badge-pulse 2s ease-in-out infinite;
@@ -229,7 +223,7 @@
   color: var(--ink);
   background: #fff3c4;
   box-shadow: 3px 3px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-weight: 900;
 }
 
@@ -356,7 +350,7 @@
   padding: 8px 10px;
   color: var(--ink);
   background: #fff8e3;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   text-align: left;
   cursor: pointer;
 }
@@ -464,7 +458,7 @@
 
 .main-work-hud-time strong {
   color: var(--ink);
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 17px;
   letter-spacing: 0;
 }
@@ -505,7 +499,7 @@
   padding: 7px 5px;
   color: var(--ink);
   background: transparent;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   cursor: default;
 }
 
@@ -575,7 +569,7 @@
   grid-template-rows: 42px minmax(0, 1fr);
   color: var(--ink);
   margin-left: 104px;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-intranet-tabs {
@@ -590,7 +584,7 @@
 
 .main-work-intranet-logo {
   color: var(--ink);
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
   letter-spacing: 0;
   white-space: nowrap;
@@ -642,7 +636,7 @@
 .main-work-schedule-panel h2 {
   margin: 0;
   color: var(--ink);
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
 }
 
@@ -733,7 +727,7 @@
   color: var(--ink);
   background: #f7f9fc;
   box-shadow: 6px 6px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-messenger-titlebar {
@@ -759,7 +753,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--ink);
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -796,7 +790,7 @@
   border-radius: 4px;
   background: #ffd9d2;
   color: var(--ink);
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 16px;
   font-weight: 900;
   line-height: 1;
@@ -839,7 +833,7 @@
   padding: 5px 7px;
   background: #fdfcf2;
   color: var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 12px;
   font-weight: 900;
   text-align: left;
@@ -908,7 +902,7 @@
 .main-work-messenger-thread-head strong {
   min-width: 0;
   overflow: hidden;
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -978,12 +972,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.main-work-messenger-status,
-.main-work-messenger-read-state {
+.main-work-messenger-status {
   justify-self: start;
   border: 1px solid var(--ink);
   border-radius: 999px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   background: #fff8e3;
   color: #6b7287;
   font-size: 10px;
@@ -991,8 +984,13 @@
 }
 
 .main-work-messenger-status.is-replied,
-.main-work-messenger-read-state {
+.main-work-messenger-status.is-processed {
   background: #d6f5db;
+  color: var(--ink);
+}
+
+.main-work-messenger-status.is-later {
+  background: #fff3c4;
   color: var(--ink);
 }
 
@@ -1034,7 +1032,7 @@
   border-radius: 5px;
   padding: 0 9px;
   box-shadow: 2px 2px 0 rgba(29, 31, 46, 0.26);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 11px;
   font-weight: 900;
   cursor: pointer;
@@ -1092,7 +1090,7 @@
   background: #fdfcf2;
   box-shadow: 4px 4px 0 var(--ink);
   color: var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-messenger-preview header {
@@ -1166,7 +1164,7 @@
   grid-template-rows: 42px minmax(0, 1fr) 30px;
   color: var(--ink);
   background: var(--white, #fdfcf2);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-chat-header {
@@ -1181,7 +1179,7 @@
 }
 
 .main-work-chat-header strong {
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
 }
 
@@ -1316,7 +1314,7 @@
   box-shadow: 2px 2px 0 var(--ink);
   background: var(--blue, #3d8bff);
   color: #ffffff;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 13px;
   font-weight: 900;
 }
@@ -1360,7 +1358,7 @@
   border-radius: 8px;
   background: #fdfcf2;
   box-shadow: 4px 4px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   animation: messenger-toast-in 0.18s ease;
 }
 
@@ -1394,7 +1392,7 @@
   padding: 9px 10px;
   color: var(--ink);
   background: transparent;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   text-align: left;
   cursor: pointer;
 }
@@ -1482,7 +1480,7 @@
   color: var(--ink);
   background: var(--white, #fdfcf2);
   box-shadow: 5px 5px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-recent-log.is-collapsed {
@@ -1524,7 +1522,7 @@
   padding: 0 7px;
   color: var(--ink);
   background: #fff3c4;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 10px;
   font-weight: 900;
   cursor: pointer;
@@ -1609,7 +1607,7 @@
   border: 2px solid var(--ink);
   border-radius: 8px;
   box-shadow: 4px 4px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   animation: notif-enter 0.18s ease;
 }
 
@@ -1683,7 +1681,7 @@
   align-items: flex-start;
   gap: 4px;
   color: #fff;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 12px;
   font-weight: 900;
   border: 2px solid var(--ink);
@@ -1716,7 +1714,7 @@
   justify-content: center;
   gap: 3px;
   color: var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 11px;
   font-weight: 800;
   border: 2px solid var(--ink);
@@ -1799,7 +1797,7 @@
   color: var(--ink);
   background: var(--white, #fdfcf2);
   box-shadow: 6px 6px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-phone-header {
@@ -1813,7 +1811,7 @@
 }
 
 .main-work-phone-header strong {
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 16px;
 }
 
@@ -1844,7 +1842,7 @@
 
 .main-work-phone-body h2 {
   margin: 8px 0 0;
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 20px;
 }
 
@@ -1889,7 +1887,7 @@
   border-radius: 5px;
   box-shadow: 3px 3px 0 var(--ink);
   color: var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-weight: 900;
 }
 
@@ -1913,7 +1911,7 @@
   border-top: 3px solid var(--ink);
   padding: 5px 10px;
   background: #ffe9a8;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-work-taskbar-left,
@@ -2000,7 +1998,7 @@
   box-shadow:
     0 20px 58px rgba(0, 0, 0, 0.48),
     0 0 0 1px rgba(0, 0, 0, 0.46) inset;
-  font-family: Galmuri11, "Malgun Gothic", monospace;
+  font-family: NeoDunggeunmo, "Malgun Gothic", monospace;
   font-size: clamp(18px, 2.1vw, 27px);
   font-weight: 900;
   line-height: 1.65;
@@ -2040,7 +2038,7 @@
   align-items: center;
   gap: 8px;
   color: rgba(247, 240, 221, 0.72);
-  font-family: Galmuri11, "Malgun Gothic", monospace;
+  font-family: NeoDunggeunmo, "Malgun Gothic", monospace;
   font-size: clamp(12px, 1.1vw, 15px);
   font-weight: 700;
 }
@@ -2077,7 +2075,7 @@
   padding: 0 12px;
   color: #f7f0dd;
   background: rgba(255, 255, 255, 0.08);
-  font-family: Galmuri11, "Malgun Gothic", monospace;
+  font-family: NeoDunggeunmo, "Malgun Gothic", monospace;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0;
@@ -2195,7 +2193,7 @@
   color: var(--ink);
   background: var(--white, #fdfcf2);
   box-shadow: 6px 6px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: clamp(15px, 1.7vw, 20px);
   font-weight: 900;
   line-height: 1.45;
@@ -2263,12 +2261,12 @@
   background: var(--white, #fdfcf2);
   box-shadow: 7px 7px 0 var(--ink);
   padding: 32px 36px 28px;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   cursor: default;
 }
 
 .main-work-handover-title {
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: clamp(20px, 2.8vw, 26px);
   font-weight: 800;
   line-height: 1.25;
@@ -2326,7 +2324,7 @@
   box-shadow: 3px 3px 0 var(--ink);
   color: var(--ink);
   background: #fff3c4;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -2335,6 +2333,507 @@
 .main-work-handover-close:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/* Commute briefing — 메인 업무화면과 동일한 모니터·오피스 셸 안에서 표시 */
+.commute-center {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  justify-items: stretch;
+  padding: 14px 16px;
+  overflow: hidden;
+}
+
+.commute-briefing {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  grid-column: 1 / -1;
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--white, #fdfcf2);
+  box-shadow: 5px 5px 0 var(--ink);
+  font-family: NeoDunggeunmo, monospace;
+}
+
+.commute-panel-body-slot {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+}
+
+.commute-panel-body-slot > .commute-briefing-body {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.commute-tab-menu .commute-tab {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border: 2px solid var(--ink);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #fff8e3;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer !important;
+}
+
+.commute-tab-menu .commute-tab.is-active {
+  background: #ffd23f;
+  box-shadow: inset 0 -3px 0 var(--ink);
+}
+
+
+.commute-schedule-panel {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--ink);
+  background: var(--white, #fdfcf2);
+  overflow: hidden;
+}
+
+.commute-schedule-head h2 {
+  margin: 0;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 15px;
+}
+
+.commute-flow-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.commute-flow-step {
+  min-width: 0;
+}
+
+.commute-flow-card {
+  min-width: 0;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: #fff8e3;
+}
+
+.commute-flow-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.commute-flow-label {
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--ink);
+  background: #fff3c4;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.commute-flow-icon {
+  display: grid;
+  flex: 0 0 30px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: #fff3c4;
+  font-size: 15px;
+}
+
+.commute-flow-card-head strong {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.commute-flow-text {
+  margin: 0;
+  color: #4a4f5d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.commute-schedule-footnotes {
+  display: grid;
+  gap: 4px;
+  border-top: 2px dashed rgba(29, 31, 46, 0.22);
+  padding-top: 8px;
+}
+
+.commute-schedule-footnotes p {
+  margin: 0;
+  color: #6b7287;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.commute-briefing-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr) 196px;
+  gap: 12px;
+  padding: 12px;
+  background: #fff8e3;
+}
+
+.commute-briefing-body.commute-schedule-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.commute-tip-panel {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  transform: rotate(-2deg);
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 14px 12px;
+  color: var(--ink);
+  background: #ffd23f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.commute-tip-panel strong {
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 13px;
+}
+
+.commute-tip-text {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.commute-tip-next {
+  justify-self: start;
+  border: 2px solid var(--ink) !important;
+  border-radius: 4px !important;
+  padding: 5px 8px !important;
+  color: var(--ink) !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+
+.commute-mission-panel {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 18px 22px 14px;
+  color: var(--ink);
+  background: var(--white, #fdfcf2);
+  text-align: center;
+}
+
+.commute-mission-panel h1 {
+  margin: 0;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: clamp(17px, 2.2vw, 22px);
+}
+
+.commute-mission-lead {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.commute-mission-rules {
+  width: min(100%, 280px);
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.commute-mission-rules li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.commute-mission-rules li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--ink);
+}
+
+.commute-mission-cheer {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.commute-hidden-rule {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.55;
+  color: #4a4f5d;
+  opacity: 0.14;
+  filter: blur(0.5px);
+  animation: commute-legend-flicker 14s ease-in-out infinite;
+  user-select: none;
+  pointer-events: none;
+}
+
+.commute-hidden-rule p {
+  margin: 0;
+  padding-right: 8px;
+}
+
+.commute-hidden-rule p:last-child {
+  padding-right: 18px;
+}
+
+.commute-mission-panel:hover .commute-hidden-rule {
+  opacity: 0.5;
+  filter: blur(0);
+  animation: commute-legend-reveal 2.4s ease forwards;
+}
+
+@keyframes commute-legend-flicker {
+  0%, 86%, 100% {
+    opacity: 0.12;
+    filter: blur(0.55px);
+  }
+
+  88% {
+    opacity: 0.34;
+    filter: blur(0.2px);
+  }
+
+  89% {
+    opacity: 0.08;
+    filter: blur(0.7px);
+  }
+
+  91% {
+    opacity: 0.38;
+    filter: blur(0.15px);
+  }
+}
+
+@keyframes commute-legend-reveal {
+  0% {
+    opacity: 0.14;
+    filter: blur(0.5px);
+  }
+
+  100% {
+    opacity: 0.58;
+    filter: blur(0);
+  }
+}
+
+.commute-side-panel {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.commute-player-card {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 12px 10px;
+  color: var(--ink);
+  background: #fff8e3;
+  text-align: center;
+}
+
+.commute-player-photo {
+  width: 72px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  background: #d7d1c5;
+}
+
+.commute-player-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.commute-player-card strong {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.commute-player-card b {
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 13px;
+}
+
+.commute-player-card span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7287;
+}
+
+.commute-boss-hint {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 10px;
+  color: var(--ink);
+  background: #fff3c4;
+}
+
+.commute-boss-hint h2 {
+  margin: 0 0 8px;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 13px;
+}
+
+.commute-boss-hint p {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.commute-briefing-footer {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-top: 3px solid var(--ink);
+  background: #fff8e3;
+}
+
+.commute-start-button {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  border: 3px solid var(--ink) !important;
+  border-radius: 6px !important;
+  box-shadow: 4px 4px 0 var(--ink) !important;
+  padding: 10px 16px !important;
+  color: var(--ink) !important;
+  background: var(--accent) !important;
+  text-align: left;
+  cursor: pointer !important;
+}
+
+.commute-start-button:hover,
+.commute-start-button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.commute-start-button strong {
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 18px;
+}
+
+.commute-start-button > span {
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.commute-start-button small {
+  justify-self: end;
+  color: #4a4f5d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.commute-briefing-footer > p {
+  margin: 0;
+  color: #6b7287;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.commute-player-tag {
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #fff8e3;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.main-work-task-icon.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+@media (max-width: 860px) {
+  .commute-briefing-body,
+  .commute-schedule-body {
+    grid-template-columns: 1fr;
+  }
+
+  .commute-tip-panel {
+    transform: none;
+  }
+
+  .commute-start-button {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .commute-start-button small {
+    justify-self: center;
+  }
 }
 
 .main-event-overlay {
@@ -2355,7 +2854,7 @@
   color: var(--ink);
   background: var(--white, #fdfcf2);
   box-shadow: 8px 9px 0 var(--ink);
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .main-event-titlebar {
@@ -2417,7 +2916,7 @@
 
 .main-event-body h2 {
   margin: 0;
-  font-family: Galmuri14, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: clamp(24px, 4.6vw, 34px);
   line-height: 1.15;
 }
@@ -2703,35 +3202,11 @@
 }
 
 @font-face {
-  font-family: Galmuri14;
+  font-family: NeoDunggeunmo;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
   font-display: swap;
-  src: url("../assets/fonts/f41118f5-0359-476b-9732-898a54c6a641.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: Galmuri11;
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("../assets/fonts/5f1e1d6e-2625-46a9-9455-e8f907bebf3a.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: Galmuri11;
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("../assets/fonts/358a1452-7d94-4e2f-b1da-3e85fd2e9d6b.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: Galmuri9;
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("../assets/fonts/e105acde-36a9-410d-87f1-c278b6357a92.woff2") format("woff2");
+  src: url("../assets/fonts/neodgm.woff") format("woff");
 }
 
 * {
@@ -2743,6 +3218,7 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background: #e7ddc7;
+  font-family: NeoDunggeunmo, "Malgun Gothic", sans-serif;
 }
 
 button,
@@ -3374,7 +3850,7 @@ select {
   grid-template-rows: auto 1fr;
   overflow: hidden;
   background: #caa46a;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .minigame-briefing-room {
@@ -3506,7 +3982,7 @@ select {
 .minigame-briefing-heading h2 {
   margin: 0;
   color: #1d1f2e;
-  font-family: Galmuri14, Galmuri11, monospace;
+  font-family: NeoDunggeunmo, NeoDunggeunmo, monospace;
   font-size: 24px;
   line-height: 1.2;
   letter-spacing: 0;
@@ -3567,7 +4043,7 @@ select {
   padding: 5px 14px;
   background: #fff;
   color: #ef4d42;
-  font-family: Galmuri9, Galmuri11, monospace;
+  font-family: NeoDunggeunmo, NeoDunggeunmo, monospace;
   font-size: 18px;
   font-weight: 700;
 }
@@ -3586,7 +4062,7 @@ select {
   background: var(--accent, #ffd23f);
   color: var(--ink, #1d1f2e);
   box-shadow: 4px 4px 0 var(--ink, #1d1f2e);
-  font-family: Galmuri14, Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -3663,7 +4139,7 @@ select {
   font-family:
     "Segoe Print",
     "Comic Sans MS",
-    Galmuri11,
+    NeoDunggeunmo,
     "Apple SD Gothic Neo",
     "Malgun Gothic",
     sans-serif;
@@ -3694,7 +4170,7 @@ select {
 }
 
 .briefing-clock strong {
-  font-family: Galmuri14, Galmuri11, monospace;
+  font-family: NeoDunggeunmo, NeoDunggeunmo, monospace;
   font-size: clamp(3.4rem, 6vw, 5.8rem);
   line-height: 0.85;
   letter-spacing: 0;
@@ -3727,7 +4203,7 @@ select {
   display: flex;
   justify-content: space-between;
   color: #8a8a8a;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -4114,7 +4590,7 @@ select {
   padding: 2px 5px;
   color: #fff;
   background: #222;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 0.62rem;
 }
 
@@ -4570,7 +5046,7 @@ select {
   flex-shrink: 0;
   border: 3px solid #1d1f2e;
   background: #fdfcf2;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .dev-panel summary {
@@ -4590,7 +5066,7 @@ select {
   border-width: 3px;
   border-radius: 0;
   box-shadow: none;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 13px;
 }
 
@@ -4672,7 +5148,7 @@ select {
   padding: 16px;
   background: #e7ddc7;
   color: #1d1f2e;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   image-rendering: pixelated;
 }
 
@@ -4700,7 +5176,7 @@ select {
   padding: 0 12px;
   color: #1d1f2e;
   background: #ffe9a8;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 14px;
   font-weight: 700;
 }
@@ -4708,7 +5184,7 @@ select {
 .window-buttons {
   display: flex;
   gap: 12px;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .title-menu-bar {
@@ -4723,7 +5199,7 @@ select {
 
 .title-menu-bar strong {
   margin-left: auto;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .title-menu-content {
@@ -4759,7 +5235,7 @@ select {
 .title-logo {
   margin: 0;
   color: #1d1f2e;
-  font-family: Galmuri14, Galmuri11, monospace;
+  font-family: NeoDunggeunmo, NeoDunggeunmo, monospace;
   font-size: clamp(2.7rem, 6vw, 4.7rem);
   font-weight: 400;
   line-height: 1;
@@ -4773,7 +5249,7 @@ select {
   margin: 22px 0 0;
   padding: 0 8px 2px;
   color: #4a4b55;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.2;
@@ -4788,7 +5264,7 @@ select {
 .title-question {
   margin: 36px 0 0;
   color: #1d1f2e;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: clamp(1rem, 2.4vw, 1.45rem);
   font-weight: 700;
   transform: none;
@@ -4809,7 +5285,7 @@ select {
   color: #1d1f2e;
   background: #fdfcf2;
   box-shadow: none;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-weight: 700;
 }
 
@@ -4834,7 +5310,7 @@ select {
 }
 
 .play-mark {
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
   font-size: 1rem;
 }
 
@@ -4896,9 +5372,9 @@ select {
   }
 }
 
-/* Match the meeting-prep prototype font stack across the whole game. */
+/* NeoDunggeunmo pixel font across the whole game. */
 :root {
-  --meeting-prototype-font: -apple-system, BlinkMacSystemFont, sans-serif;
+  --meeting-prototype-font: NeoDunggeunmo, "Malgun Gothic", sans-serif;
 }
 
 body,
@@ -5821,7 +6297,7 @@ textarea,
   display: grid;
   grid-template-rows: auto 1fr;
   background: #b0822a;
-  font-family: Galmuri11, monospace;
+  font-family: NeoDunggeunmo, monospace;
 }
 
 .mg-screen {
