@@ -1,5 +1,5 @@
 import { el, getActiveStatusEffects, renderNarrationPopup, renderStatusBadge } from "../ui.js";
-import { formatTime, applyDelta, applyWorkTimeCost, checkEnding, normalizeLogEntry, addLogEntry } from "../state.js";
+import { formatTime, applyDelta, applyWorkTimeCost, checkEnding, normalizeLogEntry, addLogEntry, currentDateLabel } from "../state.js";
 import {
   bossMainEvents,
   chatPool,
@@ -307,10 +307,9 @@ function renderMainWorkHud(state, actions) {
     el("div", { class: "main-work-hud-controls" }, [
       renderMainWorkItemHub(state, actions),
       renderPhoneButton(),
-      el("button", { class: "main-work-gear", type: "button", "aria-label": "설정", text: "⚙" }),
       el("div", { class: "main-work-hud-time" }, [
         el("strong", { class: "main-work-current-time", text: formatTime(state.gameMinute) }),
-        el("span", { text: "2026.06.05 금요일" }),
+        el("span", { text: currentDateLabel() }),
       ]),
     ]),
   ]);

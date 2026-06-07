@@ -1,5 +1,5 @@
 import { el } from "../ui.js";
-import { formatTime } from "../state.js";
+import { formatTime, currentDateLabel } from "../state.js";
 import { DAY_FLOW_STEPS, SCHEDULE_WARNING } from "../data/day-schedule.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { playBgm, playClickSfx, restoreBgmPlaybackRate, setBgmPlaybackRate } from "../lib/audio.js";
@@ -86,7 +86,7 @@ function renderCommuteHud(state) {
       ]),
       el("div", { class: "main-work-hud-time" }, [
         el("strong", { class: "main-work-current-time", text: formatTime(COMMUTE_MINUTE) }),
-        el("span", { text: "2026.06.05 금요일" }),
+        el("span", { text: currentDateLabel() }),
       ]),
       el("span", { class: "commute-player-tag", text: `사원 ${playerName}` }),
     ]),

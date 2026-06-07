@@ -18,6 +18,15 @@ export function buildMiniOrder() {
   return order;
 }
 
+// HUD 시계 아래에 표시할 '현재(실제) 날짜·요일' (게임 진행 당일)
+export function currentDateLabel() {
+  const now = new Date();
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}.${mm}.${dd} ${days[now.getDay()]}요일`;
+}
+
 export function createInitialState() {
   const boss = bosses[Math.floor(Math.random() * bosses.length)];
 
@@ -37,7 +46,7 @@ export function createInitialState() {
     colleagueTrust: 30,
     stats: {
       workload: 100,
-      stress: 5,
+      stress: 0,
       health: 100,
     },
     // 설정 화면(서명하고 출근)에서 유형 기준으로 다시 설정됨. 기본값은 커피파.
