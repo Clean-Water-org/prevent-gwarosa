@@ -3,6 +3,13 @@ import { MINI_ROUNDS } from "../../state.js";
 
 export { MINI_ROUNDS };
 
+// 미니게임 결과 등급 → 업무 일지 표시용 한글 라벨 (success/partial/fail 영어 노출 방지)
+export const MINI_TIER_LABEL = {
+  success: "성공",
+  partial: "부분 성공",
+  fail: "실패",
+};
+
 // 저장본에 순서가 없을 때만 쓰는 결정적 폴백(매 호출 동일 → 도중 변경 방지)
 const FALLBACK_ORDER = ["email", "meeting", "report", "email", "meeting"];
 

@@ -6,6 +6,7 @@ import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { formatHeadacheDisplayText, syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
+import { MINI_TIER_LABEL } from "./flow.js";
 
 const CARD_W = 120, CARD_H = 168;
 
@@ -1026,7 +1027,7 @@ export function renderMeetingGame(root, state, actions, game) {
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:NeoDunggeunmo,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
-    btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `회의 준비 ${tier}: 오류 ${errors}개`, usedSec); });
+    btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `회의 준비 ${MINI_TIER_LABEL[tier] ?? tier}: 오류 ${errors}개`, usedSec); });
     nextBtn.append(btnInner);
     panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
     card.append(panel);

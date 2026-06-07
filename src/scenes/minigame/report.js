@@ -5,6 +5,7 @@ import { fillBossText } from "../../lib/boss-text.js";
 import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../lib/audio.js";
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { headacheCorruptText } from "../../lib/headache-fx.js";
+import { MINI_TIER_LABEL } from "./flow.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -854,7 +855,7 @@ export function renderReportGame(root, state, actions, game) {
     const btnInner = document.createElement("div");
     btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:NeoDunggeunmo,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
-    btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`, usedSec); });
+    btnInner.addEventListener("click", () => { playClickSfx(); cleanup(); actions.applyResult(tier, `보고서 오탈자 ${MINI_TIER_LABEL[tier] ?? tier}: 발견 ${found}/${total}`, usedSec); });
     nextBtn.append(btnInner);
 
     panel.append(emojiEl, titleEl, statsRow, deltaRow, nextBtn);
