@@ -1,4 +1,5 @@
 import { el, renderHud } from "../../ui.js";
+import { playSfx, duckBgm } from "../../lib/audio.js";
 
 const GAME_ICONS = {
   email: "📧",
@@ -6,7 +7,14 @@ const GAME_ICONS = {
   report: "📝",
 };
 
+const CLICK_SFX = "assets/audio/computer-mouse-click.mp3";
+const NOTIFY_SFX = "assets/audio/new-notification-3.mp3";
+
 export function renderMiniGameBriefing(root, state, options, game, mode = "inline") {
+  // 브리핑 등장: 메인 BGM을 잠시 낮추고(브리핑 동안) 새 업무 알림음 재생
+  duckBgm({ durationMs: 30000 });
+  playSfx(NOTIFY_SFX);
+
   const statuses = describeMiniGameStatus(state, game.id);
   const icon = GAME_ICONS[game.id] ?? "💼";
   const overlayClass = mode === "overlay"
@@ -47,7 +55,7 @@ export function renderMiniGameBriefing(root, state, options, game, mode = "inlin
             class: "primary minigame-briefing-start",
             type: "button",
             text: "업무 시작",
-            onClick: () => options.onStart?.(),
+            onClick: () => { playSfx(CLICK_SFX); options.onStart?.(); },
           }),
         ]),
       ]),
