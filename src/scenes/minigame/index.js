@@ -108,6 +108,10 @@ function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   ].slice(-2);
   // 1~3라운드 결과를 게임별로 기록 (4·5라운드 최저 성공 게임 산정용)
   next.counters.miniResultByGame = { ...(next.counters.miniResultByGame ?? {}), [gameId]: result };
+  // 체력 40 이하 + 미니게임 성공 시 35% 확률로 인센티브 이벤트 예약(다음 메인화면에서 보유 유형 아이템 무료 지급)
+  if (result === "success" && next.stats.health <= 40 && Math.random() < 0.35) {
+    next.flags.forcedIncentive = true;
+  }
   // 3라운드(이메일·회의·보고서) 종료 직후 4·5라운드 확정:
   //   4라운드 = 1~3 중 성공률 최저 게임(직전과 연속되면 차순위), 5라운드 = 랜덤(연속 금지)
   if (next.minigameRound === 3 && Array.isArray(next.miniOrder) && next.miniOrder.length >= 5) {

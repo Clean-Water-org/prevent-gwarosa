@@ -5,6 +5,7 @@ export const items = {
     label: "커피",
     icon: "☕",
     effect: "체력 +15",
+    maxUses: 1,
     use(state) {
       state.stats.health = Math.min(100, state.stats.health + 15);
       state.counters.coffeeStreak += 1;
@@ -27,6 +28,7 @@ export const items = {
     label: "담배",
     icon: "🚬",
     effect: "스트레스 -12, 체력 -3",
+    maxUses: 1,
     use(state) {
       state.stats.stress = Math.max(0, state.stats.stress - 12);
       state.stats.health = Math.max(0, state.stats.health - 3);
@@ -52,6 +54,7 @@ export const items = {
     label: "홍삼스틱",
     icon: "🧴",
     effect: "체력 +25",
+    maxUses: 1,
     use(state) {
       state.stats.health = Math.min(100, state.stats.health + 25);
       state.counters.coffeeStreak = 0;
@@ -67,6 +70,7 @@ export const items = {
     label: "쇼츠",
     icon: "📱",
     effect: "스트레스 -10",
+    maxUses: 3,
     use(state) {
       state.stats.stress = Math.max(0, state.stats.stress - 10);
       state.flags.nextBossOrderBoost = true;

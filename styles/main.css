@@ -554,6 +554,7 @@
 }
 
 .main-work-item-button {
+  position: relative;
   min-height: 58px;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -573,7 +574,44 @@
   background: #ffe9a8;
 }
 
+/* 사용 제한 아이템 — 우측 하단 주황 동그라미 배지(남은 사용 횟수) */
+.main-work-item-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  z-index: 2;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #f5862b;
+  color: #fff;
+  font-family: NeoDunggeunmo, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* 소진(남은 0회) — 흐리게 + 클릭 불가 */
+.main-work-item-button.is-exhausted {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.main-work-item-button.is-exhausted:hover {
+  background: #fff8e3;
+}
+
+.main-work-item-button.is-exhausted .main-work-item-badge {
+  background: #9a8f72;
+}
+
 .main-work-item-icon {
+  position: relative; /* 남은 횟수 배지의 기준 — 아이콘 우측 하단에 배치 */
   display: grid;
   place-items: center;
   width: 42px;

@@ -55,6 +55,7 @@ export function createInitialState() {
       coffeeStreak: 0,
       shortsStreak: 0,
       smokeUses: 0,
+      itemUses: {}, // 아이템별 누적 사용 횟수 (사용 제한·남은 횟수 배지용)
       successStreak: 0,
       failures: 0,
       bossAttention: 0,

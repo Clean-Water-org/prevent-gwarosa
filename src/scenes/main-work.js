@@ -8,6 +8,7 @@ import {
   positiveMainEvents,
 } from "../data/events.js";
 import { items } from "../data/items.js";
+import { PLAYER_TYPES } from "../data/player-types.js";
 import { PORTAL_TASKS } from "../data/portal-tasks.js";
 import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
 import { renderMiniGameBriefing } from "./minigame/briefing.js";
@@ -369,7 +370,7 @@ function renderMainWorkItemHub(state, actions) {
 
   const inventory = state.inventory ?? [];
   const children = inventory.length
-    ? inventory.map((itemId, index) => renderMainWorkItemButton(itemId, index, actions))
+    ? inventory.map((itemId, index) => renderMainWorkItemButton(itemId, index, state, actions))
     : [el("p", { class: "main-work-empty-items", text: "아이템 없음" })];
 
   return el("details", { class: "main-work-item-hub" }, [
@@ -382,23 +383,43 @@ function renderMainWorkItemHub(state, actions) {
   ]);
 }
 
-function renderMainWorkItemButton(itemId, index, actions) {
+function renderMainWorkItemButton(itemId, index, state, actions) {
   const item = items[itemId];
   if (!item) return el("span", { class: "main-work-empty-items", text: "알 수 없는 아이템" });
 
   const actionLabel = itemId === "coffee" ? "커피 마시기" : `${item.label} 사용`;
-  return el("button", {
-    class: "main-work-item-button",
-    type: "button",
-    title: `${actionLabel} · ${item.effect}`,
-    onClick: () => actions.useItem(index),
-  }, [
-    el("span", { class: "main-work-item-icon", text: item.icon }),
+  // 사용 제한 있는 아이템(maxUses)만 남은 횟수 배지 표시.
+  const limited = item.maxUses != null;
+  const used = state.counters?.itemUses?.[itemId] ?? 0;
+  const remaining = limited ? Math.max(0, item.maxUses - used) : null;
+  const exhausted = limited && remaining <= 0;
+
+  // 남은 횟수 배지는 아이콘 박스 우측 하단에 표시(아이콘 안에 중첩).
+  const iconChildren = [item.icon];
+  if (limited) {
+    iconChildren.push(el("span", {
+      class: "main-work-item-badge",
+      "aria-label": `남은 사용 ${remaining}회`,
+      text: String(remaining),
+    }));
+  }
+  const children = [
+    el("span", { class: "main-work-item-icon" }, iconChildren),
     el("span", { class: "main-work-item-copy" }, [
       el("strong", { text: actionLabel }),
       el("small", { text: item.effect }),
     ]),
-  ]);
+  ];
+
+  const attrs = {
+    class: `main-work-item-button${exhausted ? " is-exhausted" : ""}`,
+    type: "button",
+    title: limited ? `${actionLabel} · ${item.effect} · 남은 ${remaining}회` : `${actionLabel} · ${item.effect}`,
+    onClick: () => actions.useItem(index),
+  };
+  if (exhausted) attrs.disabled = "";
+
+  return el("button", attrs, children);
 }
 
 function renderRecentLogPanel(state, actions) {
@@ -2258,6 +2279,7 @@ function selectMainEvent(state, phaseIndex) {
 }
 
 function selectForcedMainEvent(state) {
+  if (state.flags?.forcedIncentive) return getIncentiveEvent(state);
   if (state.flags?.forcedShortsScolding) return getBossMainEvent("work-attitude");
   if (state.flags?.badMailInterview) return getBossMainEvent("boss-interview");
   // public-shame / public-praise는 페이즈 2~3 회의 이벤트(showMeetingEventPopup) 전용
@@ -2296,6 +2318,22 @@ function getColleagueMainEvent(id) {
 
 function getPositiveMainEvent(id) {
   return positiveMainEvents.find((event) => event.id === id);
+}
+
+// 체력 회복 인센티브 — 보유 유형 아이템(커피파→커피, 담배파→담배)을 무료로 지급(단일 사용)
+function getIncentiveEvent(state) {
+  const typeItem = PLAYER_TYPES[state.player?.type]?.item ?? "coffee";
+  const label = items[typeItem]?.label ?? typeItem;
+  return {
+    id: "incentive-item",
+    type: "positive",
+    title: "컨디션 회복 인센티브",
+    speaker: "사내 이벤트",
+    body: `많이 지쳐 보이네요. 회복하라고 ${label} 하나 챙겨드릴게요.`,
+    choices: [
+      { id: "accept", label: "감사히 받는다", item: typeItem, delta: {}, message: `인센티브로 ${label}을(를) 받았다.` },
+    ],
+  };
 }
 
 function openMainEventPopup(container, state, actions, plan) {
@@ -2478,7 +2516,11 @@ function applyMainEventChoice(actions, event, choice, phaseIndex, options = {}) 
     const pickedItem = pickMainEventItem(choice);
     let next = applyDelta(draft, choice.delta ?? {}, null);
     next.inventory = [...(next.inventory ?? [])];
-    if (pickedItem) next.inventory.push(pickedItem);
+    if (pickedItem) {
+      // 카운트 기반 소비 모델: 이미 보유한 종류면 중복 추가하지 않고, 누적 사용 횟수만 초기화해 다시 사용 가능하게
+      if (!next.inventory.includes(pickedItem)) next.inventory.push(pickedItem);
+      next.counters = { ...next.counters, itemUses: { ...(next.counters?.itemUses ?? {}), [pickedItem]: 0 } };
+    }
 
     applyMainEventFlags(next, event, choice, phaseIndex, options);
 
@@ -2506,6 +2548,7 @@ function applyMainEventFlags(state, event, choice, phaseIndex) {
 
   if (event.id === "boss-interview") state.flags.badMailInterview = false;
   if (event.id === "work-attitude") { state.flags.forcedShortsScolding = false; state.counters.shortsStreak = 0; }
+  if (event.id === "incentive-item") state.flags.forcedIncentive = false;
   if (event.id === "public-shame") state.counters.failures = 0;
   if (event.id === "public-praise") state.counters.successStreak = 0;
 

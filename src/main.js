@@ -111,11 +111,20 @@ export function useItem(index) {
   const item = items[itemId];
   if (!item) return;
 
+  // 사용 제한: 누적 사용 횟수가 maxUses에 도달하면 무시(소진).
+  const usedCount = state.counters?.itemUses?.[itemId] ?? 0;
+  if (item.maxUses != null && usedCount >= item.maxUses) return;
+
   if (itemId === "coffee") playItemSound("assets/audio/swallow.wav");
 
   mutateState((draft) => {
     const draftItem = items[draft.inventory[index]];
     if (!draftItem) return draft;
+    // 누적 사용 횟수 증가(아이템 사용 전에 기록 — use()가 새 state를 반환해도 유지되도록 counters에 반영).
+    draft.counters = {
+      ...draft.counters,
+      itemUses: { ...(draft.counters?.itemUses ?? {}), [itemId]: (draft.counters?.itemUses?.[itemId] ?? 0) + 1 },
+    };
     return draftItem.use(draft);
   });
 }
