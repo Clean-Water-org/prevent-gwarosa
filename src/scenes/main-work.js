@@ -1958,6 +1958,16 @@ function cleanupStatusEventSystem() {
   }
 }
 
+/** 메인→메인 리렌더 후 상태이상 팝업을 다시 붙일 때 등장 애니메이션을 재생하지 않는다. */
+function reattachStatusEventOverlay(container) {
+  if (!_statusEventOverlay || _statusEventOverlay.isConnected) return;
+  _statusEventOverlay
+    .querySelector(".headache-dialog, .main-event-card")
+    ?.classList
+    .add("is-reattached");
+  container.append(_statusEventOverlay);
+}
+
 // 화면 전환(미니게임 진입 등)이나 리렌더로 채팅 패널이 사라지기 직전 상태를 스냅샷으로
 // 남겨둔다. startChatNotifications가 같은 판으로 복귀했을 때 이 스냅샷을 보고
 // "타이머가 멈춘 채" 그대로 이어서 보여준다.
@@ -2109,8 +2119,7 @@ function pauseMainWorkForBlockingEvent() {
 
 function showStatusEventPopup(type, state, container, actions) {
   if (_statusEventOverlay) {
-    if (!_statusEventOverlay.isConnected) container.append(_statusEventOverlay);
-    _preservingStatusEvent = false;
+    reattachStatusEventOverlay(container);
     return;
   }
   if (type === "headache") {
@@ -2181,6 +2190,7 @@ function showStatusEventPopup(type, state, container, actions) {
   ]);
 
   container.append(_statusEventOverlay);
+  _preservingStatusEvent = true;
 }
 
 function showHeadacheStatusPopup(state, container, actions) {
@@ -2211,6 +2221,7 @@ function showHeadacheStatusPopup(state, container, actions) {
       return { afterMinute };
     },
   });
+  _preservingStatusEvent = true;
 }
 
 function shouldShowMeetingEvent(state) {

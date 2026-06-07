@@ -8637,6 +8637,11 @@ textarea,
 .pop-in {
   animation: popIn 0.2s ease-out;
 }
+
+.headache-dialog.is-reattached,
+.main-event-card.is-reattached {
+  animation: none !important;
+}
 .slip-pop {
   animation: slipPop 0.3s cubic-bezier(.22,1.5,.6,1);
 }
