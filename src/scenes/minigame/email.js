@@ -6,23 +6,9 @@ import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 
-const TRUSTED_HOSTS = ["company.com", "intranet.company.com", "edu.company.com", "mail.company.com", "erp.company.com", "crm.company.com", "docs.google.com", "drive.partner-office.kr"];
 const MAIL_START_Y = -16;
 const CARD_FALL_SPEED = 0.42;
 const DROP_ZONE_INNER_W = 148;
-
-const CHIP_PALETTES = [
-  { color: "#777", border: "#d8d2c0", bg: "#f8f4e8" },
-  { color: PX.red, border: PX.red, bg: "#fff0ee" },
-  { color: "#8b6815", border: "#caa83a", bg: "#fff7d8" },
-  { color: "#3a6ea5", border: "#3a6ea5", bg: "#e8f0fa" },
-  { color: "#1f8a2e", border: "#1f8a2e", bg: "#e3f7e2" },
-  { color: "#8a4a9a", border: "#8a4a9a", bg: "#f3e8f7" },
-];
-
-function pickRandomChipStyle() {
-  return CHIP_PALETTES[Math.floor(Math.random() * CHIP_PALETTES.length)];
-}
 
 function shuffled(a) {
   const r = a.slice();
@@ -30,34 +16,38 @@ function shuffled(a) {
   return r;
 }
 
-function pickByDifficulty(difficulty, count) {
-  return shuffled(emailDeck.filter((m) => m.difficulty === difficulty)).slice(0, count);
+function pickFrom(pool, count) {
+  return shuffled(pool).slice(0, count);
 }
 
 function buildRoundDeck() {
-  const easy = pickByDifficulty("easy", 2);
-  const normal = pickByDifficulty("normal", 4);
-  const hard = pickByDifficulty("hard", 3);
-  const evil = pickByDifficulty("evil", 1);
-  let deck = shuffled([...easy, ...normal, ...hard, ...evil]);
-  const goodCount = deck.filter((m) => m.type === "good").length;
-  if (deck.length < 10 || goodCount < 4 || goodCount > 6) {
-    const good = shuffled(emailDeck.filter((m) => m.type === "good")).slice(0, 5);
-    const spam = shuffled(emailDeck.filter((m) => m.type === "spam")).slice(0, 5);
-    deck = shuffled([...good, ...spam]);
-  }
-  return deck;
+  const byType = (type, difficulty) => emailDeck.filter((m) => m.type === type && m.difficulty === difficulty);
+  const byTypeHard = (type) => emailDeck.filter((m) => m.type === type && ["hard", "evil"].includes(m.difficulty));
+
+  const good = [
+    ...pickFrom(byType("good", "easy"), 2),
+    ...pickFrom(byType("good", "normal"), 2),
+    ...pickFrom(byTypeHard("good"), 1),
+  ];
+  const spam = [
+    ...pickFrom(byType("spam", "easy"), 4),
+    ...pickFrom(byType("spam", "normal"), 1),
+  ];
+  return shuffled([...good, ...spam]);
 }
 
 // ── 본문 미리보기 요약 (제목 키워드 기반) ──────────────────────────
 function makeBasicPreview(mail) {
   const s = mail.subject;
   if (mail.type === "spam") {
+    if (s.includes("지원금") || s.includes("생활안정")) return "지급 대상자로 선정되었습니다. 미신청 시 자동 소멸됩니다.";
+    if (s.includes("대출") && s.includes("승인")) return "한도 8,000만원. 지금 바로 입금 신청하세요.";
+    if (s.includes("당첨") || s.includes("축하")) return "24시간 내 수령 신청하지 않으면 당첨이 취소됩니다.";
+    if (s.includes("아이폰") || s.includes("에어팟") || s.includes("이벤트")) return "당첨! 본인 확인 후 수령지를 입력해주세요.";
+    if (s.includes("투자") || s.includes("삼성전자")) return "직장인 한정 선착순. 최소 투자금 100만원.";
+    if (s.includes("자동매매") || s.includes("부수입")) return "월 300만원 수익 사례. 무료 체험/상담 신청.";
     if (mail.attachment && /\.(zip|exe|xlsm)$/i.test(mail.attachment)) return "첨부 파일 실행 또는 보안 확인이 필요합니다.";
     if (mail.link && mail.link !== "없음") return "링크에서 로그인 또는 인증을 완료해주세요.";
-    if (s.includes("당첨") || s.includes("상품권") || s.includes("복지포인트")) return "오늘 안에 신청해야 지급됩니다.";
-    if (s.includes("송금")) return "우선 결제 처리가 필요합니다.";
-    if (s.includes("계정") || s.includes("용량")) return "즉시 확인하지 않으면 계정이 제한될 수 있습니다.";
     return "즉시 확인하지 않으면 제한될 수 있습니다.";
   }
   if (s.includes("법인카드")) return "정산 대상 여부를 확인해주세요.";
@@ -70,25 +60,6 @@ function makeBasicPreview(mail) {
   if (s.includes("송금")) return "결제 건 확인 부탁드립니다.";
   if (s.includes("공지")) return "안내 사항을 확인해주세요.";
   return "관련 내용 확인 부탁드립니다.";
-}
-
-function buildBasicClues(mail) {
-  const clues = [];
-  if (mail.attachment && mail.attachment !== "없음") {
-    const ext = mail.attachment.split(".").pop().toLowerCase();
-    clues.push({ text: `첨부 ${ext}`, danger: ["zip", "exe", "xlsm"].includes(ext), warn: !["zip", "exe", "xlsm"].includes(ext) });
-  }
-  if (mail.link && mail.link !== "없음") {
-    const host = mail.link.split("/")[0];
-    const trustedHost = TRUSTED_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
-    const looksLikeCompany = /(^|[-.])(company|cornpany)([-.]|$)/i.test(host);
-    clues.push({ text: trustedHost ? "업무 링크" : "링크 포함" });
-    if (looksLikeCompany && !trustedHost) clues.push({ text: "링크 경로", warn: true });
-  }
-  if (/인증|로그인|주민등록번호|계좌|주소와 연락처|실행/.test(mail.body)) clues.push({ text: "민감 요청", danger: true });
-  if (mail.recipient && mail.recipient.includes("개별")) clues.push({ text: "개별 발송", warn: true });
-  if (mail.time && /^0[0-6]:/.test(mail.time)) clues.push({ text: "새벽 발신", warn: true });
-  return clues.slice(0, 2);
 }
 
 function corruptText(text, ratio, seed) {
@@ -439,17 +410,7 @@ export function renderEmailGame(root, state, actions, game) {
     preview.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13.5px;color:#777;line-height:1.45;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
     preview.textContent = previewDisplay;
 
-    const clues = document.createElement("div");
-    clues.style.cssText = "display:flex;flex-wrap:wrap;gap:6px";
-    buildBasicClues(mail).forEach((tag) => {
-      const t = document.createElement("span");
-      const { color, border, bg } = pickRandomChipStyle();
-      t.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;border:1.5px solid ${border};color:${color};background:${bg};padding:3px 8px`;
-      t.textContent = tag.text;
-      clues.append(t);
-    });
-
-    mailCard.append(top, subject, preview, clues);
+    mailCard.append(top, subject, preview);
 
     if (run.detailOpen) {
       const detail = document.createElement("div");
