@@ -31,6 +31,9 @@ export function createInitialState() {
       smokeUses: 0,
       successStreak: 0,
       failures: 0,
+      bossAttention: 0,
+      colleagueIgnoreCount: 0,
+      hrIgnoreCount: 0,
       mainEventCount: 0,
       mainPhaseEventUsed: null,
       minigameResults: [],
@@ -117,6 +120,7 @@ export function applyDelta(state, delta, message) {
 export function addLogEntry(state, entry) {
   const normalized = normalizeLogEntry(state, entry);
   state.log = [...(state.log ?? []), normalized].slice(-20);
+  state.flags = { ...(state.flags ?? {}), recentLogCollapsed: false };
   return state;
 }
 
