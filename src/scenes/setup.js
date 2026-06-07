@@ -273,6 +273,7 @@ export function renderSetup(root, state, actions) {
 
   info.append(nameWrap, genderWrap, typeWrap, guide);
   cols.append(photoCol, info);
+  // 아이템 안내 박스 정의는 아래에 있으며, info 컬럼에 추가해 가이드 박스와 너비를 맞춘다.
 
   // 하단: 아이템 안내
   const itemBox = document.createElement("div");
@@ -285,10 +286,7 @@ export function renderSetup(root, state, actions) {
   const itemReward = document.createElement("span");
   itemReward.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:var(--ink);padding-left:4px";
   itemReward.textContent = "보상 1칸 · 동료 이벤트로 획득 (예: 홍삼스틱 🧴)";
-  const itemNote = document.createElement("span");
-  itemNote.style.cssText = "font-family:Galmuri11,monospace;font-size:11.5px;color:#999;padding-left:4px";
-  itemNote.textContent = "※ 효과는 메인화면에서 슬롯에 마우스를 올리면 안내 (호버 토글)";
-  itemBox.append(itemHead, itemStart, itemReward, itemNote);
+  itemBox.append(itemHead, itemStart, itemReward);
   function updateItemNote() {
     const d = PLAYER_TYPES[form.type];
     itemStart.textContent = `시작 2칸 · ${d.name === "커피파" ? "커피 ☕" : "담배 🚬"} + 유튜브 쇼츠 📱`;
@@ -306,7 +304,8 @@ export function renderSetup(root, state, actions) {
   submitBtn.addEventListener("click", submit);
   btnRow.append(submitBtn);
 
-  body.append(cols, itemBox, btnRow);
+  info.append(itemBox);
+  body.append(cols, btnRow);
   screen.append(titlebar, docHead, body);
   wrapper.append(makeMonitor(screen));
   scroll.append(wrapper);
