@@ -295,15 +295,7 @@ export function renderEmailGame(root, state, actions, game) {
   fxWrap.append(titlebar, menubar, hud, board);
   gameContent.append(fxWrap);
 
-  // 모드 칩
-  const modeChip = document.createElement("div");
-  modeChip.style.cssText = "display:flex;justify-content:center;margin-top:10px";
-  const modeChipInner = document.createElement("span");
-  modeChipInner.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink}`;
-  modeChipInner.textContent = `받은편지함 ${run.deck.length}통${stress >= 80 ? " · 스트레스 80↑ 본문 축약" : stress >= 50 ? " · 스트레스 50↑ 낙하 가속" : ""}`;
-  modeChip.append(modeChipInner);
-
-  monitorWrapper.append(makeMonitor(gameContent), modeChip);
+  monitorWrapper.append(makeMonitor(gameContent));
   monitorScroll.append(monitorWrapper);
   room.append(monitorScroll);
 
