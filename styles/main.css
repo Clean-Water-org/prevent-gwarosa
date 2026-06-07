@@ -1918,7 +1918,7 @@
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   border: 0;
@@ -1952,11 +1952,12 @@
 .main-work-messenger-toast-avatar {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: 2px solid var(--ink);
   border-radius: 7px;
   background: #fff8e3;
+  font-size: 16px; /* 박스 축소에 맞춰 이모지도 과하지 않게 */
 }
 
 .main-work-messenger-toast-copy {
