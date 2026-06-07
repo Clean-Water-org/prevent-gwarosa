@@ -1151,7 +1151,7 @@
       timer.classList.toggle("danger", left <= 10000);
       const stressBoost = state.stress >= 80 ? 0.09 : state.stress >= 50 ? 0.05 : 0;
       const bossBoost = state.boss ? 0.045 : 0;
-      state.cardY += 0.24 + stressBoost + bossBoost;
+      state.cardY += 0.28 + stressBoost + bossBoost;
       card.style.setProperty("--card-y", state.cardY + "%");
       if (state.cardY >= 84 && !state.locked) classify("missed");
       if (left <= 0) return finish();

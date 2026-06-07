@@ -111,7 +111,7 @@ function makeDropZone(kind) {
 // ── 까까오톡 팝업 ──────────────────────────────────────────────────
 function makeKakaoWin({ msgs, onClose }) {
   const win = document.createElement("div");
-  win.style.cssText = `position:fixed;z-index:47;width:340px;border:3px solid ${PX.ink};box-shadow:6px 6px 0 rgba(0,0,0,.35);top:16%;right:8%`;
+  win.style.cssText = `position:fixed;z-index:47;width:340px;max-width:calc(100vw - 32px);border:3px solid ${PX.ink};box-shadow:6px 6px 0 rgba(0,0,0,.35);top:50%;left:50%;transform:translate(-50%,-50%)`;
   const bar = document.createElement("div");
   bar.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:#fee500;padding:7px 12px;border-bottom:3px solid ${PX.ink}`;
   const barTitle = document.createElement("span");
@@ -528,7 +528,7 @@ export function renderEmailGame(root, state, actions, game) {
     const stressBoost = stress >= 80 ? 0.09 : stress >= 50 ? 0.05 : 0;
     const bossBoost = run.bossWatching ? 0.05 : 0;
     if (!run.locked) {
-      run.cardY += 0.24 + stressBoost + bossBoost;
+      run.cardY += 0.28 + stressBoost + bossBoost;
       mailCard.style.top = run.cardY + "%";
       if (run.cardY >= 84) classify("missed");
     }

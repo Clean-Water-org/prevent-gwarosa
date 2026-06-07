@@ -28,11 +28,13 @@ let _mainEventOverlay = null;
 let _meetingEventTimeout = null;
 let _meetingEventOverlay = null;
 let _statusEventOverlay = null;
-let _snoozedChats = [];
-let _nextBossTaskTimerPenalty = 0;
 let _chatSnapshot = null;
 let _spawnScheduledAt = 0;
 let _spawnDelayMs = 0;
+let _currentGameMinute = 9 * 60;
+let _messengerState = null;
+let _messengerUpdater = null;
+let _lastRenderedState = null;
 
 const STATUS_EVENT_CONFIGS = {
   burnout: {
@@ -64,16 +66,16 @@ const PHONE_CHANCE_BY_PHASE = [0.75, 0.75, 0.75, 0.75];
 const PHONE_RING_SECONDS = 12;
 const MAIN_EVENT_CHANCE = 0.75;
 const MAIN_EVENT_DELAY_MS = 4500;
-const CHAT_READ_MINUTES = {
-  "boss-task": 7,
-  "boss-praise": 2,
-  "colleague-help": 6,
-  "colleague-chat": 4,
-  "colleague-offer": 3,
-  notice: 2,
+const MESSENGER_ROOMS = [
+  { id: "boss", icon: "💼", name: "팀장", title: "팀장" },
+  { id: "colleague", icon: "👨", name: "동료", title: "동료" },
+  { id: "hr", icon: "🔔", name: "인사팀", title: "인사팀" },
+];
+const MESSENGER_ROOM_BY_FROM = {
+  "팀장": "boss",
+  "동료": "colleague",
+  "인사팀": "hr",
 };
-const CHAT_SNOOZE_MINUTES = 2;
-const CHAT_IGNORE_MINUTES = 1;
 const mainPhaseStarts = new Map();
 const phonePlans = new Map();
 const mainEventPlans = new Map();
@@ -91,10 +93,14 @@ const handoverNotes = [
 let stopHandoverGuide = null;
 
 export function renderMainWork(root, state, actions) {
+  _currentGameMinute = state.gameMinute;
+  _lastRenderedState = state;
   if (!state.flags?.handoverGuideSeen) {
     // 새 게임 시작 시점 — 이전 판의 채팅 스냅샷이 남아있다면 폐기한다.
     _chatSnapshot = null;
+    resetMessengerState(state);
   }
+  const messenger = ensureMessengerState(state);
   cleanupMainWorkSystems();
   stopHandoverGuide?.();
   // 메인화면 BGM — 같은 곡이 이미 재생 중이면 idempotent (리렌더 시 끊김 없음)
@@ -110,13 +116,40 @@ export function renderMainWork(root, state, actions) {
 
   const intranetPanel = renderIntranetWindow();
   intranetPanel.style.display = "none";
+  const messengerPanel = el("div", { class: "main-work-messenger-slot" });
+  messengerPanel.style.display = "none";
 
   let intranetBtn;
+  let messengerBtn;
   const toggleIntranet = () => {
     const willOpen = intranetPanel.style.display === "none";
     intranetPanel.style.display = willOpen ? "" : "none";
     intranetBtn?.classList.toggle("active", willOpen);
   };
+  const refreshMessenger = () => {
+    renderMessengerShell(messengerPanel, state, actions, closeMessenger);
+    updateMessengerTaskbarButton(messengerBtn);
+  };
+  const closeMessenger = () => {
+    if (messengerPanel.style.display === "none") return;
+    messengerPanel.style.display = "none";
+    messengerBtn?.classList.remove("active");
+    _messengerState.isOpen = false;
+  };
+  const toggleMessenger = () => {
+    const willOpen = messengerPanel.style.display === "none";
+    if (willOpen) {
+      _messengerState.isOpen = true;
+      _messengerState.activeRoomId = findFirstUnreadRoomId() ?? _messengerState.activeRoomId ?? "boss";
+      markRoomRead(_messengerState.activeRoomId);
+      messengerPanel.style.display = "";
+      messengerBtn?.classList.add("active");
+      refreshMessenger();
+      return;
+    }
+    closeMessenger();
+  };
+  _messengerUpdater = refreshMessenger;
 
   const firstTime = !state.flags?.handoverGuideSeen;
 
@@ -125,10 +158,22 @@ export function renderMainWork(root, state, actions) {
     el("main", { class: "main-work-center" }, [
       renderDesktopDocuments(() => screen, firstTime, actions, startChats),
       intranetPanel,
+      messengerPanel,
     ]),
     renderRecentLogPanel(state, actions),
-    renderTaskbar(state.gameMinute, toggleIntranet, (btn) => { intranetBtn = btn; }),
+    renderTaskbar(
+      state.gameMinute,
+      toggleIntranet,
+      (btn) => { intranetBtn = btn; },
+      toggleMessenger,
+      (btn) => { messengerBtn = btn; updateMessengerTaskbarButton(btn); },
+    ),
   ]);
+  refreshMessenger();
+  if (_messengerState.isOpen) {
+    messengerPanel.style.display = "";
+    messengerBtn?.classList.add("active");
+  }
 
   // 회의 준비 미니게임과 동일한 오피스 룸 + CHADOL-TRON 모니터 비주얼로 통일
   const room = makeOfficeRoom();
@@ -566,13 +611,18 @@ function renderSchedule(time, text) {
   ]);
 }
 
-function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn) {
+function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn, onMessengerClick, registerMessengerBtn) {
   const intranetBtn = el("span", {
     class: "main-work-task-icon",
     text: "사내포털",
     onClick: onIntranetClick,
   });
+  const messengerBtn = el("span", {
+    class: "main-work-task-icon main-work-task-messenger",
+    onClick: onMessengerClick,
+  });
   registerIntranetBtn?.(intranetBtn);
+  registerMessengerBtn?.(messengerBtn);
 
   return el("footer", { class: "main-work-taskbar" }, [
     el("div", { class: "main-work-taskbar-left" }, [
@@ -580,11 +630,460 @@ function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn) {
       el("span", { class: "main-work-task-icon", text: "검색" }),
       el("span", { class: "main-work-task-icon", text: "📁" }),
       intranetBtn,
+      messengerBtn,
     ]),
     el("div", { class: "main-work-taskbar-right" }, [
       el("span", { class: "main-work-task-clock", text: toTaskbarTime(gameMinute) }),
     ]),
   ]);
+}
+
+function ensureMessengerState(state) {
+  const runId = state.flags?.runId ?? "default";
+  if (_messengerState?.runId === runId) return _messengerState;
+  _messengerState = createMessengerState(runId);
+  return _messengerState;
+}
+
+function resetMessengerState(state) {
+  _messengerState = createMessengerState(state.flags?.runId ?? "default");
+}
+
+function createMessengerState(runId) {
+  return {
+    runId,
+    activeRoomId: "boss",
+    isOpen: false,
+    nextMessageId: 1,
+    rooms: MESSENGER_ROOMS.reduce((rooms, room) => {
+      rooms[room.id] = { ...room, messages: [] };
+      return rooms;
+    }, {}),
+  };
+}
+
+function renderMessengerShell(container, state, actions, onClose) {
+  if (!container || !_messengerState) return;
+  const activeRoom = _messengerState.rooms[_messengerState.activeRoomId] ?? _messengerState.rooms.boss;
+
+  const windowEl = el("section", { class: "main-work-messenger-window", role: "dialog", "aria-label": "사내 메신저" }, [
+    el("header", { class: "main-work-messenger-titlebar" }, [
+      el("div", { class: "main-work-messenger-brand" }, [
+        el("span", { class: "main-work-messenger-logo", text: "💬" }),
+        el("strong", { text: "Daehan Works Messenger" }),
+      ]),
+      el("div", { class: "main-work-messenger-window-actions" }, [
+        el("button", { class: "main-work-messenger-close", type: "button", text: "×", "aria-label": "메신저 닫기", onClick: onClose }),
+      ]),
+    ]),
+    el("div", { class: "main-work-messenger-body" }, [
+      el("aside", { class: "main-work-messenger-rooms" }, [
+        el("div", { class: "main-work-messenger-room-head", text: "채팅방" }),
+        ...MESSENGER_ROOMS.map((room) => renderMessengerRoomButton(room, activeRoom.id, state, actions, onClose)),
+      ]),
+      renderMessengerThread(activeRoom, actions),
+    ]),
+  ]);
+
+  container.replaceChildren(windowEl);
+  requestAnimationFrame(() => {
+    const log = container.querySelector(".main-work-messenger-thread-log");
+    if (log) log.scrollTop = log.scrollHeight;
+  });
+}
+
+function renderMessengerRoomButton(room, activeRoomId, state, actions, onClose) {
+  const unread = getRoomUnreadCount(room.id);
+  const selected = room.id === activeRoomId;
+  return el("button", {
+    class: `main-work-messenger-room${selected ? " active" : ""}${unread ? " has-unread" : ""}`,
+    type: "button",
+    onClick: () => {
+      _messengerState.activeRoomId = room.id;
+      markRoomRead(room.id);
+      renderMessengerShell(document.querySelector(".main-work-messenger-slot"), state, actions, onClose);
+      updateMessengerChrome();
+    },
+  }, [
+    el("span", { class: "main-work-messenger-room-icon", text: room.icon }),
+    el("span", { class: "main-work-messenger-room-name", text: `${room.title}${unread ? ` (${unread})` : ""}` }),
+    ...(unread ? [el("i", { class: "main-work-messenger-unread-dot" })] : []),
+  ]);
+}
+
+function renderMessengerThread(room, actions) {
+  const messages = room.messages ?? [];
+  return el("section", { class: "main-work-messenger-thread" }, [
+    el("header", { class: "main-work-messenger-thread-head" }, [
+      el("div", {}, [
+        el("strong", { text: `${room.icon} ${room.title}` }),
+        el("span", { text: `${messages.length}개 메시지` }),
+      ]),
+      el("span", { class: "main-work-messenger-presence", text: room.id === "hr" ? "인사 알림" : "업무 중" }),
+    ]),
+    el("div", { class: "main-work-messenger-thread-log" }, messages.length
+      ? messages.map((message) => renderMessengerMessage(message, actions))
+      : [el("p", { class: "main-work-messenger-empty", text: "아직 도착한 메시지가 없습니다." })]),
+  ]);
+}
+
+function renderMessengerMessage(message, actions) {
+  const replies = getMessengerReplyLabels(message);
+  const hasIgnoreChoice = replies.some((reply) => reply.id === "ignore");
+  const statusText = message.status === "replied"
+    ? "답장 완료"
+    : message.status === "processed"
+      ? "처리 완료"
+    : message.status === "later"
+      ? "나중에"
+    : message.status === "ignored"
+      ? "못 본 척"
+      : "답장 없음";
+  return el("article", { class: `main-work-messenger-message main-work-messenger-message-${message.kind}` }, [
+    el("div", { class: "main-work-messenger-message-meta" }, [
+      el("strong", { text: message.from }),
+      el("time", { text: formatTime(message.minute) }),
+      ...(message.needsReply ? [el("span", { class: `main-work-messenger-status is-${message.status ?? "pending"}`, text: statusText })] : []),
+    ]),
+    el("p", { text: message.text }),
+    ...(message.needsReply && !message.status
+      ? [el("div", { class: "main-work-messenger-replies" }, [
+        ...replies.map((reply) => el("button", {
+          class: `main-work-messenger-reply tone-${reply.tone}`,
+          type: "button",
+          text: reply.label,
+          onClick: () => handleMessengerChoice(message.id, reply.id, actions),
+        })),
+        ...(message.allowIgnore === false || hasIgnoreChoice ? [] : [el("button", {
+          class: "main-work-messenger-ignore",
+          type: "button",
+          text: "못 본 척",
+          onClick: () => handleMessengerChoice(message.id, "ignore", actions),
+        })]),
+      ])]
+      : [el("div", { class: "main-work-messenger-read-state", text: statusText })]),
+  ]);
+}
+
+function updateMessengerChrome() {
+  updateMessengerTaskbarButton(document.querySelector(".main-work-task-messenger"));
+}
+
+function updateMessengerTaskbarButton(button) {
+  if (!button) return;
+  const unread = getTotalUnreadCount();
+  button.textContent = unread ? `💬 (${unread})` : "💬 메신저";
+  button.classList.toggle("has-unread", unread > 0);
+  button.setAttribute("aria-label", unread ? `메신저 읽지 않은 메시지 ${unread}개` : "메신저");
+}
+
+function getMessengerReplyLabels(message) {
+  if (message.kind === "boss" && message.subtype === "request") {
+    return [
+      { id: "accept", label: "가능합니다", tone: "primary" },
+      { id: "hard", label: "조금 어려울 것 같습니다", tone: "neutral" },
+      { id: "ignore", label: "못 본 척", tone: "soft" },
+    ];
+  }
+  if (message.kind === "boss" && message.subtype === "check") {
+    return [
+      { id: "nearly", label: "거의 끝났습니다", tone: "primary" },
+      { id: "check", label: "확인해보겠습니다", tone: "neutral" },
+      { id: "ignore", label: "못 본 척", tone: "soft" },
+    ];
+  }
+  if (message.kind === "boss" && message.subtype === "praise") {
+    return [
+      { id: "thanks", label: "감사합니다", tone: "primary" },
+      { id: "effort", label: "더 노력하겠습니다", tone: "neutral" },
+      { id: "ignore", label: "못 본 척", tone: "soft" },
+    ];
+  }
+  if (message.kind === "colleague") {
+    return [
+      { id: "reply", label: "답장", tone: "primary" },
+      { id: "later", label: "나중에", tone: "neutral" },
+    ];
+  }
+  if (message.kind === "hr") return [{ id: "process", label: "처리하기", tone: "primary" }];
+  return [];
+}
+
+function handleMessengerChoice(messageId, choiceId, actions) {
+  const message = findMessengerMessage(messageId);
+  if (!message || message.status) return;
+  message.status = choiceId === "process" ? "processed" : choiceId === "later" ? "later" : choiceId === "ignore" ? "ignored" : "replied";
+  message.unread = false;
+  const result = resolveMessengerChoice(message, choiceId);
+  applyMessengerResult(result, actions, message, choiceId);
+  _messengerUpdater?.();
+  updateMessengerChrome();
+}
+
+function resolveMessengerChoice(message, choiceId) {
+  if (message.kind === "boss") return resolveBossMessengerChoice(message, choiceId);
+  if (message.kind === "colleague") return resolveColleagueMessengerChoice(message, choiceId);
+  if (message.kind === "hr") return resolveHrMessengerChoice(choiceId);
+  return { delta: {}, bossAttentionDelta: 0, colleagueIgnoreDelta: 0, hrIgnoreDelta: 0 };
+}
+
+function resolveBossMessengerChoice(message, choiceId) {
+  if (choiceId === "ignore") return { delta: {}, bossAttentionDelta: 1 };
+  if (message.subtype === "request") {
+    if (choiceId === "accept") {
+      return { delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
+    }
+    return { delta: getBossHardReplyDelta(), bossAttentionDelta: -1 };
+  }
+  if (message.subtype === "check") {
+    if (choiceId === "nearly") return { delta: { stress: -1, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
+    return { delta: { gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
+  }
+  if (message.subtype === "praise") {
+    if (choiceId === "thanks") return { delta: { stress: -3 }, bossAttentionDelta: -1 };
+    return { delta: { stress: -2 }, bossAttentionDelta: -1 };
+  }
+  return { delta: {}, bossAttentionDelta: -1 };
+}
+
+function resolveColleagueMessengerChoice(message, choiceId) {
+  if (choiceId === "later") return { delta: {}, colleagueIgnoreDelta: 0 };
+  if (choiceId === "ignore") return getColleagueIgnoreResult(message);
+  if (message.subtype === "favor") {
+    return { delta: { workload: 3, colleagueTrust: 5, gameMinute: 2, health: -1 }, colleagueIgnoreDelta: -1 };
+  }
+  if (message.subtype === "smalltalk") {
+    return { delta: { stress: -3, gameMinute: 1 }, colleagueIgnoreDelta: -1 };
+  }
+  if (message.subtype === "info") {
+    return { delta: { colleagueTrust: 2 }, colleagueIgnoreDelta: -1 };
+  }
+  if (message.subtype === "offer") {
+    return { delta: { workload: -3 }, colleagueIgnoreDelta: -1 };
+  }
+  return { delta: {}, colleagueIgnoreDelta: 0 };
+}
+
+function getColleagueIgnoreResult(message) {
+  if (message.subtype === "favor") return { delta: { colleagueTrust: -5 }, colleagueIgnoreDelta: 1 };
+  return { delta: {}, colleagueIgnoreDelta: 1 };
+}
+
+function resolveHrMessengerChoice(choiceId) {
+  if (choiceId === "process") return { delta: { gameMinute: -5 }, hrIgnoreDelta: -1 };
+  if (choiceId === "ignore") return { delta: {}, hrIgnoreDelta: 1 };
+  return { delta: {}, hrIgnoreDelta: 0 };
+}
+
+function getBossHardReplyDelta() {
+  const key = getBossSpeechKey(_lastRenderedState ?? {});
+  if (key === "smart-lazy") return {};
+  if (key === "smart-busy") return { stress: 2 };
+  if (key === "clumsy-busy") return { stress: 1 };
+  return Math.random() < 0.5 ? {} : { stress: 3 };
+}
+
+function applyMessengerResult(result, actions, message, choiceId) {
+  let shouldOpenInterview = false;
+  let shouldOpenHrCall = false;
+  let pendingEnding = null;
+  actions.mutateState((draft) => {
+    let next = applyDelta(draft, result.delta ?? {}, null);
+    const logDelta = { ...(result.delta ?? {}) };
+    next.counters.bossAttention = Math.max(0, (next.counters.bossAttention ?? 0) + (result.bossAttentionDelta ?? 0));
+    next.counters.colleagueIgnoreCount = Math.max(0, (next.counters.colleagueIgnoreCount ?? 0) + (result.colleagueIgnoreDelta ?? 0));
+    next.counters.hrIgnoreCount = Math.max(0, (next.counters.hrIgnoreCount ?? 0) + (result.hrIgnoreDelta ?? 0));
+
+    if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= 3) {
+      const warning = pickBossWarningMessage();
+      addMessengerMessage(warning, actions, { silent: true, stateOverride: next });
+      next = applyDelta(next, { stress: 2 }, null);
+      logDelta.stress = (logDelta.stress ?? 0) + 2;
+    }
+
+    if (message.kind === "boss" && choiceId === "ignore" && next.counters.bossAttention >= 6) {
+      shouldOpenInterview = true;
+    }
+
+    if (message.kind === "colleague" && next.counters.colleagueIgnoreCount >= 3 && !next.flags.colleagueAwayMessageSent) {
+      const away = { ...getColleagueAwayMessage(), id: undefined };
+      addMessengerMessage(away, actions, { silent: true, stateOverride: next });
+      next.flags.colleagueAwayMessageSent = true;
+    }
+
+    if (message.kind === "hr" && choiceId === "ignore" && next.counters.hrIgnoreCount >= 3 && !next.flags.hrCallDone) {
+      shouldOpenHrCall = true;
+    }
+
+    addLogEntry(next, {
+      cause: buildChatLogCause(message, choiceId),
+      delta: logDelta,
+    });
+    pendingEnding = checkEnding(next);
+    return next;
+  });
+
+  if (pendingEnding) {
+    actions.finishWith(pendingEnding);
+    return;
+  }
+  if (shouldOpenInterview) openBossAttentionInterview(actions);
+  if (shouldOpenHrCall) openHrCallEvent(actions);
+}
+
+function openBossAttentionInterview(actions) {
+  if (_mainEventOverlay) return;
+  pauseChatSystem();
+  cleanupMainClock();
+  cleanupMainPhaseTimer();
+  cleanupPhoneSystem();
+
+  const event = {
+    id: "messenger-boss-interview",
+    type: "boss",
+    speaker: "팀장님",
+    title: "팀장 면담",
+    body: "팀장님이 회의실로 부릅니다. \"요즘 진행 상황 파악이 잘 안 되네요. 메신저 답장이 자주 없던데 무슨 문제 있습니까?\"",
+    choices: [
+      { id: "sorry", label: "죄송합니다", delta: { stress: 3 }, message: "메신저 답장 문제로 팀장 면담을 했다." },
+      { id: "busy", label: "업무가 너무 많습니다", delta: getBossInterviewDelta("busy"), message: "팀장 면담에서 업무가 많다고 말했다." },
+      { id: "fine", label: "별 문제 없습니다", delta: getBossInterviewDelta("fine"), message: "팀장 면담에서 별 문제 없다고 답했다." },
+    ],
+  };
+
+  const container = document.querySelector(".main-work-monitor-screen") ?? document.querySelector("#app");
+  _mainEventOverlay = renderMainEventPopup(event, {
+    state: _lastRenderedState ?? {},
+    onChoice: (choice) => closeBossAttentionInterview(actions, choice),
+  });
+  container?.append(_mainEventOverlay);
+}
+
+function closeBossAttentionInterview(actions, choice) {
+  _mainEventOverlay?.remove();
+  _mainEventOverlay = null;
+  let pendingEnding = null;
+  actions.mutateState((draft) => {
+    let next = applyDelta(draft, choice.delta ?? {}, null);
+    next.counters.bossAttention = 0;
+    addLogEntry(next, {
+      cause: choice.message,
+      delta: choice.delta ?? {},
+    });
+    pendingEnding = checkEnding(next);
+    return next;
+  });
+  if (pendingEnding) actions.finishWith(pendingEnding);
+}
+
+function openHrCallEvent(actions) {
+  if (_mainEventOverlay) return;
+  pauseChatSystem();
+  cleanupMainClock();
+  cleanupMainPhaseTimer();
+  cleanupPhoneSystem();
+
+  const event = {
+    id: "hr-call",
+    type: "positive",
+    speaker: "인사팀",
+    title: "인사팀 호출",
+    body: "인사팀에서 미처리 알림 건으로 잠깐 확인을 요청했다. 담당자가 대신 정리해주면서 남은 처리 시간이 줄었다.",
+    choices: [
+      { id: "confirm", label: "확인한다", delta: { gameMinute: -30 }, message: "인사팀 호출 건을 처리했다." },
+    ],
+  };
+
+  const container = document.querySelector(".main-work-monitor-screen") ?? document.querySelector("#app");
+  _mainEventOverlay = renderMainEventPopup(event, {
+    state: _lastRenderedState ?? {},
+    onChoice: (choice) => closeHrCallEvent(actions, choice),
+  });
+  container?.append(_mainEventOverlay);
+}
+
+function closeHrCallEvent(actions, choice) {
+  _mainEventOverlay?.remove();
+  _mainEventOverlay = null;
+  let pendingEnding = null;
+  actions.mutateState((draft) => {
+    let next = applyDelta(draft, choice.delta ?? {}, null);
+    next.counters.hrIgnoreCount = 0;
+    next.flags.hrCallDone = true;
+    addLogEntry(next, {
+      cause: choice.message,
+      delta: choice.delta ?? {},
+    });
+    pendingEnding = checkEnding(next);
+    return next;
+  });
+  if (pendingEnding) actions.finishWith(pendingEnding);
+}
+
+function getBossInterviewDelta(choiceId) {
+  const key = getBossSpeechKey(_lastRenderedState ?? {});
+  if (choiceId === "busy") {
+    if (key === "smart-lazy") return { workload: -5 };
+    if (key === "smart-busy") return { stress: 5 };
+    if (key === "clumsy-busy") return { workload: 3, stress: 3 };
+    return Math.random() < 0.5 ? { workload: -3 } : { stress: 4 };
+  }
+
+  if (key === "smart-lazy") return {};
+  if (key === "smart-busy") return { stress: 10, workload: 5 };
+  if (key === "clumsy-busy") return { stress: 3 };
+  return Math.random() < 0.5 ? {} : { stress: 5, workload: 3 };
+}
+
+function findMessengerMessage(messageId) {
+  for (const room of Object.values(_messengerState?.rooms ?? {})) {
+    const found = room.messages.find((message) => message.id === messageId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function markRoomRead(roomId) {
+  const room = _messengerState?.rooms?.[roomId];
+  if (!room) return;
+  for (const message of room.messages) message.unread = false;
+}
+
+function addMessengerMessage(chat, actions, options = {}) {
+  const messenger = _messengerState;
+  if (!messenger) return;
+  const roomId = MESSENGER_ROOM_BY_FROM[chat.from] ?? "system";
+  const room = messenger.rooms[roomId];
+  if (!room) return;
+  const effectiveState = options.stateOverride ?? _lastRenderedState ?? {};
+  const message = {
+    ...chat,
+    id: messenger.nextMessageId++,
+    roomId,
+    text: chat.resolvedText ?? chat.text ?? "",
+    minute: effectiveState.gameMinute ?? _currentGameMinute,
+    unread: !messenger.isOpen || messenger.activeRoomId !== roomId,
+    needsReply: (chat.kind === "boss" && chat.subtype !== "warning") || (chat.kind === "colleague" && chat.subtype !== "away"),
+    status: null,
+  };
+  room.messages.push(message);
+  if (messenger.isOpen && messenger.activeRoomId === roomId) message.unread = false;
+  updateMessengerChrome();
+  _messengerUpdater?.();
+  if (!options.silent) playChatNotificationSound();
+  return message;
+}
+
+function getTotalUnreadCount() {
+  return Object.values(_messengerState?.rooms ?? {}).reduce((total, room) => total + getRoomUnreadCount(room.id), 0);
+}
+
+function getRoomUnreadCount(roomId) {
+  return (_messengerState?.rooms?.[roomId]?.messages ?? []).filter((message) => message.unread).length;
+}
+
+function findFirstUnreadRoomId() {
+  return MESSENGER_ROOMS.find((room) => getRoomUnreadCount(room.id) > 0)?.id ?? null;
 }
 
 // ── 채팅 알림 시스템 ─────────────────────────────────────────
@@ -613,24 +1112,11 @@ function captureChatSnapshot() {
   if (!_notifPanel) return null;
   const now = Date.now();
 
-  const notifications = [..._notifPanel.querySelectorAll(".chat-notif-card")]
-    .map((card) => {
-      const chat = card._chatRef;
-      if (!chat || chat.done) return null;
-      const elapsedMs = now - (chat.spawnedAt ?? now);
-      const remainingMs = Math.max(1000, chat.timerSec * 1000 - elapsedMs);
-      return { chat, remainingMs };
-    })
-    .filter(Boolean);
-
   const nextSpawnRemainingMs = _spawnTimeout
     ? Math.max(0, _spawnDelayMs - (now - _spawnScheduledAt))
     : 3000;
 
   return {
-    notifications,
-    snoozedChats: [..._snoozedChats],
-    nextBossTaskTimerPenalty: _nextBossTaskTimerPenalty,
     nextSpawnRemainingMs,
     localWorkload: _localWorkload,
   };
@@ -1479,6 +1965,7 @@ function startMainClock(screen, state, actions) {
 }
 
 function updateMainClockDisplay(screen, gameMinute) {
+  _currentGameMinute = gameMinute;
   const time = formatTime(gameMinute);
   const hudClock = screen.querySelector(".main-work-current-time");
   if (hudClock) hudClock.textContent = time;
@@ -1496,7 +1983,8 @@ function toTaskbarTime(gameMinute) {
 }
 
 function startChatNotifications(state, actions, container) {
-  _notifPanel = el("div", { class: "chat-notif-panel" });
+  ensureMessengerState(state);
+  _notifPanel = el("div", { class: "chat-notif-panel main-work-messenger-runtime" });
   container.append(_notifPanel);
 
   if (_chatSnapshot) {
@@ -1505,8 +1993,6 @@ function startChatNotifications(state, actions, container) {
   }
 
   _localWorkload = state.stats.workload;
-  _snoozedChats = [];
-  _nextBossTaskTimerPenalty = 0;
 
   // 첫 메시지는 3초 후 즉시 등장, 이후 정상 간격
   scheduleSpawn(state, actions, 3000);
@@ -1519,15 +2005,6 @@ function restoreChatSnapshot(state, actions) {
   _chatSnapshot = null;
 
   _localWorkload = snapshot.localWorkload;
-  _snoozedChats = snapshot.snoozedChats;
-  _nextBossTaskTimerPenalty = snapshot.nextBossTaskTimerPenalty;
-
-  for (const { chat, remainingMs } of snapshot.notifications) {
-    chat.done = false;
-    chat.spawnedAt = Date.now();
-    chat.timerSec = remainingMs / 1000;
-    _notifPanel.append(renderNotifCard(chat, actions));
-  }
 
   scheduleSpawn(state, actions, snapshot.nextSpawnRemainingMs);
 }
@@ -1548,246 +2025,74 @@ function scheduleNextSpawn(state, actions) {
 }
 
 function spawnOneNotification(state, actions) {
-  const cards = _notifPanel.querySelectorAll(".chat-notif-card");
-  if (cards.length >= 5) cards[0].remove();
-
-  const activeSenders = new Set(
-    [..._notifPanel.querySelectorAll(".chat-notif-sender")].map(el => el.textContent),
-  );
-
-  const chat = takeSnoozedChat(activeSenders) ?? pickOneChat(state, activeSenders);
+  const chat = pickOneChat(state);
   if (!chat) return;
 
   chat.spawnedAt = Date.now();
-  const card = renderNotifCard(chat, actions);
-  _notifPanel.append(card);
-  playChatNotificationSound();
+  addMessengerMessage(chat, actions);
 }
 
-function pickOneChat(state, activeSenders = new Set()) {
+function pickOneChat(state) {
   const trust = state.colleagueTrust ?? 30;
-
-  // trust >= 70: 15% chance for colleague to offer unprompted help
-  if (trust >= 70 && !activeSenders.has("동료") && Math.random() < 0.15) {
-    return {
-      kind: "colleague-offer",
-      from: "동료",
-      timerSec: 15,
-      resolvedText: "지금 업무 좀 나눠서 봐줄게. 어때?",
-      reply: { workload: -5 },
-      miss: {},
-    };
+  const colleagueIgnoreCount = state.counters?.colleagueIgnoreCount ?? 0;
+  if (colleagueIgnoreCount >= 5) {
+    return pickWeightedChat([
+      { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
+      { pool: chatPool.notice, weight: 10 },
+    ]);
   }
 
-  const basePool = [
-    ...chatPool.bossTask,
-    ...chatPool.bossTask,
-    ...chatPool.bossPraise,
-    ...chatPool.colleagueHelp,
-    ...chatPool.colleagueChat,
-    ...chatPool.notice,
-  ];
+  const colleaguePool = chatPool.colleague.filter((message) => message.subtype !== "away" && message.subtype !== "offer");
+  const offerPool = chatPool.colleague.filter((message) => message.subtype === "offer");
+  const offerChance = getColleagueOfferChance(trust);
+  const colleagueWeightedPool = Math.random() < offerChance ? offerPool : colleaguePool;
 
-  // trust < 30: more burden-heavy colleague-help in pool
-  const pool = trust < 30 ? [...basePool, ...chatPool.colleagueHelp] : basePool;
-
-  const available = pool.filter(t => !activeSenders.has(t.from));
-  if (available.length === 0) return null;
-
-  const template = available[Math.floor(Math.random() * available.length)];
-  const text = template.texts
-    ? (template.texts[state.boss.id] ?? Object.values(template.texts)[0])
-    : template.text;
-
-  const isBoss = template.kind === "boss-task" || template.kind === "boss-praise";
-  const baseSec = isBoss ? 10 : 15;
-  const penalty = template.kind === "boss-task" ? _nextBossTaskTimerPenalty : 0;
-  if (template.kind === "boss-task") _nextBossTaskTimerPenalty = 0;
-  return { ...template, resolvedText: text, timerSec: Math.max(3, baseSec - penalty) };
-}
-
-function takeSnoozedChat(activeSenders) {
-  const index = _snoozedChats.findIndex(chat => !activeSenders.has(chat.from));
-  if (index < 0) return null;
-  const [chat] = _snoozedChats.splice(index, 1);
-  // boss-task 재등장 시 업무량 +8 페널티
-  const extraReply = chat.kind === "boss-task" ? { workload: 8 } : {};
-  return {
-    ...chat,
-    done: false,
-    timerSec: Math.max(5, chat.timerSec - 4),
-    reply: { ...(chat.reply ?? {}), ...extraReply },
-  };
-}
-
-function renderNotifCard(chat, actions) {
-  const timerBar = el("div", { class: "chat-notif-timer-bar" });
-  timerBar.style.animationDuration = `${chat.timerSec}s`;
-  const [readSpec, snoozeSpec, ignoreSpec] = buildChatActionSpecs(chat);
-
-  const card = el("article", { class: `chat-notif-card chat-notif-${chat.kind}` }, [
-    el("div", { class: "chat-notif-timer" }, [timerBar]),
-    el("div", { class: "chat-notif-header" }, [
-      el("strong", { class: "chat-notif-sender", text: chat.from }),
-    ]),
-    el("p", { class: "chat-notif-body", text: chat.resolvedText }),
-    el("div", { class: "chat-notif-footer" }),
-  ]);
-  // 화면 전환 시 스냅샷을 뜰 때 카드 → chat 데이터를 역으로 찾기 위한 참조
-  card._chatRef = chat;
-
-  card.querySelector(".chat-notif-footer").append(
-    renderNotifPrimaryButton(readSpec, chat, card, actions),
-    el("div", { class: "chat-notif-secondary-row" }, [
-      renderNotifSecondaryButton(snoozeSpec, chat, card, actions),
-      renderNotifSecondaryButton(ignoreSpec, chat, card, actions),
-    ]),
-  );
-
-  timerBar.addEventListener("animationend", () => {
-    if (!chat.done && _notifPanel) handleNotifExpire(chat, card, actions);
-  });
-
-  return card;
-}
-
-function renderNotifPrimaryButton(spec, chat, card, actions) {
-  const previewDelta = { ...spec.delta, gameMinute: (spec.delta.gameMinute ?? 0) + spec.minutes };
-  const chips = getAllDeltaChips(previewDelta, false);
-  return el("button", {
-    class: "chat-notif-primary chat-notif-action-read",
-    onClick: () => handleNotifRead(chat, card, actions, spec),
-  }, [
-    el("span", { class: "chat-notif-btn-label", text: spec.label }),
-    ...(chips.length ? [el("div", { class: "chat-notif-btn-chips" }, chips)] : []),
+  return pickWeightedChat([
+    { pool: chatPool.boss.filter((message) => message.subtype !== "warning"), weight: 40 },
+    { pool: colleagueWeightedPool, weight: 50 },
+    { pool: chatPool.notice, weight: 10 },
   ]);
 }
 
-function renderNotifSecondaryButton(spec, chat, card, actions) {
-  const isIgnore = spec.type === "ignore";
-  const previewDelta = isIgnore
-    ? { ...spec.delta, gameMinute: (spec.delta.gameMinute ?? 0) + spec.minutes }
-    : (spec.minutes ? { gameMinute: spec.minutes } : null);
-  const chips = previewDelta ? getAllDeltaChips(previewDelta, isIgnore) : [];
-  return el("button", {
-    class: `chat-notif-secondary${isIgnore ? " chat-notif-secondary-ignore" : ""}`,
-    onClick: () => {
-      if (spec.type === "snooze") handleNotifSnooze(chat, card, actions, spec);
-      if (spec.type === "ignore") handleNotifIgnore(chat, card, actions, spec);
-    },
-  }, [
-    el("span", { text: spec.label }),
-    ...(chips.length ? [el("div", { class: "chat-notif-btn-chips" }, chips)] : []),
-  ]);
+function getColleagueOfferChance(trust) {
+  if (trust < 20) return 0.02;
+  if (trust < 40) return 0.08;
+  if (trust < 60) return 0.16;
+  return 0.3;
 }
 
-function getAllDeltaChips(delta = {}, isBad = false) {
-  const chips = [];
-  const defs = [
-    { key: "workload", cls: "workload", label: "업무량" },
-    { key: "stress",   cls: "stress",   label: "스트레스" },
-    { key: "health",   cls: "health",   label: "체력" },
-    { key: "colleagueTrust", cls: "trust", label: "신뢰도" },
-    { key: "gameMinute", cls: "time", label: null },
-  ];
-  for (const { key, cls, label } of defs) {
-    const v = delta[key];
-    if (!v) continue;
-    const sign = v > 0 ? "+" : "";
-    const text = label ? `${label} ${sign}${v}` : `${sign}${v}분`;
-    chips.push(el("span", {
-      class: `chat-notif-chip chat-notif-chip-${cls}${isBad ? " is-bad" : ""}`,
-      text,
-    }));
+function pickWeightedChat(entries) {
+  const available = entries.filter((entry) => entry.pool?.length && entry.weight > 0);
+  if (!available.length) return null;
+  const total = available.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = Math.random() * total;
+  for (const entry of available) {
+    roll -= entry.weight;
+    if (roll <= 0) return cloneRandomChat(entry.pool);
   }
-  return chips;
+  return cloneRandomChat(available[available.length - 1].pool);
 }
 
-function buildChatActionSpecs(chat) {
-  const readMinutes = chat.readMinutes ?? CHAT_READ_MINUTES[chat.kind] ?? 3;
-  return [
-    {
-      type: "read",
-      label: chat.readLabel ?? getReadActionLabel(chat),
-      minutes: readMinutes,
-      delta: chat.reply ?? {},
-      className: "chat-notif-action-read",
-    },
-    {
-      type: "snooze",
-      label: "나중에",
-      minutes: chat.snoozeMinutes ?? CHAT_SNOOZE_MINUTES,
-      delta: {},
-      note: "후속 채팅",
-      className: "chat-notif-action-later",
-    },
-    {
-      type: "ignore",
-      label: "무시",
-      minutes: chat.ignoreMinutes ?? CHAT_IGNORE_MINUTES,
-      delta: chat.miss ?? {},
-      note: isEmptyDelta(chat.miss) ? "영향 없음" : "",
-      className: "chat-notif-action-ignore",
-    },
-  ];
+function cloneRandomChat(pool) {
+  const template = pool[Math.floor(Math.random() * pool.length)];
+  return { ...template };
 }
 
-
-function getReadActionLabel(chat) {
-  if (chat.kind === "boss-task") return "바로 답장";
-  if (chat.kind === "boss-praise") return "확인";
-  if (chat.kind === "colleague-help") return "도와준다";
-  if (chat.kind === "colleague-chat") return "잠깐 대화";
-  if (chat.kind === "colleague-offer") return "고마워, 부탁해";
-  if (chat.kind === "notice") return "공지 확인";
-  return "읽기";
+function pickBossWarningMessage() {
+  return cloneRandomChat(chatPool.boss.filter((message) => message.subtype === "warning"));
 }
 
-function isEmptyDelta(delta = {}) {
-  return Object.entries(delta).filter(([, value]) => value !== 0).length === 0;
-}
-
-function handleNotifRead(chat, card, actions, spec = buildChatActionSpecs(chat)[0]) {
-  if (chat.done || !_notifPanel) return;
-  chat.done = true;
-  applyEffect(withChatTimeCost(spec.delta, spec.minutes), actions, buildChatLogCause(chat, "read"));
-  dismissCard(card);
-}
-
-function handleNotifSnooze(chat, card, actions, spec = buildChatActionSpecs(chat)[1]) {
-  if (chat.done || !_notifPanel) return;
-  chat.done = true;
-  applyEffect(withChatTimeCost(spec.delta, spec.minutes), actions, buildChatLogCause(chat, "snooze"));
-  _snoozedChats.push({ ...chat, snoozeCount: (chat.snoozeCount ?? 0) + 1 });
-  dismissCard(card);
-}
-
-function handleNotifIgnore(chat, card, actions, spec = buildChatActionSpecs(chat)[2]) {
-  if (chat.done || !_notifPanel) return;
-  chat.done = true;
-  let effectiveDelta = { ...spec.delta };
-  if (chat.kind === "notice" && Math.random() < 0.2) {
-    effectiveDelta.workload = (effectiveDelta.workload ?? 0) + 5;
-  }
-  if (chat.kind === "boss-task") _nextBossTaskTimerPenalty = 3;
-  applyEffect(withChatTimeCost(effectiveDelta, spec.minutes), actions, buildChatLogCause(chat, "ignore"));
-  dismissCard(card);
-}
-
-function handleNotifExpire(chat, card, actions) {
-  if (chat.done || !_notifPanel) return;
-  chat.done = true;
-  let missedDelta = { ...(chat.miss ?? {}) };
-  if (chat.kind === "notice" && Math.random() < 0.2) {
-    missedDelta.workload = (missedDelta.workload ?? 0) + 5;
-  }
-  if (chat.kind === "boss-task") _nextBossTaskTimerPenalty = 3;
-  applyEffect(missedDelta, actions, buildChatLogCause(chat, "expire"));
-  dismissCard(card);
+function getColleagueAwayMessage() {
+  return cloneRandomChat(chatPool.colleague.filter((message) => message.subtype === "away"));
 }
 
 function applyEffect(delta, actions, cause) {
-  if (!delta || Object.keys(delta).length === 0) return;
+  if (!delta || Object.keys(delta).length === 0) {
+    if (cause) {
+      actions.mutateState(draft => addLogEntry(draft, { cause, delta: {} }));
+    }
+    return;
+  }
 
   if (delta.workload !== undefined) {
     _localWorkload = Math.max(0, Math.min(100, _localWorkload + delta.workload));
@@ -1802,37 +2107,19 @@ function applyEffect(delta, actions, cause) {
   if (pendingEnding) actions.finishWith(pendingEnding);
 }
 
-function withChatTimeCost(delta = {}, minutes = 0) {
-  return { ...delta, gameMinute: (delta.gameMinute ?? 0) + minutes };
-}
-
 function buildChatLogCause(chat, outcome) {
   const sender = chat.from ?? "메시지";
   const topic = summarizeChatTopic(chat);
-  if (outcome === "read") {
-    if (chat.kind === "boss-task") return `${sender}의 ${topic} 요청을 처리했다.`;
-    if (chat.kind === "boss-praise") return `${sender}의 ${topic} 메시지를 확인했다.`;
-    if (chat.kind === "colleague-help") return `동료의 ${topic} 부탁을 도와주었다.`;
-    if (chat.kind === "colleague-chat") return "동료와 잠깐 대화했다.";
-    if (chat.kind === "colleague-offer") return "동료의 도움을 받았다. 업무가 조금 줄었다.";
-    return `${sender}의 ${topic} 공지를 확인했다.`;
-  }
-
-  if (outcome === "snooze") {
-    return `${sender}의 ${topic} 메시지를 나중에 보기로 했다.`;
-  }
-
-  if (outcome === "ignore") {
-    if (chat.kind === "boss-task") return `${sender}의 ${topic} 요청을 무시했다.`;
-    if (chat.kind === "colleague-help") return `동료의 ${topic} 부탁을 거절했다.`;
-    if (chat.kind === "colleague-offer") return "동료의 도움 제안을 거절했다.";
-    return `${sender} 메시지를 무시했다.`;
-  }
-
-  if (chat.kind === "boss-task") return `${sender}의 ${topic} 요청을 놓쳐 스트레스가 쌓였다.`;
-  if (chat.kind === "colleague-help") return `동료의 ${topic} 부탁에 답하지 못했다.`;
-  if (chat.kind === "colleague-offer") return "동료의 도움 제안을 놓쳤다.";
-  return `${sender} 메시지를 제때 확인하지 못했다.`;
+  if (outcome === "later") return `${sender}의 ${topic} 메시지를 나중에 보기로 했다.`;
+  if (outcome === "ignore") return `${sender}의 ${topic} 메시지를 못 본 척했다.`;
+  if (chat.kind === "boss" && chat.subtype === "request") return `${sender}의 ${topic} 요청에 답장했다.`;
+  if (chat.kind === "boss" && chat.subtype === "check") return `${sender}의 진행 확인 메시지에 답장했다.`;
+  if (chat.kind === "boss" && chat.subtype === "praise") return `${sender}의 칭찬 메시지에 답장했다.`;
+  if (chat.kind === "colleague" && chat.subtype === "favor") return "동료의 부탁에 답장했다.";
+  if (chat.kind === "colleague" && chat.subtype === "smalltalk") return "동료와 짧게 메시지를 주고받았다.";
+  if (chat.kind === "colleague" && chat.subtype === "info") return "동료가 공유한 정보를 확인했다.";
+  if (chat.kind === "colleague" && chat.subtype === "offer") return "동료의 도움 제안에 답장했다.";
+  return `${sender} 메시지를 확인했다.`;
 }
 
 function summarizeChatTopic(chat) {
@@ -1845,11 +2132,6 @@ function summarizeChatTopic(chat) {
   if (text.includes("복지포인트")) return "복지포인트";
   if (text.includes("네트워크")) return "네트워크 점검";
   return "업무";
-}
-
-function dismissCard(card) {
-  card.classList.add("notif-dismissed");
-  setTimeout(() => card.remove(), 220);
 }
 
 function playChatNotificationSound() {
