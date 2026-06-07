@@ -74,7 +74,7 @@ function makeMonitor(content) {
   const label = document.createElement("div");
   label.style.cssText = "position:absolute;bottom:7px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px";
   const brand = document.createElement("span");
-  brand.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
+  brand.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
   brand.textContent = "CHADOL-TRON";
   const led = document.createElement("span");
   led.style.cssText = `width:9px;height:9px;border-radius:50%;background:${PX.green};border:2px solid ${PX.ink}`;
@@ -180,13 +180,13 @@ export function renderReportGame(root, state, actions, game) {
   const titlebar = document.createElement("div");
   titlebar.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#3a6ea5;border-bottom:3px solid ${PX.ink}`;
   const titleLeft = document.createElement("span");
-  titleLeft.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#fff";
+  titleLeft.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#fff";
   titleLeft.textContent = "📝 1분기보고서_검토본.hwp — 흔글";
   const wbtns = document.createElement("div");
   wbtns.style.cssText = "display:flex;gap:4px";
   ["_", "▢", "✕"].forEach((c) => {
     const b = document.createElement("span");
-    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:Galmuri11,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
+    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:NeoDunggeunmo,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
     b.textContent = c;
     wbtns.append(b);
   });
@@ -196,7 +196,7 @@ export function renderReportGame(root, state, actions, game) {
   menubar.style.cssText = `display:flex;align-items:center;gap:14px;padding:3px 12px;background:#ece6d6;border-bottom:3px solid ${PX.ink}`;
   ["파일", "편집", "보기", "입력", "검토"].forEach((m) => {
     const s = document.createElement("span");
-    s.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a5440";
+    s.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#5a5440";
     s.textContent = m;
     menubar.append(s);
   });
@@ -205,23 +205,23 @@ export function renderReportGame(root, state, actions, game) {
   const hud = document.createElement("div");
   hud.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#ffe9a8;border-bottom:3px solid ${PX.ink}`;
   const hudTitle = document.createElement("span");
-  hudTitle.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
+  hudTitle.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
   hudTitle.textContent = "📝 보고서 오탈자 찾기";
   const hudRight = document.createElement("div");
   hudRight.style.cssText = "display:flex;align-items:center;gap:8px;flex-shrink:0";
 
   const foundPill = document.createElement("span");
-  foundPill.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;padding:3px 9px;border:2px solid var(--ink);background:#dff5e3;color:#1f7a44;white-space:nowrap";
+  foundPill.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;padding:3px 9px;border:2px solid var(--ink);background:#dff5e3;color:#1f7a44;white-space:nowrap";
   const wrongPill = document.createElement("span");
-  wrongPill.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;padding:3px 9px;border:2px solid var(--ink);white-space:nowrap";
+  wrongPill.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;padding:3px 9px;border:2px solid var(--ink);white-space:nowrap";
 
   const timerWrap = document.createElement("div");
   timerWrap.style.cssText = "position:relative;display:flex;align-items:center";
   const floatEl = document.createElement("span");
-  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:Galmuri14,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
+  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:NeoDunggeunmo,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
   floatEl.hidden = true;
   const timerPill = document.createElement("div");
-  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:Galmuri9,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
+  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:NeoDunggeunmo,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
   const timerIcon = document.createElement("span");
   timerIcon.style.fontSize = "15px";
   timerIcon.textContent = "⏱";
@@ -241,30 +241,30 @@ export function renderReportGame(root, state, actions, game) {
   board.append(reportHolder);
 
   const hint = document.createElement("p");
-  hint.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#9a948a;margin-top:10px;margin-bottom:0";
+  hint.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#9a948a;margin-top:10px;margin-bottom:0";
   hint.textContent = "의심 가는 단어를 클릭 · 오탈자=정답 / 정상 표기(함정)=오답(-3초)";
   board.append(hint);
 
   if (diff.fx === "화면 흔들림") {
     const shakeBadge = document.createElement("span");
-    shakeBadge.style.cssText = `position:absolute;right:14px;top:10px;z-index:8;font-family:Galmuri11,monospace;font-size:11px;color:${PX.red};background:#fff;border:1.5px solid ${PX.red};padding:1px 8px`;
+    shakeBadge.style.cssText = `position:absolute;right:14px;top:10px;z-index:8;font-family:NeoDunggeunmo,monospace;font-size:11px;color:${PX.red};background:#fff;border:1.5px solid ${PX.red};padding:1px 8px`;
     shakeBadge.textContent = "⚠ 화면 흔들림";
     board.append(shakeBadge);
   }
 
   // 함정 토스트
   const trapToastEl = document.createElement("div");
-  trapToastEl.style.cssText = "position:absolute;left:50%;top:26px;transform:translateX(-50%);z-index:9;font-family:Galmuri14,monospace;font-size:13px;color:#8a6d12;background:#fff7d6;border:2.5px solid #caa83a;padding:8px 16px;box-shadow:3px 4px 0 rgba(0,0,0,.18);white-space:nowrap;display:none";
+  trapToastEl.style.cssText = "position:absolute;left:50%;top:26px;transform:translateX(-50%);z-index:9;font-family:NeoDunggeunmo,monospace;font-size:13px;color:#8a6d12;background:#fff7d6;border:2.5px solid #caa83a;padding:8px 16px;box-shadow:3px 4px 0 rgba(0,0,0,.18);white-space:nowrap;display:none";
   board.append(trapToastEl);
 
   // 오답 위험 경고
   const warnEl = document.createElement("div");
   warnEl.style.cssText = `position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:12;text-align:center;background:#fff;border:3px solid ${PX.red};padding:16px 26px;box-shadow:5px 6px 0 rgba(0,0,0,.25);display:none`;
   const warnTitle = document.createElement("div");
-  warnTitle.style.cssText = `font-family:Galmuri14,monospace;font-size:18px;color:${PX.red}`;
+  warnTitle.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.red}`;
   warnTitle.textContent = "⚠️ 오답이 너무 많습니다!";
   const warnSub = document.createElement("div");
-  warnSub.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:#b0341f;margin-top:5px";
+  warnSub.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#b0341f;margin-top:5px";
   warnSub.textContent = "한 번 더 틀리면 실패합니다";
   warnEl.append(warnTitle, warnSub);
   board.append(warnEl);
@@ -293,16 +293,16 @@ export function renderReportGame(root, state, actions, game) {
   bossOverlayEl.hidden = true;
   // 빨간펜 말풍선
   const penSpeechEl = document.createElement("div");
-  penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:Galmuri14,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  penSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red};background:#fff;border:2.5px solid ${PX.red};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   penSpeechEl.textContent = "여기 좀 이상한데? 🖋️";
 
   // 팀장 코멘트형 말풍선 (addPage 등 — 빨간펜 아님)
   const bossSpeechEl = document.createElement("div");
-  bossSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:Galmuri14,monospace;font-size:15px;color:${PX.ink};background:#fff;border:2.5px solid ${PX.ink};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  bossSpeechEl.style.cssText = `position:fixed;top:16%;right:20%;z-index:47;font-family:NeoDunggeunmo,monospace;font-size:15px;color:${PX.ink};background:#fff;border:2.5px solid ${PX.ink};border-radius:14px 14px 14px 2px;padding:9px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
 
   // 중간 이벤트 토스트 — 모니터 화면(board) 안 상단에 표시
   const evToastEl = document.createElement("div");
-  evToastEl.style.cssText = `position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:18;font-family:Galmuri14,monospace;font-size:13.5px;padding:8px 16px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:3px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  evToastEl.style.cssText = `position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:18;font-family:NeoDunggeunmo,monospace;font-size:13.5px;padding:8px 16px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:3px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   board.append(evToastEl);
 
   // 중간 이벤트용 풀스크린 오버레이
@@ -314,7 +314,7 @@ export function renderReportGame(root, state, actions, game) {
 
   // 본문 영역 내부의 '저장 중...' 인디케이터
   const savingEl = document.createElement("div");
-  savingEl.style.cssText = "position:absolute;left:20px;top:12px;z-index:8;font-family:Galmuri11,monospace;font-size:12px;color:#777;background:#eef0f3;border:2px solid #c5c9cf;padding:3px 11px;display:none";
+  savingEl.style.cssText = "position:absolute;left:20px;top:12px;z-index:8;font-family:NeoDunggeunmo,monospace;font-size:12px;color:#777;background:#eef0f3;border:2px solid #c5c9cf;padding:3px 11px;display:none";
   savingEl.textContent = "💾 저장 중...";
   board.append(savingEl);
 
@@ -657,10 +657,10 @@ export function renderReportGame(root, state, actions, game) {
     const bar = document.createElement("div");
     bar.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:#fee500;padding:7px 12px;border-bottom:3px solid ${PX.ink}`;
     const barTitle = document.createElement("span");
-    barTitle.style.cssText = "font-family:Galmuri14,monospace;font-size:13px;color:#3a2e00";
+    barTitle.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#3a2e00";
     barTitle.textContent = "💬 까까오톡 PC";
     const closeBtn = document.createElement("span");
-    closeBtn.style.cssText = `font-family:Galmuri14,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
+    closeBtn.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
     closeBtn.textContent = "✕";
     closeBtn.addEventListener("click", () => { kakaoEl.replaceChildren(); kakaoEl.hidden = true; });
     bar.append(barTitle, closeBtn);
@@ -675,10 +675,10 @@ export function renderReportGame(root, state, actions, game) {
       const col = document.createElement("div");
       col.style.cssText = "display:flex;flex-direction:column;gap:2px";
       const who = document.createElement("span");
-      who.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#2a3a47";
+      who.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#2a3a47";
       who.textContent = "옆자리 동료";
       const bubble = document.createElement("span");
-      bubble.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
+      bubble.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
       bubble.textContent = msg;
       col.append(who, bubble);
       row.append(av, col);
@@ -744,14 +744,14 @@ export function renderReportGame(root, state, actions, game) {
     emojiEl.style.cssText = "font-size:46px;line-height:1";
     emojiEl.textContent = t.emoji;
     const titleEl = document.createElement("div");
-    titleEl.style.cssText = `font-family:Galmuri14,monospace;font-size:22px;color:${t.color}`;
+    titleEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:22px;color:${t.color}`;
     titleEl.textContent = t.title;
 
     const statsRow = document.createElement("div");
     statsRow.style.cssText = "display:flex;gap:8px";
     [["발견", `${found}/${total}`], ["오답", `${wrong}`], ["소요", `${usedSec}초`]].forEach(([lbl, v]) => {
       const s = document.createElement("span");
-      s.style.cssText = `font-family:Galmuri11,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
+      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
       s.textContent = `${lbl} ${v}`;
       statsRow.append(s);
     });
@@ -760,7 +760,7 @@ export function renderReportGame(root, state, actions, game) {
     deltaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;justify-content:center";
     t.deltas.forEach((d) => {
       const s = document.createElement("span");
-      s.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
+      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v < 0 ? "#d7f3d4" : "#ffdcd4"};color:${d.v < 0 ? "#1f8a2e" : "#c0392b"}`;
       s.textContent = `${d.label} ${d.v < 0 ? "▼" : "▲"}${Math.abs(d.v)}`;
       deltaRow.append(s);
     });
@@ -768,7 +768,7 @@ export function renderReportGame(root, state, actions, game) {
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:2px;cursor:pointer";
     const btnInner = document.createElement("div");
-    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
+    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:NeoDunggeunmo,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
     btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `보고서 오탈자 ${tier}: 발견 ${found}/${total}`, usedSec); });
     nextBtn.append(btnInner);

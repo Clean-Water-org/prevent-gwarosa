@@ -1,4 +1,10 @@
 import { el } from "../ui.js";
+import { formatTime } from "../state.js";
+import { makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../components/pixel-office.js";
+import { playBgm } from "../lib/audio.js";
+
+const MAIN_BGM_SRC = "assets/audio/so-happy-with-my-8-bit-game.mp3";
+const COMMUTE_MINUTE = 9 * 60;
 
 const briefingTips = [
   "업무량만 관리해서는 살아남을 수 없습니다.",
@@ -33,54 +39,164 @@ const briefingTips = [
 let lastTipIndex = -1;
 
 export function renderCommute(root, state, actions) {
-  const playerName = state.player.name || "김대리";
+  playBgm(MAIN_BGM_SRC);
 
-  root.append(
-    el("section", { class: "briefing-screen survival-briefing" }, [
-      el("header", { class: "briefing-hero survival-hero" }, [
-        renderEmployeeBadge(playerName, state.player.gender),
-        el("div", { class: "briefing-clock survival-clock" }, [
-          el("strong", { text: "09:00" }),
-          el("span", { text: "월요일  |  2026년 5월 27일" }),
-          el("p", { text: "또 하루가 시작됐다." }),
-          el("p", { text: "오늘도 무사히 퇴근할 수 있을까?" }),
-        ]),
-      ]),
-      el("main", { class: "survival-layout" }, [
-        renderBriefingTip(),
-        renderMoodCard(),
-        renderInitialStats(state),
-      ]),
-      el("footer", { class: "survival-footer" }, [
-        el("button", {
-          class: "briefing-start-button survival-start-button",
-          onClick: () => actions.go("main"),
-        }, [
-          el("strong", { text: "업무 시작" }),
-          el("span", { text: "→" }),
-          el("small", { text: "자리에 앉아 오늘 하루를 시작합니다." }),
-        ]),
-        el("p", { text: "※ 본 게임은 과로사 예방과 건강한 직장 생활을 응원하기 위해 제작되었습니다." }),
-      ]),
+  const monitorScreen = el("div", { class: "main-work-monitor-screen" }, [
+    renderCommuteHud(state),
+    el("main", { class: "main-work-center commute-center" }, [
+      renderCommuteBriefing(state, actions),
     ]),
-  );
+    renderCommuteTaskbar(),
+  ]);
+
+  const room = makeOfficeRoom();
+  room.classList.add("main-work-room");
+  appendDefaultRoomProps(room);
+  room.append(el("div", { class: "main-work-wall-note" }, [
+    el("strong", { text: "GOAL" }),
+    el("span", { text: "칼퇴" }),
+    el("span", { text: "생존" }),
+  ]));
+
+  const monitorScroll = el("div", { class: "main-work-monitor-scroll" });
+  monitorScroll.append(el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]));
+  room.append(monitorScroll);
+
+  root.append(el("section", { class: "main-work-screen" }, [room]));
 }
 
-function renderBriefingTip() {
-  const tipIndex = pickTipIndex();
-  const tipText = el("p", { class: "note-warning tip-text", text: briefingTips[tipIndex] });
+function renderCommuteHud(state) {
+  const { workload, stress, health } = state.stats;
+  const playerName = state.player.name || "김대리";
 
-  return el("aside", { class: "briefing-note" }, [
-    el("strong", { text: "☆ 인사팀 한마디" }),
-    tipText,
-    el("button", {
-      class: "tip-next-button",
-      text: "다음 TIP ↻",
-      onClick: () => {
-        const nextIndex = pickTipIndex();
-        tipText.textContent = briefingTips[nextIndex];
-      },
-    }),
+  return el("header", { class: "main-work-hud" }, [
+    el("div", { class: "main-work-hud-stats" }, [
+      renderHudStat("💼", "업무량", workload, "workload"),
+      renderHudStat("⚠", "스트레스", stress, "stress"),
+      renderHudStat("❤", "체력", health, "health"),
+    ]),
+    el("div", { class: "main-work-hud-controls" }, [
+      el("div", { class: "main-work-item-hub is-locked" }, [
+        el("div", {
+          class: "main-work-item-toggle",
+          title: "업무 시작 후 사용 가능",
+        }, [
+          el("span", { class: "main-work-item-bag", text: "🎒" }),
+          el("span", { text: "아이템" }),
+          el("span", { class: "main-work-item-caret", text: "▾" }),
+        ]),
+      ]),
+      el("div", { class: "main-work-hud-time" }, [
+        el("strong", { class: "main-work-current-time", text: formatTime(COMMUTE_MINUTE) }),
+        el("span", { text: "2026.06.05 금요일" }),
+      ]),
+      el("span", { class: "commute-player-tag", text: `사원 ${playerName}` }),
+    ]),
+  ]);
+}
+
+function renderHudStat(icon, label, value, type) {
+  return el("section", { class: `main-work-stat main-work-stat-${type}` }, [
+    el("div", { class: "main-work-stat-meta" }, [
+      el("span", { class: "main-work-stat-icon", text: icon }),
+      el("span", { text: label }),
+      el("strong", { text: String(value) }),
+    ]),
+    el("div", { class: "main-work-stat-bar" }, [
+      el("i", { style: `width:${value}%` }),
+    ]),
+  ]);
+}
+
+function renderCommuteBriefing(state, actions) {
+  const playerName = state.player.name || "김대리";
+  const portrait = state.player.gender === "female" ? "female" : "male";
+  const tipIndex = pickTipIndex();
+  const tipText = el("p", { class: "commute-tip-text", text: briefingTips[tipIndex] });
+
+  return el("section", { class: "commute-briefing main-work-intranet" }, [
+    el("header", { class: "main-work-intranet-tabs" }, [
+      el("strong", { class: "main-work-intranet-logo", text: "DAEHAN INTRANET" }),
+      el("nav", { class: "main-work-tab-menu" }, [
+        el("span", { text: "출근 브리핑" }),
+        el("span", { text: "오늘의 일정" }),
+      ]),
+    ]),
+    el("div", { class: "commute-briefing-body" }, [
+      el("aside", { class: "commute-tip-panel" }, [
+        el("strong", { text: "☆ 인사팀 한마디" }),
+        tipText,
+        el("button", {
+          class: "commute-tip-next",
+          type: "button",
+          text: "다음 TIP ↻",
+          onClick: () => {
+            tipText.textContent = briefingTips[pickTipIndex()];
+          },
+        }),
+      ]),
+      el("section", { class: "commute-mission-panel" }, [
+        el("p", { class: "commute-mission-kicker", text: "출근 인증 완료 ✓" }),
+        el("h1", { text: "오늘도 출근! 잘 오셨어요~" }),
+        el("div", { class: "commute-mission-rule" }),
+        el("p", { class: "commute-mission-lead", text: "오늘의 미션은 딱 하나. 퇴근 버튼 누르기." }),
+        el("p", { text: "업무는 쌓이고, 체력은 줄고, 스트레스는 웃으며 올라갑니다." }),
+        el("p", { text: "괜찮아요. 회사 분위기는 아주 밝으니까요. (화면이 붉어지는 건 기분 탓.)" }),
+        el("div", { class: "commute-mission-closing" }, [
+          el("span", { text: "생존 보너스: 18:00 전에 자리 비우기" }),
+          el("small", { text: "09:00 업무 시작 대기 중 · 오늘도 건강(?)한 하루!" }),
+        ]),
+      ]),
+      el("aside", { class: "commute-side-panel" }, [
+        renderPlayerCard(playerName, portrait),
+        el("section", { class: "commute-boss-hint" }, [
+          el("h2", { text: "상사 힌트" }),
+          el("p", { text: state.boss?.publicHint ?? "오늘의 상사 정보를 확인하세요." }),
+        ]),
+      ]),
+    ]),
+    el("footer", { class: "commute-briefing-footer" }, [
+      el("button", {
+        class: "commute-start-button",
+        type: "button",
+        onClick: () => actions.go("main"),
+      }, [
+        el("strong", { text: "업무 시작" }),
+        el("span", { text: "→" }),
+        el("small", { text: "자리에 앉으면 오늘의 생존 게임이 시작됩니다." }),
+      ]),
+      el("p", { text: "※ 본 게임은 과로사 예방과 건강한 직장 생활을 응원하기 위해 제작되었습니다." }),
+    ]),
+  ]);
+}
+
+function renderPlayerCard(playerName, portrait) {
+  return el("article", { class: "commute-player-card" }, [
+    el("div", { class: "commute-player-photo" }, [
+      el("img", {
+        class: "commute-player-portrait",
+        src: `assets/portraits/${portrait}.svg`,
+        alt: "증명사진",
+      }),
+    ]),
+    el("strong", { text: "오늘의 직장인" }),
+    el("b", { text: `사원 ${playerName}` }),
+    el("span", { text: "DAEHAN TECH 사원" }),
+  ]);
+}
+
+function renderCommuteTaskbar() {
+  return el("footer", { class: "main-work-taskbar" }, [
+    el("div", { class: "main-work-taskbar-left" }, [
+      el("span", { class: "main-work-start-icon", text: "⊞" }),
+      el("span", { class: "main-work-task-icon", text: "검색" }),
+      el("span", { class: "main-work-task-icon", text: "📁" }),
+      el("span", { class: "main-work-task-icon is-disabled", text: "사내포털" }),
+      el("span", { class: "main-work-task-icon is-disabled main-work-task-messenger", text: "💬" }),
+    ]),
+    el("div", { class: "main-work-taskbar-right" }, [
+      el("span", { class: "main-work-task-clock", text: "오전 9:00" }),
+    ]),
   ]);
 }
 
@@ -94,59 +210,4 @@ function pickTipIndex() {
 
   lastTipIndex = nextIndex;
   return nextIndex;
-}
-
-function renderEmployeeBadge(playerName, gender) {
-  const portrait = gender === "female" ? "female" : "male";
-  return el("article", { class: "employee-badge survival-badge" }, [
-    el("div", { class: "badge-clip" }),
-    el("div", { class: "badge-company" }, [
-      el("span", { text: "DAEHAN TECH" }),
-    ]),
-    el("div", { class: "badge-photo has-portrait" }, [
-      el("img", { class: "badge-portrait", src: `assets/portraits/${portrait}.svg`, alt: "증명사진" }),
-    ]),
-    el("strong", { text: "오늘의 직장인" }),
-    el("b", { text: `사원 ${playerName}` }),
-    el("span", { text: "DAEHAN TECH 사원" }),
-    el("i", { class: "badge-barcode" }),
-  ]);
-}
-
-function renderMoodCard() {
-  return el("section", { class: "mission-card" }, [
-    el("p", { class: "mission-kicker", text: "출근 기록" }),
-    el("h1", { text: "또 하루가 시작됐다." }),
-    el("div", { class: "mission-divider" }),
-    el("p", { class: "mood-line", text: "오늘은 무사히 퇴근할 수 있을까?" }),
-    el("p", { text: "업무는 쌓이고, 체력은 줄고, 스트레스는 조용히 올라간다." }),
-    el("p", { text: "대단한 목표는 없다. 오늘 하루를 버티고 집에 가는 것." }),
-    el("div", { class: "mission-closing" }, [
-      el("span", { text: "퇴근 전까지 버티세요." }),
-      el("small", { text: "09:00 업무 시작 대기 중" }),
-    ]),
-  ]);
-}
-
-function renderInitialStats(state) {
-  return el("aside", { class: "briefing-card survival-status-card" }, [
-    el("h2", { text: "현재 상태" }),
-    renderBriefingStat("업무량", state.stats.workload, "workload", "업무량이 높을수록 실수가 증가합니다."),
-    renderBriefingStat("스트레스", state.stats.stress, "stress", "스트레스가 높을수록 체력이 감소합니다."),
-    renderBriefingStat("체력", state.stats.health, "health", "체력이 0이 되면 퇴근에 실패합니다."),
-  ]);
-}
-
-function renderBriefingStat(label, value, type, caption) {
-  return el("div", { class: "briefing-stat survival-stat" }, [
-    el("div", { class: "stat-title" }, [
-      el("span", { class: `stat-icon ${type}` }),
-      el("strong", { text: label }),
-      el("b", { text: `${value} / 100` }),
-    ]),
-    el("div", { class: `briefing-stat-bar ${type}` }, [
-      el("i", { style: `width:${value}%` }),
-    ]),
-    el("p", { text: caption }),
-  ]);
 }

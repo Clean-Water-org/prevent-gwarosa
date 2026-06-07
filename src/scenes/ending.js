@@ -70,7 +70,7 @@ function makeMonitor(content) {
   const label = document.createElement("div");
   label.style.cssText = "position:absolute;bottom:7px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:10px";
   const brand = document.createElement("span");
-  brand.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
+  brand.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#9a8f72;letter-spacing:2px";
   brand.textContent = "CHADOL-TRON";
   const led = document.createElement("span");
   led.style.cssText = `width:9px;height:9px;border-radius:50%;background:${PX.green};border:2px solid ${PX.ink}`;
@@ -103,10 +103,10 @@ function makeIllo(card, gender) {
   const ph = document.createElement("div");
   ph.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px;text-align:center";
   const phTag = document.createElement("span");
-  phTag.style.cssText = "font-family:Galmuri14,monospace;font-size:13px;color:#9aa0ac";
+  phTag.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#9aa0ac";
   phTag.textContent = "[일러스트]";
   const phDesc = document.createElement("span");
-  phDesc.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:#6b7280;line-height:1.6";
+  phDesc.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#6b7280;line-height:1.6";
   phDesc.textContent = card.illo;
   ph.append(phTag, phDesc);
   wrap.append(ph);
@@ -129,13 +129,13 @@ function makeStatBar(label, dir, color, value) {
   const head = document.createElement("div");
   head.style.cssText = "display:flex;align-items:baseline;gap:6px";
   const lbl = document.createElement("span");
-  lbl.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:var(--ink)";
+  lbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:var(--ink)";
   lbl.textContent = label;
   const dirEl = document.createElement("span");
-  dirEl.style.cssText = `font-family:Galmuri9,monospace;font-size:11px;color:${color}`;
+  dirEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;color:${color}`;
   dirEl.textContent = dir;
   const valEl = document.createElement("strong");
-  valEl.style.cssText = "margin-left:auto;font-family:Galmuri9,monospace;font-size:14px;color:var(--ink)";
+  valEl.style.cssText = "margin-left:auto;font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink)";
   valEl.textContent = String(value);
   head.append(lbl, dirEl, valEl);
   const track = document.createElement("div");
@@ -191,7 +191,7 @@ export function renderEnding(root, state, actions) {
 
   // 상단 태그
   const tag = document.createElement("div");
-  tag.style.cssText = `display:inline-flex;align-items:center;gap:8px;font-family:Galmuri11,monospace;font-size:12.5px;color:var(--ink);background:${card.accent};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink};margin-bottom:14px`;
+  tag.style.cssText = `display:inline-flex;align-items:center;gap:8px;font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:var(--ink);background:${card.accent};border:2px solid ${PX.ink};padding:3px 12px;box-shadow:2px 2px 0 ${PX.ink};margin-bottom:14px`;
   tag.textContent = `${card.emoji} 오늘의 퇴근 기록`;
 
   const cols = document.createElement("div");
@@ -207,14 +207,14 @@ export function renderEnding(root, state, actions) {
   emoji.style.cssText = "font-size:46px;line-height:1";
   emoji.textContent = card.emoji;
   const title = document.createElement("h1");
-  title.style.cssText = `margin:0;font-family:Galmuri14,monospace;font-size:30px;color:${PX.ink}`;
+  title.style.cssText = `margin:0;font-family:NeoDunggeunmo,monospace;font-size:30px;color:${PX.ink}`;
   title.textContent = card.title;
   titleRow.append(emoji, title);
   const linesBox = document.createElement("div");
   linesBox.style.cssText = `background:#fff;border:2px solid ${PX.ink};padding:11px 15px;display:flex;flex-direction:column;gap:6px`;
   card.lines.forEach((l) => {
     const s = document.createElement("span");
-    s.style.cssText = "font-family:Galmuri11,monospace;font-size:14px;color:var(--ink);line-height:1.4";
+    s.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink);line-height:1.4";
     s.textContent = l;
     linesBox.append(s);
   });
@@ -228,18 +228,18 @@ export function renderEnding(root, state, actions) {
   const clockBox = document.createElement("div");
   clockBox.style.cssText = `background:${card.accent};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:14px 18px;text-align:center;display:flex;flex-direction:column;gap:5px`;
   const clockLbl = document.createElement("span");
-  clockLbl.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#4a4636";
+  clockLbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
   clockLbl.textContent = card.clockLabel;
   const clockBig = document.createElement("div");
-  clockBig.style.cssText = "font-family:Galmuri14,monospace;font-size:42px;line-height:1.1;color:var(--ink)";
+  clockBig.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:42px;line-height:1.1;color:var(--ink)";
   clockBig.textContent = clockText;
   const badgeRow = document.createElement("div");
   badgeRow.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;margin-top:2px";
   const badge = document.createElement("span");
-  badge.style.cssText = `font-family:Galmuri14,monospace;font-size:18px;color:#fff;background:${PX.ink};border:2px solid ${PX.ink};padding:1px 10px`;
+  badge.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:18px;color:#fff;background:${PX.ink};border:2px solid ${PX.ink};padding:1px 10px`;
   badge.textContent = card.badge;
   const badgeLbl = document.createElement("span");
-  badgeLbl.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#4a4636";
+  badgeLbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
   badgeLbl.textContent = badgeLabel;
   badgeRow.append(badge, badgeLbl);
   clockBox.append(clockLbl, clockBig, badgeRow);
@@ -248,7 +248,7 @@ export function renderEnding(root, state, actions) {
   const statBox = document.createElement("div");
   statBox.style.cssText = `background:#fff;border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:14px 18px;display:flex;flex-direction:column;gap:11px`;
   const statTitle = document.createElement("span");
-  statTitle.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink)";
+  statTitle.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink)";
   statTitle.textContent = "최종 스탯 요약";
   statBox.append(statTitle);
   STAT_BARS.forEach((s) => {
@@ -259,7 +259,7 @@ export function renderEnding(root, state, actions) {
   const retryBtn = document.createElement("div");
   retryBtn.style.cssText = "cursor:pointer;align-self:stretch";
   const retryInner = document.createElement("div");
-  retryInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:11px 22px;font-family:Galmuri14,monospace;font-size:18px;color:${PX.ink};display:flex;align-items:center;justify-content:center;gap:8px`;
+  retryInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:11px 22px;font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.ink};display:flex;align-items:center;justify-content:center;gap:8px`;
   retryInner.textContent = "🔄 다시하기";
   retryBtn.append(retryInner);
   retryBtn.addEventListener("click", () => actions.mutateState(() => createInitialState()));

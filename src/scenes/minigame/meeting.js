@@ -17,7 +17,7 @@ function makeSlideContent(kind) {
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:5px";
       const num = document.createElement("span");
-      num.style.cssText = `font-size:9px;color:${PX.blue};font-family:Galmuri9,monospace`;
+      num.style.cssText = `font-size:9px;color:${PX.blue};font-family:NeoDunggeunmo,monospace`;
       num.textContent = n;
       const line = document.createElement("span");
       line.style.cssText = "height:5px;background:#c7cdd8;flex:1";
@@ -69,7 +69,7 @@ function makeSlideContent(kind) {
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:4px";
       const n = document.createElement("span");
-      n.style.cssText = `font-size:8px;color:#9aa3b5;width:8px;font-family:Galmuri9,monospace`;
+      n.style.cssText = `font-size:8px;color:#9aa3b5;width:8px;font-family:NeoDunggeunmo,monospace`;
       n.textContent = i+1;
       const track = document.createElement("span");
       track.style.cssText = "height:7px;background:#e7ecf3;flex:1;position:relative;overflow:hidden";
@@ -82,10 +82,10 @@ function makeSlideContent(kind) {
   } else {
     wrap.style.cssText += ";flex-direction:column;align-items:center;justify-content:center;gap:3px";
     const qa = document.createElement("span");
-    qa.style.cssText = "font-size:12px;color:var(--ink);font-family:Galmuri11,monospace;font-weight:700";
+    qa.style.cssText = "font-size:12px;color:var(--ink);font-family:NeoDunggeunmo,monospace;font-weight:700";
     qa.textContent = "Q & A";
     const thanks = document.createElement("span");
-    thanks.style.cssText = "font-size:9px;color:#888;font-family:Galmuri11,monospace";
+    thanks.style.cssText = "font-size:9px;color:#888;font-family:NeoDunggeunmo,monospace";
     thanks.textContent = "감사합니다";
     wrap.append(qa, thanks);
   }
@@ -99,7 +99,7 @@ function makeProgressChips(done, total, warn) {
   const wrap = document.createElement("div");
   wrap.style.cssText = "display:flex;align-items:center;gap:7px";
   const lbl = document.createElement("span");
-  lbl.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:var(--ink);white-space:nowrap";
+  lbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:var(--ink);white-space:nowrap";
   lbl.textContent = "배치";
   const chips = document.createElement("div");
   chips.style.cssText = "display:flex;gap:3px";
@@ -109,7 +109,7 @@ function makeProgressChips(done, total, warn) {
     chips.append(c);
   }
   const num = document.createElement("span");
-  num.style.cssText = "font-family:Galmuri9,monospace;font-size:14px;color:var(--ink)";
+  num.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink)";
   num.textContent = `${done}/${total}`;
   wrap.append(lbl, chips, num);
   return wrap;
@@ -149,7 +149,7 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
   // 추가 배지
   if (fresh) {
     const b = document.createElement("span");
-    b.style.cssText = `position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-family:Galmuri11,monospace;font-size:10px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:0 6px;white-space:nowrap;z-index:3`;
+    b.style.cssText = `position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-family:NeoDunggeunmo,monospace;font-size:10px;color:${PX.ink};background:${PX.yellow};border:2px solid ${PX.ink};padding:0 6px;white-space:nowrap;z-index:3`;
     b.textContent = "추가";
     card.append(b);
   }
@@ -163,20 +163,20 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
   // 채점 배지
   if (wrong) {
     const b = document.createElement("span");
-    b.style.cssText = `position:absolute;top:-11px;right:-10px;width:26px;height:26px;border-radius:50%;background:${PX.red};color:#fff;border:3px solid #fff;box-shadow:0 0 0 2px ${PX.ink};display:flex;align-items:center;justify-content:center;font-family:Galmuri14,monospace;font-size:13px;z-index:3`;
+    b.style.cssText = `position:absolute;top:-11px;right:-10px;width:26px;height:26px;border-radius:50%;background:${PX.red};color:#fff;border:3px solid #fff;box-shadow:0 0 0 2px ${PX.ink};display:flex;align-items:center;justify-content:center;font-family:NeoDunggeunmo,monospace;font-size:13px;z-index:3`;
     b.textContent = "✗";
     card.append(b);
   }
   if (ok) {
     const b = document.createElement("span");
-    b.style.cssText = `position:absolute;top:-11px;right:-10px;width:26px;height:26px;border-radius:50%;background:${PX.green};color:#fff;border:3px solid #fff;box-shadow:0 0 0 2px ${PX.ink};display:flex;align-items:center;justify-content:center;font-family:Galmuri14,monospace;font-size:13px;z-index:3`;
+    b.style.cssText = `position:absolute;top:-11px;right:-10px;width:26px;height:26px;border-radius:50%;background:${PX.green};color:#fff;border:3px solid #fff;box-shadow:0 0 0 2px ${PX.ink};display:flex;align-items:center;justify-content:center;font-family:NeoDunggeunmo,monospace;font-size:13px;z-index:3`;
     b.textContent = "✓";
     card.append(b);
   }
   // 드래그 핸들
   if (canDrag) {
     const h = document.createElement("span");
-    h.style.cssText = "position:absolute;top:3px;right:5px;font-family:Galmuri9,monospace;font-size:12px;color:#aab";
+    h.style.cssText = "position:absolute;top:3px;right:5px;font-family:NeoDunggeunmo,monospace;font-size:12px;color:#aab";
     h.textContent = "⠿";
     card.append(h);
   }
@@ -186,12 +186,12 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
   head.style.cssText = `display:flex;align-items:center;gap:5px;padding:3px 6px;border-bottom:2px solid ${PX.ink};background:${headBg}`;
   if (n != null) {
     const num = document.createElement("span");
-    num.style.cssText = `font-family:Galmuri9,monospace;font-size:11px;color:#fff;background:${bc === PX.ink ? PX.ink : bc};padding:0 4px;min-width:14px;text-align:center`;
+    num.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:11px;color:#fff;background:${bc === PX.ink ? PX.ink : bc};padding:0 4px;min-width:14px;text-align:center`;
     num.textContent = n;
     head.append(num);
   }
   const titleEl = document.createElement("span");
-  titleEl.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;color:${PX.ink};line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all`;
+  titleEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;color:${PX.ink};line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all`;
   if (titleBlur) titleEl.style.filter = "blur(2.6px)";
   titleEl.textContent = slide.title;
   head.append(titleEl);
@@ -204,7 +204,7 @@ function makeSlideCard(slide, { n, mark, clipSub, canDrag, locked, fresh, titleB
   const sub = document.createElement("div");
   sub.style.cssText = `border-top:1.5px dashed #d8d2c0;padding:3px 6px;min-height:26px;display:flex;align-items:center`;
   const subTxt = document.createElement("span");
-  subTxt.style.cssText = "font-family:Galmuri11,monospace;font-size:10.5px;color:#8a8478;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
+  subTxt.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:10.5px;color:#8a8478;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden";
   subTxt.textContent = clipSub ? slide.sub.split(" ").slice(0,2).join(" ") + "…" : slide.sub;
   sub.append(subTxt);
   card.append(sub);
@@ -221,15 +221,15 @@ function makeEmptySlotEl(n, w) {
   d.style.cssText = `width:${width}px;height:${height}px;border:3px dashed #9aa3b5;background:rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;box-sizing:border-box;position:relative;transition:border-color .08s,background .08s`;
   const numEl = document.createElement("span");
   numEl.className = "mg-slot-num";
-  numEl.style.cssText = "position:absolute;top:4px;left:6px;font-family:Galmuri9,monospace;font-size:13px;color:#9aa3b5";
+  numEl.style.cssText = "position:absolute;top:4px;left:6px;font-family:NeoDunggeunmo,monospace;font-size:13px;color:#9aa3b5";
   numEl.textContent = n;
   const placeholder = document.createElement("span");
   placeholder.className = "mg-slot-placeholder";
-  placeholder.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#9aa3b5";
+  placeholder.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#9aa3b5";
   placeholder.textContent = "비어있음";
   const hint = document.createElement("span");
   hint.className = "mg-slot-hint";
-  hint.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#b89324;display:none";
+  hint.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#b89324;display:none";
   hint.textContent = "여기에 딱! 🧲";
   d.append(numEl, placeholder, hint);
   return d;
@@ -243,10 +243,10 @@ function makeKakaoWin({ title, msgs, votes, onClose, styleStr }) {
   const bar = document.createElement("div");
   bar.style.cssText = `display:flex;align-items:center;justify-content:space-between;background:#fee500;padding:7px 12px;border-bottom:3px solid ${PX.ink}`;
   const barTitle = document.createElement("span");
-  barTitle.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:#3a2e00;font-weight:700";
+  barTitle.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#3a2e00;font-weight:700";
   barTitle.textContent = `💬 ${title}`;
   const closeBtn = document.createElement("span");
-  closeBtn.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
+  closeBtn.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;color:#3a2e00;border:2px solid ${PX.ink};background:#fff7b0;padding:0 6px;cursor:pointer`;
   closeBtn.textContent = "✕";
   closeBtn.addEventListener("click", onClose);
   bar.append(barTitle, closeBtn);
@@ -262,10 +262,10 @@ function makeKakaoWin({ title, msgs, votes, onClose, styleStr }) {
     const msgBody = document.createElement("div");
     msgBody.style.cssText = "display:flex;flex-direction:column;gap:2px";
     const nameEl = document.createElement("span");
-    nameEl.style.cssText = "font-family:Galmuri11,monospace;font-size:11px;color:#2a3a47";
+    nameEl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:11px;color:#2a3a47";
     nameEl.textContent = name;
     const textEl = document.createElement("span");
-    textEl.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
+    textEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;background:#fff;border:2px solid ${PX.ink};padding:5px 10px`;
     textEl.textContent = text;
     msgBody.append(nameEl, textEl);
     row.append(avatar, msgBody);
@@ -277,7 +277,7 @@ function makeKakaoWin({ title, msgs, votes, onClose, styleStr }) {
     voteRow.style.cssText = `display:flex;gap:8px;justify-content:center;margin-top:4px;padding-top:8px;border-top:2px dashed rgba(29,31,46,.3)`;
     ["한식","일식","양식"].forEach((v) => {
       const btn = document.createElement("div");
-      btn.style.cssText = `background:${PX.white};border:3px solid ${PX.ink};box-shadow:3px 3px 0 ${PX.ink};padding:6px 14px;font-family:Galmuri11,monospace;font-size:15px;color:${PX.ink};cursor:pointer`;
+      btn.style.cssText = `background:${PX.white};border:3px solid ${PX.ink};box-shadow:3px 3px 0 ${PX.ink};padding:6px 14px;font-family:NeoDunggeunmo,monospace;font-size:15px;color:${PX.ink};cursor:pointer`;
       btn.textContent = v;
       btn.addEventListener("click", onClose);
       voteRow.append(btn);
@@ -369,13 +369,13 @@ export function renderMeetingGame(root, state, actions, game) {
   const titlebar = document.createElement("div");
   titlebar.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#3a6ea5;border-bottom:3px solid ${PX.ink}`;
   const titleLeft = document.createElement("span");
-  titleLeft.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#fff";
+  titleLeft.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#fff";
   titleLeft.textContent = "📊 발표자료_최종_진짜최종_v3.ppt — 파워포인뜨";
   const wbtns = document.createElement("div");
   wbtns.style.cssText = "display:flex;gap:4px";
   ["_","▢","✕"].forEach((c) => {
     const b = document.createElement("span");
-    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:Galmuri11,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
+    b.style.cssText = `width:18px;height:16px;background:#d8d2c0;border:2px solid ${PX.ink};font-family:NeoDunggeunmo,monospace;font-size:11px;display:flex;align-items:center;justify-content:center;color:${PX.ink}`;
     b.textContent = c;
     wbtns.append(b);
   });
@@ -386,7 +386,7 @@ export function renderMeetingGame(root, state, actions, game) {
   menubar.style.cssText = `display:flex;align-items:center;gap:14px;padding:3px 12px;background:#ece6d6;border-bottom:3px solid ${PX.ink}`;
   ["파일","편집","보기","삽입","디자인"].forEach((m) => {
     const s = document.createElement("span");
-    s.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a5440";
+    s.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#5a5440";
     s.textContent = m;
     menubar.append(s);
   });
@@ -395,7 +395,7 @@ export function renderMeetingGame(root, state, actions, game) {
   const hud = document.createElement("div");
   hud.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#ffe9a8;border-bottom:3px solid ${PX.ink}`;
   const topicLabel = document.createElement("span");
-  topicLabel.style.cssText = "font-family:Galmuri14,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
+  topicLabel.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0";
   topicLabel.textContent = `📊 회의 준비 — ${topic.name}`;
   const hudRight = document.createElement("div");
   hudRight.style.cssText = "display:flex;align-items:center;gap:10px;flex-shrink:0";
@@ -406,16 +406,16 @@ export function renderMeetingGame(root, state, actions, game) {
   progressChipsWrap = chipsContainer;
 
   wrongPill = document.createElement("span");
-  wrongPill.style.cssText = `font-family:Galmuri11,monospace;font-size:12px;padding:3px 9px;border:2px solid ${PX.ink};background:#fff3c4;color:#8a6d12;white-space:nowrap`;
+  wrongPill.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12px;padding:3px 9px;border:2px solid ${PX.ink};background:#fff3c4;color:#8a6d12;white-space:nowrap`;
   wrongPill.textContent = `오답 0/${mg.wrongMax}`;
 
   const timerWrap = document.createElement("div");
   timerWrap.style.cssText = "position:relative;display:flex;align-items:center";
   floatEl = document.createElement("span");
-  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:Galmuri14,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
+  floatEl.style.cssText = `position:absolute;right:100%;margin-right:8px;top:50%;transform:translateY(-50%);font-family:NeoDunggeunmo,monospace;font-size:22px;color:${PX.red};white-space:nowrap;text-shadow:1px 1px 0 #fff;pointer-events:none`;
   floatEl.hidden = true;
   timerPill = document.createElement("div");
-  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:Galmuri9,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
+  timerPill.style.cssText = `display:flex;align-items:center;gap:7px;font-family:NeoDunggeunmo,monospace;border:2px solid ${PX.ink};background:#fff;color:${PX.ink};padding:3px 11px`;
   const timerIcon = document.createElement("span");
   timerIcon.style.fontSize = "15px";
   timerIcon.textContent = "⏱";
@@ -433,7 +433,7 @@ export function renderMeetingGame(root, state, actions, game) {
   board.style.cssText = "position:relative;background:#e8eef7;padding:12px 16px 14px";
 
   const hintEl = document.createElement("div");
-  hintEl.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#5a6478;margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap";
+  hintEl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#5a6478;margin-bottom:8px;display:flex;gap:4px;flex-wrap:wrap";
   ["발표 슬라이드는 순서대로 ·", "다른 팀 자료(함정)는 🗑️로", "· 채워진 칸에 놓으면 자리 교환"].forEach((txt, i) => {
     const s = document.createElement("span");
     if (i === 1) { s.style.cssText = "font-weight:700;color:#c0392b"; }
@@ -445,7 +445,7 @@ export function renderMeetingGame(root, state, actions, game) {
   slotsArea.style.cssText = "display:flex;flex-wrap:wrap;gap:9px;justify-content:center";
 
   const errBanner = document.createElement("div");
-  errBanner.style.cssText = `display:none;margin-top:12px;align-items:center;gap:9px;background:#ffd9d4;border:3px solid ${PX.red};padding:8px 14px;font-family:Galmuri11,monospace;font-size:13px;color:#c0392b`;
+  errBanner.style.cssText = `display:none;margin-top:12px;align-items:center;gap:9px;background:#ffd9d4;border:3px solid ${PX.red};padding:8px 14px;font-family:NeoDunggeunmo,monospace;font-size:13px;color:#c0392b`;
   errBanner.className = "banner-in";
 
   // 트레이 + 휴지통
@@ -458,7 +458,7 @@ export function renderMeetingGame(root, state, actions, game) {
   trayEl.addEventListener("drop", () => doDropTarget("tray"));
 
   const trayLbl = document.createElement("div");
-  trayLbl.style.cssText = "font-family:Galmuri11,monospace;font-size:12px;color:#8a7d52;margin-bottom:7px";
+  trayLbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:#8a7d52;margin-bottom:7px";
 
   const trayList = document.createElement("div");
   trayList.style.cssText = `display:flex;flex-wrap:nowrap;gap:10px;justify-content:safe center;min-height:${cw()*(CARD_H/CARD_W)}px;align-items:center;overflow-x:auto;padding:15px 12px 6px`;
@@ -479,30 +479,30 @@ export function renderMeetingGame(root, state, actions, game) {
   const trashIcon = document.createElement("span");
   trashIcon.style.fontSize = "30px"; trashIcon.textContent = "🗑️";
   const trashLbl = document.createElement("span");
-  trashLbl.style.cssText = "font-family:Galmuri14,monospace;font-size:12px;color:var(--ink);text-align:center";
+  trashLbl.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12px;color:var(--ink);text-align:center";
   trashLbl.textContent = "발표 자료 아님";
   const trashCount = document.createElement("span");
-  trashCount.style.cssText = "font-family:Galmuri11,monospace;font-size:10px;color:#9a7d62;text-align:center";
+  trashCount.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:10px;color:#9a7d62;text-align:center";
   trashEl.append(trashIcon, trashLbl, trashCount);
 
   trayRow.append(trayEl, trashEl);
 
   // 보드 내 토스트
   const trapToast = document.createElement("div");
-  trapToast.style.cssText = `position:absolute;left:50%;top:42%;transform:translateX(-50%);z-index:22;font-family:Galmuri14,monospace;font-size:14px;padding:9px 18px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  trapToast.style.cssText = `position:absolute;left:50%;top:42%;transform:translateX(-50%);z-index:22;font-family:NeoDunggeunmo,monospace;font-size:14px;padding:9px 18px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
 
   const slowToast = document.createElement("span");
-  slowToast.style.cssText = `position:absolute;left:50%;top:42%;transform:translateX(-50%);z-index:23;font-family:Galmuri14,monospace;font-size:15px;color:#7a5a2a;background:#fff3d6;border:2.5px solid ${PX.ink};padding:7px 16px;box-shadow:3px 3px 0 rgba(0,0,0,.22);display:none`;
+  slowToast.style.cssText = `position:absolute;left:50%;top:42%;transform:translateX(-50%);z-index:23;font-family:NeoDunggeunmo,monospace;font-size:15px;color:#7a5a2a;background:#fff3d6;border:2.5px solid ${PX.ink};padding:7px 16px;box-shadow:3px 3px 0 rgba(0,0,0,.22);display:none`;
   slowToast.className = "banner-in";
   slowToast.textContent = "🥵 느릿… 커서가 무겁다";
 
   const slipToast = document.createElement("span");
-  slipToast.style.cssText = `position:absolute;left:50%;top:40%;transform:translateX(-50%);z-index:24;font-family:Galmuri14,monospace;font-size:16px;color:#fff;background:${PX.red};border:2.5px solid ${PX.ink};padding:7px 16px;box-shadow:3px 3px 0 rgba(0,0,0,.25);display:none`;
+  slipToast.style.cssText = `position:absolute;left:50%;top:40%;transform:translateX(-50%);z-index:24;font-family:NeoDunggeunmo,monospace;font-size:16px;color:#fff;background:${PX.red};border:2.5px solid ${PX.ink};padding:7px 16px;box-shadow:3px 3px 0 rgba(0,0,0,.25);display:none`;
   slipToast.className = "slip-pop";
   slipToast.textContent = "✋ 미끄러졌다!";
 
   const jitterBar = document.createElement("span");
-  jitterBar.style.cssText = `position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:23;font-family:Galmuri11,monospace;font-size:12.5px;color:#fff;background:rgba(29,31,46,.85);border:2px solid ${PX.ink};padding:4px 12px;white-space:nowrap;display:none`;
+  jitterBar.style.cssText = `position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:23;font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#fff;background:rgba(29,31,46,.85);border:2px solid ${PX.ink};padding:4px 12px;white-space:nowrap;display:none`;
   jitterBar.textContent = "✋ 마우스 떨림! 카드가 자꾸 미끄러집니다 (10초)";
 
   const resultOverlay = document.createElement("div");
@@ -526,14 +526,14 @@ export function renderMeetingGame(root, state, actions, game) {
   bossBannerEl.className = "banner-in";
 
   const evSpeechEl = document.createElement("div");
-  evSpeechEl.style.cssText = `position:fixed;top:70px;right:20%;z-index:47;max-width:320px;font-family:Galmuri14,monospace;font-size:15px;background:#fff;border:3px solid ${PX.ink};border-radius:14px;padding:11px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);display:none`;
+  evSpeechEl.style.cssText = `position:fixed;top:70px;right:20%;z-index:47;max-width:320px;font-family:NeoDunggeunmo,monospace;font-size:15px;background:#fff;border:3px solid ${PX.ink};border-radius:14px;padding:11px 16px;box-shadow:4px 4px 0 rgba(0,0,0,.22);display:none`;
   evSpeechEl.className = "banner-in";
 
   const kakaoEl = document.createElement("div");
   kakaoEl.hidden = true;
 
   const evToastEl = document.createElement("div");
-  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:Galmuri14,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
+  evToastEl.style.cssText = `position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:48;font-family:NeoDunggeunmo,monospace;font-size:14px;padding:10px 20px;border:3px solid ${PX.red};background:#ffe3e0;color:#b0341f;box-shadow:4px 4px 0 rgba(0,0,0,.22);white-space:nowrap;display:none`;
   evToastEl.className = "banner-in";
 
   shell.append(room, bossOverlayEl, bossBannerEl, evSpeechEl, kakaoEl, evToastEl);
@@ -672,7 +672,7 @@ export function renderMeetingGame(root, state, actions, game) {
     trayList.replaceChildren();
     if (trayIds.length===0) {
       const e = document.createElement("span");
-      e.style.cssText = "font-family:Galmuri11,monospace;font-size:13px;color:#b3a08a";
+      e.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:13px;color:#b3a08a";
       e.textContent = "카드 더미가 비었어요";
       trayList.append(e);
     } else {
@@ -894,11 +894,11 @@ export function renderMeetingGame(root, state, actions, game) {
       const warn = document.createElement("span");
       warn.style.fontSize="20px"; warn.textContent="⚠️";
       const title = document.createElement("span");
-      title.style.cssText = `font-family:Galmuri14,monospace;font-size:16px;color:${PX.red}`;
+      title.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:16px;color:${PX.red}`;
       title.textContent = "상사가 내 자리 옆에 서 있다…";
       top.append(warn, title);
       const desc = document.createElement("span");
-      desc.style.cssText = "font-family:Galmuri11,monospace;font-size:12.5px;color:#4a4636";
+      desc.style.cssText = "font-family:NeoDunggeunmo,monospace;font-size:12.5px;color:#4a4636";
       desc.textContent = "아무 말 없이 모니터만 보고 있다. 난이도가 일시적으로 상승한다.";
       card.append(top, desc);
       bossBannerEl.append(card);
@@ -958,13 +958,13 @@ export function renderMeetingGame(root, state, actions, game) {
     emojiEl.style.cssText = "font-size:46px;line-height:1";
     emojiEl.textContent = t.emoji;
     const titleEl = document.createElement("div");
-    titleEl.style.cssText = `font-family:Galmuri14,monospace;font-size:22px;color:${t.color}`;
+    titleEl.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:22px;color:${t.color}`;
     titleEl.textContent = t.title;
     const statsRow = document.createElement("div");
     statsRow.style.cssText = "display:flex;gap:8px";
     [["오류",errors,"개"],["소요",usedSec,"초"]].forEach(([lbl,v,unit]) => {
       const s = document.createElement("span");
-      s.style.cssText = `font-family:Galmuri11,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
+      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:12.5px;background:#fff;border:2px solid ${PX.ink};padding:3px 11px`;
       s.textContent = `${lbl} ${v}${unit}`;
       statsRow.append(s);
     });
@@ -972,14 +972,14 @@ export function renderMeetingGame(root, state, actions, game) {
     deltaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;justify-content:center";
     t.deltas.forEach((d) => {
       const s = document.createElement("span");
-      s.style.cssText = `font-family:Galmuri11,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v<0?"#d7f3d4":"#ffdcd4"};color:${d.v<0?"#1f8a2e":"#c0392b"}`;
+      s.style.cssText = `font-family:NeoDunggeunmo,monospace;font-size:13px;border:2px solid ${PX.ink};padding:4px 12px;background:${d.v<0?"#d7f3d4":"#ffdcd4"};color:${d.v<0?"#1f8a2e":"#c0392b"}`;
       s.textContent = `${d.label} ${d.v<0?"▼":"▲"}${Math.abs(d.v)}`;
       deltaRow.append(s);
     });
     const nextBtn = document.createElement("div");
     nextBtn.style.cssText = "margin-top:4px;cursor:pointer";
     const btnInner = document.createElement("div");
-    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:Galmuri14,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
+    btnInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:10px 22px;font-family:NeoDunggeunmo,monospace;font-size:19px;color:${PX.ink};display:inline-flex;align-items:center;gap:8px`;
     btnInner.textContent = "메인 화면으로 ▶";
     btnInner.addEventListener("click", () => { cleanup(); actions.applyResult(tier, `회의 준비 ${tier}: 오류 ${errors}개`, usedSec); });
     nextBtn.append(btnInner);
