@@ -1270,22 +1270,22 @@ function getBossInterviewChoice(choiceId) {
     sorry: {
       id: "sorry",
       label: "죄송합니다",
-      delta: { stress: 5, gameMinute: 15, workload: -5 },
-      hint: "분위기는 풀리지만, 회의실에서 시간을 쓴다.",
+      delta: { stress: 5, gameMinute: 20, workload: -5 },
+      hint: "분위기는 풀리지만, 회의실에서 꽤 시간을 쓴다.",
       message: "팀장 면담에서 먼저 사과했다.",
     },
     busy: {
       id: "busy",
       label: "바빴습니다",
-      delta: { workload: -10, stress: 8 },
-      hint: "업무 조정을 노릴 수 있지만, 상사와 팽팽해질 수 있다.",
+      delta: { workload: -10, stress: 8, gameMinute: 25 },
+      hint: "업무 조정을 노릴 수 있지만, 긴 면담으로 시간을 잃고 상사와 팽팽해질 수 있다.",
       message: "팀장 면담에서 요즘 바빴다고 말했다.",
     },
     fine: {
       id: "fine",
       label: "별 문제 없습니다",
-      delta: { stress: 10, workload: 8, gameMinute: 10 },
-      hint: "면담은 빨리 끝나지만, 이후 눈치와 업무 압박이 커질 수 있다.",
+      delta: { stress: 10, workload: 8, gameMinute: 12 },
+      hint: "면담은 짧게 끝나지만, 남은 시간과 이후 업무 압박이 커질 수 있다.",
       message: "팀장 면담에서 별 문제 없다고 답했다.",
     },
   };
