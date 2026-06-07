@@ -16,6 +16,7 @@ export function renderMiniGameBriefing(root, state, options, game, mode = "inlin
   playSfx(NOTIFY_SFX);
 
   const statuses = describeMiniGameStatus(state, game.id);
+  const howToSteps = game.howTo?.length ? game.howTo : getDefaultHowTo(game.id);
   const icon = GAME_ICONS[game.id] ?? "💼";
   const overlayClass = mode === "overlay"
     ? "minigame-briefing-overlay"
@@ -38,6 +39,13 @@ export function renderMiniGameBriefing(root, state, options, game, mode = "inlin
           el("h2", { text: game.title }),
         ]),
         el("p", { class: "minigame-briefing-description", text: game.description }),
+        el("div", { class: "minigame-briefing-rule" }),
+        el("section", { class: "minigame-briefing-section minigame-briefing-howto" }, [
+          el("strong", { text: "사용 방법" }),
+          el("ol", { class: "minigame-briefing-howto-list" },
+            howToSteps.map((step) => el("li", { text: step })),
+          ),
+        ]),
         el("div", { class: "minigame-briefing-rule" }),
         el("section", { class: "minigame-briefing-section" }, [
           el("strong", { text: "현재 상태" }),
@@ -79,6 +87,28 @@ export function renderMiniGameBriefing(root, state, options, game, mode = "inlin
   }
 
   root.append(briefing);
+}
+
+function getDefaultHowTo(gameId) {
+  if (gameId === "email") {
+    return [
+      "떨어지는 메일을 좌우로 분류하세요.",
+      "제한 시간 안에 최대한 많이 맞추세요.",
+    ];
+  }
+  if (gameId === "meeting") {
+    return [
+      "슬라이드를 드래그해 올바른 순서로 정렬하세요.",
+      "함정 슬라이드는 휴지통으로 버리세요.",
+    ];
+  }
+  if (gameId === "report") {
+    return [
+      "보고서에서 오탈자를 클릭하세요.",
+      "정상 단어(함정)를 누르면 시간이 차감됩니다.",
+    ];
+  }
+  return ["안내에 따라 업무를 진행하세요."];
 }
 
 function describeMiniGameStatus(state, gameId) {

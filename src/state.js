@@ -21,7 +21,7 @@ export function createInitialState() {
     colleagueTrust: 30,
     stats: {
       workload: 100,
-      stress: 0,
+      stress: 5,
       health: 100,
     },
     // 설정 화면(서명하고 출근)에서 유형 기준으로 다시 설정됨. 기본값은 커피파.
@@ -68,6 +68,8 @@ export function clampStat(value) {
 }
 
 const WORK_FATIGUE_INTERVAL_MINUTES = 5;
+const WORK_STRESS_INTERVAL_MINUTES = 6;
+const HIGH_WORKLOAD_STRESS_THRESHOLD = 80;
 const HIGH_STRESS_FATIGUE_THRESHOLD = 70;
 const EXTREME_STRESS_FATIGUE_THRESHOLD = 90;
 
@@ -81,6 +83,10 @@ export function applyWorkTimeCost(state, minutes = 0) {
   const totalFatigueMinutes = (flags.workFatigueMinutes ?? 0) + spentMinutes;
   const fatigueTicks = Math.floor(totalFatigueMinutes / WORK_FATIGUE_INTERVAL_MINUTES);
   flags.workFatigueMinutes = totalFatigueMinutes % WORK_FATIGUE_INTERVAL_MINUTES;
+
+  const totalStressMinutes = (flags.workStressMinutes ?? 0) + spentMinutes;
+  const stressTicks = Math.floor(totalStressMinutes / WORK_STRESS_INTERVAL_MINUTES);
+  flags.workStressMinutes = totalStressMinutes % WORK_STRESS_INTERVAL_MINUTES;
   state.flags = flags;
 
   const healthCostPerTick = state.stats.stress >= EXTREME_STRESS_FATIGUE_THRESHOLD
@@ -93,10 +99,18 @@ export function applyWorkTimeCost(state, minutes = 0) {
     state.stats.health = clampStat(state.stats.health + healthDelta);
   }
 
-  return {
-    state,
-    delta: healthDelta !== 0 ? { health: healthDelta } : {},
-  };
+  let stressDelta = 0;
+  if (stressTicks > 0) {
+    const stressPerTick = state.stats.workload >= HIGH_WORKLOAD_STRESS_THRESHOLD ? 2 : 1;
+    stressDelta = stressTicks * stressPerTick;
+    state.stats.stress = clampStat(state.stats.stress + stressDelta);
+  }
+
+  const delta = {};
+  if (healthDelta !== 0) delta.health = healthDelta;
+  if (stressDelta !== 0) delta.stress = stressDelta;
+
+  return { state, delta };
 }
 
 export function applyDelta(state, delta, message) {

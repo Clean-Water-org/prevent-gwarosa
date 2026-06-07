@@ -177,6 +177,10 @@
   background: #ffe9a8;
 }
 
+.main-work-hud:has(.main-work-item-hub[open]) {
+  z-index: 30;
+}
+
 .main-work-hud-stats {
   min-width: 0;
   display: grid;
@@ -455,7 +459,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 20;
+  z-index: 1;
   width: min(310px, 72vw);
   display: grid;
   gap: 8px;
@@ -4287,6 +4291,8 @@ select {
   display: grid;
   gap: 14px;
   padding: 20px;
+  max-height: min(68vh, 480px);
+  overflow-y: auto;
 }
 
 .minigame-briefing-heading {
@@ -4339,6 +4345,31 @@ select {
 .minigame-briefing-time > strong {
   color: #1d1f2e;
   font-size: 13px;
+}
+
+.minigame-briefing-howto-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: decimal;
+}
+
+.minigame-briefing-howto-list li {
+  color: #444;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.minigame-briefing-howto > strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.minigame-briefing-howto > strong::before {
+  content: "💡";
+  font-size: 14px;
 }
 
 .minigame-briefing-status-list {
@@ -5494,6 +5525,23 @@ select {
 .dev-checkbox {
   width: 14px;
   height: 14px;
+}
+
+.dev-meeting-preview {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dev-section-label {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.dev-form-grid--meeting {
+  grid-template-columns: 1fr 1fr;
 }
 
 .dev-form-actions {

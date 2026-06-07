@@ -11,19 +11,19 @@ import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js"
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
 const GAME_DELTAS = {
   email: {
-    success: { workload: -25 },
-    partial: { workload: -18, stress: 8 },
-    fail: { workload: -8, stress: 18, health: -8 },
+    success: { workload: -20, stress: 3 },
+    partial: { workload: -10, stress: 8 },
+    fail: { workload: -3, stress: 16, health: -6 },
   },
   meeting: {
-    success: { workload: -25 },
-    partial: { workload: -18, stress: 8 },
-    fail: { workload: -8, stress: 20, health: -8 },
+    success: { workload: -20, stress: 4 },
+    partial: { workload: -10, stress: 10 },
+    fail: { workload: -3, stress: 20, health: -8 },
   },
   report: {
-    success: { workload: -25 },
-    partial: { workload: -18, stress: 8 },
-    fail: { workload: -10, stress: 20, health: -8 },
+    success: { workload: -20, stress: 4 },
+    partial: { workload: -10, stress: 10 },
+    fail: { workload: -5, stress: 20, health: -8 },
   },
 };
 
@@ -85,8 +85,9 @@ export function renderMiniGame(root, state, actions) {
 function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   const deltas = GAME_DELTAS[gameId] || GAME_DELTAS.email;
   let next = applyDelta(state, deltas[result], message);
-  // 미니게임 실제 소요 시간만큼 게임시간 진행 (빨리 깰수록 일찍 퇴근하고 체력도 덜 소모)
-  applyWorkTimeCost(next, Math.max(0, Math.min(60, Math.round(usedSec))));
+  // 미니게임 실제 소요 + 최소 35분 업무 블록 (빨리 깰수록 일찍 퇴근·체력 소모는 줄지만 기본 피로는 발생)
+  const workMinutes = Math.max(35, Math.min(60, Math.round(usedSec)));
+  applyWorkTimeCost(next, workMinutes);
 
   if (next.flags.devMode) {
     next.scene = "title";
