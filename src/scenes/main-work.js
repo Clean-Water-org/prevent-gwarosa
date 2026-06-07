@@ -134,7 +134,9 @@ export function renderMainWork(root, state, actions) {
     startMainEventSystem(screen, state, actions);
   };
 
-  const intranetPanel = renderIntranetWindow(actions);
+  const intranetPanel = el("div", { class: "main-work-intranet-slot" }, [
+    renderIntranetWindow(actions),
+  ]);
   intranetPanel.style.display = "none";
   const messengerPanel = el("div", { class: "main-work-messenger-slot" });
   messengerPanel.style.display = "none";
@@ -845,9 +847,7 @@ function renderTaskbar(gameMinute, onIntranetClick, registerIntranetBtn, onMesse
 
   return el("footer", { class: "main-work-taskbar" }, [
     el("div", { class: "main-work-taskbar-left" }, [
-      el("span", { class: "main-work-start-icon", text: "⊞" }),
-      el("span", { class: "main-work-task-icon", text: "검색" }),
-      el("span", { class: "main-work-task-icon", text: "📁" }),
+      el("span", { class: "main-work-start-icon", title: "시작", "aria-label": "시작" }),
       intranetBtn,
       messengerBtn,
     ]),
@@ -1065,11 +1065,11 @@ function resolveMessengerChoice(message, choiceId) {
   return { delta: {}, bossAttentionDelta: 0, colleagueIgnoreDelta: 0, hrIgnoreDelta: 0 };
 }
 
-const BOSS_ATTENTION_WARN_AT = 2;
-const BOSS_ATTENTION_INTERVIEW_AT = 4;
+const BOSS_ATTENTION_WARN_AT = 3;
+const BOSS_ATTENTION_INTERVIEW_AT = 6;
 
 function resolveBossMessengerChoice(message, choiceId) {
-  if (choiceId === "ignore") return { delta: {}, bossAttentionDelta: 2 };
+  if (choiceId === "ignore") return { delta: {}, bossAttentionDelta: 1 };
   if (message.subtype === "request") {
     if (choiceId === "accept") {
       return { delta: { workload: -3, gameMinute: 2, health: -1 }, bossAttentionDelta: -1 };
@@ -1190,6 +1190,7 @@ function openBossAttentionInterview(actions) {
     body: "팀장님이 회의실로 부릅니다. \"요즘 진행 상황 파악이 잘 안 되네요. 메신저 답장이 자주 없던데 무슨 문제 있습니까?\"",
     choices: [
       getBossInterviewChoice("sorry"),
+      getBossInterviewChoice("promise"),
       getBossInterviewChoice("busy"),
       getBossInterviewChoice("fine"),
     ],
@@ -1274,6 +1275,13 @@ function getBossInterviewChoice(choiceId) {
       hint: "분위기는 풀리지만, 회의실에서 꽤 시간을 쓴다.",
       message: "팀장 면담에서 먼저 사과했다.",
     },
+    promise: {
+      id: "promise",
+      label: "앞으로 더 챙기겠습니다",
+      delta: { stress: 4, gameMinute: 16, workload: -4 },
+      hint: "약속으로 넘어가지만, 눈치를 쓰며 지내야 한다.",
+      message: "팀장 면담에서 앞으로 메신저를 더 챙기겠다고 말했다.",
+    },
     busy: {
       id: "busy",
       label: "바빴습니다",
@@ -1295,6 +1303,15 @@ function getBossInterviewChoice(choiceId) {
     if (key === "smart-lazy") choice.delta.workload = -8;
     if (key === "smart-busy") choice.delta.stress = 7;
     if (key === "clumsy-lazy") choice.delta.stress = 3;
+  }
+  if (choiceId === "promise") {
+    if (key === "smart-lazy") choice.delta.workload = -6;
+    if (key === "smart-busy") choice.delta.stress = 6;
+    if (key === "clumsy-busy") choice.delta.gameMinute = 18;
+    if (key === "clumsy-lazy") {
+      choice.delta.stress = 2;
+      choice.delta.gameMinute = 12;
+    }
   }
   if (choiceId === "busy") {
     if (key === "smart-lazy") choice.delta.workload = -15;
@@ -1367,7 +1384,9 @@ function addMessengerMessage(chat, actions, options = {}) {
     timerSec: 0,
   };
   if (message.needsReply) {
-    message.timerSec = getReplyTimerSec(chat);
+    message.originalTimerSec = getReplyTimerSec(chat);
+    message.timerSec = message.originalTimerSec;
+    message.replyExpiresAt = Date.now() + message.originalTimerSec * 1000;
   }
   room.messages.push(message);
   if (messenger.isOpen && messenger.activeRoomId === roomId) message.unread = false;
@@ -1407,10 +1426,39 @@ function getReplyTimerSec(chat) {
   return CHAT_REPLY_TIMER_SEC.colleague;
 }
 
+function getMessageReplyTotalSec(message) {
+  return message.originalTimerSec ?? message.timerSec ?? getReplyTimerSec(message);
+}
+
+function ensureMessageReplyDeadline(message) {
+  if (message.replyExpiresAt) return;
+  const totalSec = getMessageReplyTotalSec(message);
+  if (!totalSec) return;
+  message.originalTimerSec = message.originalTimerSec ?? totalSec;
+  message.replyExpiresAt = (message.spawnedAt ?? Date.now()) + totalSec * 1000;
+}
+
+function getMessageReplyRemainingMs(message, now = Date.now()) {
+  ensureMessageReplyDeadline(message);
+  if (!message.replyExpiresAt) return 0;
+  return Math.max(0, message.replyExpiresAt - now);
+}
+
+function collectPendingReplyMessages() {
+  const pending = [];
+  for (const room of Object.values(_messengerState?.rooms ?? {})) {
+    for (const message of room.messages) {
+      if (!message.needsReply || message.status) continue;
+      if (getMessageReplyRemainingMs(message) <= 0) continue;
+      pending.push(message);
+    }
+  }
+  return pending;
+}
+
 function isMessageReplyExpired(message) {
   if (!message?.needsReply || message.status) return false;
-  if (!message.spawnedAt || !message.timerSec) return false;
-  return Date.now() >= message.spawnedAt + message.timerSec * 1000;
+  return getMessageReplyRemainingMs(message) <= 0;
 }
 
 function getMessengerToastKind(message) {
@@ -1430,11 +1478,21 @@ function getMessengerRoomIcon(roomId) {
 function showMessengerToast(message, actions) {
   if (!_notifPanel || !message.needsReply) return;
 
+  _notifPanel.querySelector(`.main-work-messenger-toast[data-message-id="${message.id}"]`)?.remove();
+
   const existing = _notifPanel.querySelectorAll(".main-work-messenger-toast");
   if (existing.length >= MAX_MESSENGER_TOASTS) existing[0].remove();
 
+  ensureMessageReplyDeadline(message);
+  const totalSec = getMessageReplyTotalSec(message);
+  const remainingSec = getMessageReplyRemainingMs(message) / 1000;
+  const elapsedSec = Math.max(0, totalSec - remainingSec);
+
   const timerBar = el("div", { class: "main-work-messenger-toast-timer-bar" });
-  timerBar.style.animationDuration = `${message.timerSec}s`;
+  timerBar.style.animationDuration = `${totalSec}s`;
+  if (elapsedSec > 0) {
+    timerBar.style.animationDelay = `-${elapsedSec}s`;
+  }
 
   const toast = el("article", {
     class: `main-work-messenger-toast main-work-messenger-toast-${getMessengerToastKind(message)}`,
@@ -1474,7 +1532,11 @@ function dismissMessengerToast(messageId) {
 function scheduleReplyExpiry(message, actions) {
   if (!message.needsReply || message.status) return;
   clearReplyExpiryTimer(message.id);
-  const remainingMs = Math.max(0, message.spawnedAt + message.timerSec * 1000 - Date.now());
+  const remainingMs = getMessageReplyRemainingMs(message);
+  if (remainingMs <= 0) {
+    expirePendingReply(message.id, actions);
+    return;
+  }
   const timeoutId = setTimeout(() => expirePendingReply(message.id, actions), remainingMs);
   _replyExpireTimers.set(message.id, timeoutId);
 }
@@ -1528,22 +1590,22 @@ function cleanupStatusEventSystem() {
 // 남겨둔다. startChatNotifications가 같은 판으로 복귀했을 때 이 스냅샷을 보고
 // "타이머가 멈춘 채" 그대로 이어서 보여준다.
 function captureChatSnapshot() {
-  if (!_notifPanel) return null;
+  if (!_messengerState) return null;
   const now = Date.now();
 
   const pendingReplies = [];
-  for (const room of Object.values(_messengerState?.rooms ?? {})) {
+  for (const room of Object.values(_messengerState.rooms ?? {})) {
     for (const message of room.messages) {
       if (!message.needsReply || message.status) continue;
-      const elapsedMs = now - (message.spawnedAt ?? now);
-      const remainingMs = Math.max(500, message.timerSec * 1000 - elapsedMs);
+      const remainingMs = getMessageReplyRemainingMs(message, now);
+      if (remainingMs <= 0) continue;
       pendingReplies.push({ messageId: message.id, remainingMs });
     }
   }
 
   const nextSpawnRemainingMs = _spawnTimeout
     ? Math.max(0, _spawnDelayMs - (now - _spawnScheduledAt))
-    : CHAT_SPAWN_FIRST_MS;
+    : (_chatSnapshot?.nextSpawnRemainingMs ?? CHAT_SPAWN_FIRST_MS);
 
   return {
     pendingReplies,
@@ -1553,8 +1615,10 @@ function captureChatSnapshot() {
 }
 
 function cleanupChatSystem() {
-  if (_notifPanel) {
+  if (_messengerState) {
     _chatSnapshot = captureChatSnapshot();
+  }
+  if (_notifPanel) {
     _notifPanel.remove();
     _notifPanel = null;
   }
@@ -2067,16 +2131,27 @@ function renderMainEventPopup(event, { state, onChoice }) {
         el("p", { class: "main-event-kicker", text: event.type === "boss" ? "팀장님" : event.type === "colleague" ? "동료" : "공통 이벤트" }),
         el("h2", { text: event.title }),
         el("p", { class: "main-event-copy", text: event.body }),
-        el("div", { class: "main-event-choice-grid" }, choices.map((choice, index) =>
-          renderMainEventChoice(choice, state, () => onChoice(choice), index),
+        el("div", { class: getMainEventChoiceGridClass(choices.length) }, choices.map((choice, index) =>
+          renderMainEventChoice(choice, state, () => onChoice(choice), index, choices.length),
         )),
       ]),
     ]),
   ]);
 }
 
-function renderMainEventChoice(choice, state, onClick, index) {
-  const tone = index === 0 ? "accept" : "reject";
+function getMainEventChoiceGridClass(count) {
+  if (count === 3) return "main-event-choice-grid main-event-choice-grid--triple";
+  return "main-event-choice-grid";
+}
+
+function getMainEventChoiceTone(index, total) {
+  if (index === 0) return "accept";
+  if (total === 4 && index === 1) return "neutral";
+  return "reject";
+}
+
+function renderMainEventChoice(choice, state, onClick, index, total = 1) {
+  const tone = getMainEventChoiceTone(index, total);
   return el("button", {
     class: `main-event-choice main-event-choice-${tone}`,
     type: "button",
@@ -2466,6 +2541,16 @@ function startChatNotifications(state, actions, container) {
 
   _localWorkload = state.stats.workload;
 
+  const pendingReplies = collectPendingReplyMessages();
+  if (pendingReplies.length > 0) {
+    for (const message of pendingReplies) {
+      showMessengerToast(message, actions);
+      scheduleReplyExpiry(message, actions);
+    }
+    scheduleSpawn(state, actions, CHAT_SPAWN_INTERVAL_MS);
+    return;
+  }
+
   scheduleSpawn(state, actions, CHAT_SPAWN_FIRST_MS);
 }
 
@@ -2474,14 +2559,17 @@ function startChatNotifications(state, actions, container) {
 function restoreChatSnapshot(state, actions) {
   const snapshot = _chatSnapshot;
   _chatSnapshot = null;
+  if (!snapshot) return;
 
   _localWorkload = snapshot.localWorkload;
 
-  for (const { messageId, remainingMs } of snapshot.pendingReplies ?? []) {
+  for (const { messageId } of snapshot.pendingReplies ?? []) {
     const message = findMessengerMessage(messageId);
     if (!message || message.status) continue;
-    message.spawnedAt = Date.now();
-    message.timerSec = remainingMs / 1000;
+    if (getMessageReplyRemainingMs(message) <= 0) {
+      expirePendingReply(message.id, actions);
+      continue;
+    }
     showMessengerToast(message, actions);
     scheduleReplyExpiry(message, actions);
   }
