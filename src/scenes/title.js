@@ -5,8 +5,6 @@ import {
   pulseTitleBgmGlitch,
   cleanupTitleBgmFx,
   bindBgmToggleButton,
-  isAudioUnlocked,
-  onAudioUnlock,
 } from "../lib/audio.js";
 
 const TITLE_BGM_SRC = "assets/audio/title-bgm.mp3";
@@ -42,13 +40,19 @@ function buildTaglineGlitchText() {
 }
 
 let titleFxTimers = [];
-let titleAudioUnlockOff = null;
+let titleActivateOff = null;
+let titleInteractionReady = false;
+
+/** 다른 씬에서 타이틀로 돌아올 때 클릭 게이트를 다시 켠다. */
+export function prepareTitleEntry(prevScene) {
+  if (prevScene !== "title") titleInteractionReady = false;
+}
 
 export function cleanupTitleFx() {
   titleFxTimers.forEach(clearTimeout);
   titleFxTimers = [];
-  titleAudioUnlockOff?.();
-  titleAudioUnlockOff = null;
+  titleActivateOff?.();
+  titleActivateOff = null;
   cleanupTitleBgmFx();
 }
 
@@ -250,17 +254,19 @@ export function renderTitle(root, state, actions) {
   const taglineEl = el("p", { class: "title-tagline", text: TAGLINE_NORMAL });
   const questionEl = el("p", { class: "title-question", text: QUESTION_NORMAL });
   const logoEl = el("h1", { class: "title-logo", text: "과로사 방지" });
+  const titleLocked = !titleInteractionReady;
+  let unlockTitle = () => {};
+
   const startGate = el("button", {
     class: "title-start-gate",
     type: "button",
     "aria-label": "화면을 클릭하여 시작",
+    onClick: () => unlockTitle(),
   }, [
     el("span", { class: "title-audio-hint-mark", text: "▶" }),
     el("span", { class: "title-audio-hint-text", text: "화면을 클릭하세요" }),
     el("span", { class: "title-audio-hint-sub", text: "클릭 후 출근·도움말 이용 가능" }),
   ]);
-
-  const titleLocked = !isAudioUnlocked();
 
   const mainBtn = el("button", {
     class: "title-main-button",
@@ -280,22 +286,24 @@ export function renderTitle(root, state, actions) {
     onClick: () => { playClickSfx(); actions.go("onboarding"); },
   });
 
-  const buttonsWrap = el("div", { class: "title-buttons-wrap" }, [
-    el("div", { class: "title-buttons" }, [mainBtn, helpBtn]),
-    startGate,
-  ]);
+  const actionButtons = el("div", { class: "title-buttons" }, [mainBtn, helpBtn]);
+  const buttonsWrap = el("div", {
+    class: `title-buttons-wrap${titleLocked ? " is-locked" : ""}`,
+  }, titleLocked ? [startGate] : [actionButtons]);
 
-  function unlockTitle() {
-    if (!buttonsWrap.isConnected) return;
+  unlockTitle = () => {
+    if (titleInteractionReady || !buttonsWrap.isConnected) return;
+    titleInteractionReady = true;
     mainBtn.removeAttribute("disabled");
     helpBtn.removeAttribute("disabled");
-    startGate.hidden = true;
-    startGate.setAttribute("aria-hidden", "true");
+    startGate.remove();
     buttonsWrap.classList.remove("is-locked");
-  }
+    buttonsWrap.append(actionButtons);
+    titleActivateOff?.();
+    titleActivateOff = null;
+  };
 
-  if (titleLocked) buttonsWrap.classList.add("is-locked");
-  else unlockTitle();
+  if (!titleLocked) unlockTitle();
 
   const crtCard = el("div", { class: "title-crt-card" }, [
     logoEl,
@@ -307,8 +315,11 @@ export function renderTitle(root, state, actions) {
     el("div", { class: "px-glare title-crt-glare" }),
   ]);
 
-  titleAudioUnlockOff?.();
-  titleAudioUnlockOff = onAudioUnlock(unlockTitle);
+  if (titleLocked) {
+    const onActivate = () => unlockTitle();
+    crtCard.addEventListener("pointerdown", onActivate, { once: true });
+    titleActivateOff = () => crtCard.removeEventListener("pointerdown", onActivate);
+  }
 
   root.append(
     el("section", { class: "title-menu-screen" }, [
