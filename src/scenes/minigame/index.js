@@ -6,6 +6,9 @@ import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
 import { getCurrentMiniGame, getMiniGameBriefingKey, MINI_ROUNDS, buildLateRounds } from "./flow.js";
 
+// 미니게임 씬 이탈 시 window 리스너·타이머 정리 (두통→엔딩 등 cleanup 없이 전환될 때).
+export { cleanupMinigameScene, setMinigameCleanup } from "./lifecycle.js";
+
 // 미니게임 선택은 flow.js getCurrentMiniGame(state.miniOrder, 5라운드) 사용. 시간은 실제 소요(usedSec).
 
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.

@@ -1,6 +1,7 @@
 import { createInitialState, formatTime } from "../state.js";
 import { resolveEnding, STAT_BARS } from "../data/endings.js";
 import { playBgm, stopBgm, playClickSfx } from "../lib/audio.js";
+import { clearGame } from "../lib/storage.js";
 
 const CLEAR_S_BGM_SRC = "assets/audio/retro-8bit-happy-videogame-music.mp3";
 const CLEAR_AB_BGM_SRC = "assets/audio/success-ending.mp3";
@@ -267,7 +268,12 @@ export function renderEnding(root, state, actions) {
   retryInner.style.cssText = `background:${PX.yellow};border:3px solid ${PX.ink};box-shadow:4px 4px 0 ${PX.ink};padding:11px 22px;font-family:NeoDunggeunmo,monospace;font-size:18px;color:${PX.ink};display:flex;align-items:center;justify-content:center;gap:8px`;
   retryInner.textContent = "🔄 다시하기";
   retryBtn.append(retryInner);
-  retryBtn.addEventListener("click", () => { playClickSfx(); stopBgm(); actions.mutateState(() => createInitialState()); });
+  retryBtn.addEventListener("click", () => {
+    playClickSfx();
+    stopBgm();
+    clearGame();
+    actions.mutateState(() => createInitialState());
+  });
 
   right.append(clockBox, statBox, retryBtn);
 

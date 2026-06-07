@@ -1914,6 +1914,10 @@
   display: flex;
 }
 
+.main-work-messenger-toast.is-reattached {
+  animation: none;
+}
+
 .main-work-messenger-toast {
   pointer-events: auto;
   overflow: hidden;

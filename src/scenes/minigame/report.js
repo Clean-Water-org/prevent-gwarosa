@@ -6,6 +6,7 @@ import { playBgm, stopBgm, playSfx, playClickSfx, syncBgmStatusFx } from "../../
 import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { headacheCorruptText } from "../../lib/headache-fx.js";
 import { MINI_TIER_LABEL } from "./flow.js";
+import { setMinigameCleanup } from "./lifecycle.js";
 
 const PX = { ink: "#1d1f2e", red: "#ff4d4d", green: "#3fc24a", blue: "#3d8bff", yellow: "#ffd23f", white: "#fdfcf2" };
 
@@ -951,4 +952,5 @@ export function renderReportGame(root, state, actions, game) {
   });
   startTimer();
   startBurnout();
+  setMinigameCleanup(cleanup);
 }

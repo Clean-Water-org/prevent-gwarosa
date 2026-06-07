@@ -7,6 +7,7 @@ import { maybeShowHeadacheDialog } from "../../lib/headache-event.js";
 import { formatHeadacheDisplayText, syncHeadacheTextLayers } from "../../lib/headache-fx.js";
 import { PX, makeOfficeRoom, appendDefaultRoomProps, makeMonitor } from "../../components/pixel-office.js";
 import { MINI_TIER_LABEL } from "./flow.js";
+import { setMinigameCleanup } from "./lifecycle.js";
 
 const CARD_W = 120, CARD_H = 168;
 
@@ -1117,4 +1118,5 @@ export function renderMeetingGame(root, state, actions, game) {
   });
   startTimer();
   startBurnout();
+  setMinigameCleanup(cleanup);
 }
