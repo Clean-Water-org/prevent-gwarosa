@@ -55,11 +55,6 @@ export function renderCommute(root, state, actions) {
   const room = makeOfficeRoom();
   room.classList.add("main-work-room");
   appendDefaultRoomProps(room);
-  room.append(el("div", { class: "main-work-wall-note" }, [
-    el("strong", { text: "GOAL" }),
-    el("span", { text: "칼퇴" }),
-    el("span", { text: "생존" }),
-  ]));
 
   const monitorScroll = el("div", { class: "main-work-monitor-scroll" });
   monitorScroll.append(el("div", { class: "main-work-monitor-wrapper" }, [makeMonitor(monitorScreen)]));
