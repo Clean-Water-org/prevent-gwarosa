@@ -985,7 +985,7 @@ export function renderMeetingGame(root, state, actions, game) {
   function showResult(tier, errors, trapsLeft, usedSec) {
     playSfx("assets/audio/gameboy-pluck.mp3"); // 결과 팝업 효과음
     const TIERS = {
-      success:{ title:"회의 준비 완료!", emoji:"🎉", bg:"#eafae8", color:PX.green, deltas:[{label:"업무량",v:-25}] },
+      success:{ title:"회의 준비 완료!", emoji:"🎉", bg:"#eafae8", color:PX.green, deltas:[{label:"업무량",v:-20}] },
       partial:{ title:"아슬아슬하게 마쳤다…", emoji:"😮‍💨", bg:"#fff3df", color:"#c98a2a", deltas:[{label:"업무량",v:-18},{label:"스트레스",v:8}] },
       fail:   { title:"회의 준비 망했다…", emoji:"💀", bg:"#f6e3e0", color:PX.red, deltas:[{label:"업무량",v:-8},{label:"스트레스",v:20},{label:"체력",v:-8}] },
     };

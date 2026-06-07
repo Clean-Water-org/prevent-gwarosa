@@ -111,7 +111,7 @@ function buildReport(repIdx, lineCount) {
 }
 
 const TIERS = {
-  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -25 }] },
+  success: { title: "오탈자 전부 발견!", emoji: "🎉", bg: "#eafae8", color: "#1f8a2e", deltas: [{ label: "업무량", v: -20 }] },
   partial: { title: "절반만 찾았다…", emoji: "😮‍💨", bg: "#fff3df", color: "#c98a2a", deltas: [{ label: "업무량", v: -18 }, { label: "스트레스", v: 8 }] },
   fail: { title: "결재 반려…", emoji: "💀", bg: "#f6e3e0", color: PX.red, deltas: [{ label: "업무량", v: -10 }, { label: "스트레스", v: 20 }, { label: "체력", v: -8 }] },
 };

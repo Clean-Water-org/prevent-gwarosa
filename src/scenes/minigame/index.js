@@ -4,9 +4,9 @@ import { renderEmailGame } from "./email.js";
 import { renderMeetingGame } from "./meeting.js";
 import { renderReportGame } from "./report.js";
 import { renderMiniGameBriefing } from "./briefing.js";
-import { getCurrentMiniGame, getMiniGameBriefingKey, ROTATION } from "./flow.js";
+import { getCurrentMiniGame, getMiniGameBriefingKey, MINI_ROUNDS, buildLateRounds } from "./flow.js";
 
-// 미니게임 선택은 flow.js getCurrentMiniGame(4라운드 ROTATION) 사용. 시간은 실제 소요(usedSec).
+// 미니게임 선택은 flow.js getCurrentMiniGame(state.miniOrder, 5라운드) 사용. 시간은 실제 소요(usedSec).
 
 // 게임시간(gameMinute)은 델타에 두지 않고, 미니게임의 실제 소요 시간(usedSec)을 applyMiniResult에서 더한다.
 const GAME_DELTAS = {
@@ -28,7 +28,7 @@ const GAME_DELTAS = {
 };
 
 export function renderMiniGame(root, state, actions) {
-  if (state.minigameRound >= ROTATION.length && !state.flags.devMode) {
+  if (state.minigameRound >= MINI_ROUNDS && !state.flags.devMode) {
     actions.finishWith(state.stats.workload <= 0 ? "success" : "overtime");
     return;
   }
@@ -103,6 +103,14 @@ function applyMiniResult(state, gameId, result, message, usedSec = 60) {
     ...(next.counters.minigameResults ?? []),
     { gameId, result },
   ].slice(-2);
+  // 1~3라운드 결과를 게임별로 기록 (4·5라운드 최저 성공 게임 산정용)
+  next.counters.miniResultByGame = { ...(next.counters.miniResultByGame ?? {}), [gameId]: result };
+  // 3라운드(이메일·회의·보고서) 종료 직후 4·5라운드 확정:
+  //   4라운드 = 1~3 중 성공률 최저 게임(직전과 연속되면 차순위), 5라운드 = 랜덤(연속 금지)
+  if (next.minigameRound === 3 && Array.isArray(next.miniOrder) && next.miniOrder.length >= 5) {
+    const [r4, r5] = buildLateRounds(next.counters.miniResultByGame, next.miniOrder[2]);
+    next.miniOrder = [...next.miniOrder.slice(0, 3), r4, r5];
+  }
   next.counters.successStreak = result === "success" ? next.counters.successStreak + 1 : 0;
   next.counters.failures += result === "fail" ? 1 : 0;
   if (gameId === "email" && result === "fail") {
@@ -115,7 +123,7 @@ function applyMiniResult(state, gameId, result, message, usedSec = 60) {
   if (ending) {
     next.ending = ending;
     next.scene = "ending";
-  } else if (next.minigameRound >= ROTATION.length) {
+  } else if (next.minigameRound >= MINI_ROUNDS) {
     // 모든 라운드를 마쳤는데 업무량 남음 → 야근 (업무량≤0이면 위 checkEnding에서 success).
     // 야근은 18:00 기준으로 표시.
     next.ending = "overtime";
@@ -138,7 +146,7 @@ function renderPlaceholderMiniGame(root, state, actions, game) {
       el("div", { class: "desk" }, [
         el("div", { class: "mini-layout" }, [
           el("div", { class: "mini-header" }, [
-            el("h2", { text: `${state.minigameRound + 1}/${ROTATION.length} ${game.title}` }),
+            el("h2", { text: `${state.minigameRound + 1}/${MINI_ROUNDS} ${game.title}` }),
             el("strong", { text: "프로토타입 판정" }),
           ]),
           renderBadges(state),

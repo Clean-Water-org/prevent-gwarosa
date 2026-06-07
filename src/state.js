@@ -1,7 +1,22 @@
 import { bosses } from "./data/bosses.js";
 import { startingInventory } from "./data/player-types.js";
 
-// 미니게임 순서·라운드 수는 flow.js(ROTATION)에서 관리한다.
+export const MINI_GAMES = ["email", "meeting", "report"];
+export const MINI_ROUNDS = 5;
+
+// 미니게임 5라운드 순서 생성:
+//   1~3라운드 = 이메일 → 회의 준비 → 보고서 고정 순서(각 1회)
+//   4~5라운드 = 3개 중 랜덤 (직전 라운드와 같지 않게 — 전체 연속 중복 금지, 비연속 반복은 허용)
+export function buildMiniOrder() {
+  const order = ["email", "meeting", "report"];
+  while (order.length < MINI_ROUNDS) {
+    let pick;
+    do { pick = MINI_GAMES[Math.floor(Math.random() * MINI_GAMES.length)]; }
+    while (pick === order[order.length - 1]);
+    order.push(pick);
+  }
+  return order;
+}
 
 export function createInitialState() {
   const boss = bosses[Math.floor(Math.random() * bosses.length)];
@@ -10,6 +25,7 @@ export function createInitialState() {
     scene: "title",
     phaseIndex: 0,
     minigameRound: 0,
+    miniOrder: buildMiniOrder(),
     gameMinute: 8 * 60 + 58,
     ending: null,
     player: {
@@ -37,6 +53,7 @@ export function createInitialState() {
       mainEventCount: 0,
       mainPhaseEventUsed: null,
       minigameResults: [],
+      miniResultByGame: {},
     },
     flags: {
       runId: createRunId(),
